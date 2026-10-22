@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}Dispečink manažera - Panther Security{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <span class="badge-tag yellow">OPERAČNÍ VELÍN</span>
+        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Dispečerský panel &amp; Schvalování docházky</h1>
+        <p style="color: var(--text-muted); font-size: 13px;">Kontrola hlídek v terénu a schvalování odsloužených směn.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{% url 'shift_planner_calendar' %}" class="btn btn-primary">📅 Otevřít plánovací kalendář</a>
+    </div>
+</div>
+
+<div class="card" style="border-left: 4px solid var(--panther-yellow); margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+        <h2 style="font-size: 18px; color: #fff; margin: 0;">✍️ Směny čekající na schválení manažerem ({{ shifts_to_approve|length }})</h2>
+        <span class="badge-tag yellow">Pravidlo: po skončení služby</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Objekt</th>
+                    <th>Strážný</th>
+                    <th>Termín směny</th>
+                    <th>Hlášení ze služby</th>
+                    <th>Odměna</th>
+                    <th style="text-align: right;">Akce</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in shifts_to_approve %}
+                <tr>
+                    <td><strong style="color: #fff;">{{ s.guard_object.name }}</strong></td>
+                    <td><strong style="color: #fff;">{{ s.employee.full_name }}</strong></td>
+                    <td>
+                        {{ s.start_time|date:"d.m. H:i" }} – {{ s.end_time|date:"H:i" }}
+                        <div style="font-size: 11px; color: var(--text-muted);">{{ s.planned_hours }} hod</div>
+                    </td>
+                    <td>{{ s.guard_notes|default:"Bez závad" }}</td>
+                    <td style="font-weight: 700; color: #10b981;">{{ s.total_cost }} Kč</td>
+                    <td style="text-align: right;">
+                        <a href="{% url 'approve_shift' s.id %}" class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;" onclick="return confirm('Schválit směnu? Odměna bude připsána do mezd.');">
+                            ✅ Schválit do mezd
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Žádné směny aktuálně nečekají na schválení.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">🟢 Právě probíhající služby na stanovištích ({{ active_now|length }})</h3>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Střežený objekt</th>
+                    <th>Strážný</th>
+                    <th>Nástup (Check-in)</th>
+                    <th>Plánovaný konec</th>
+                    <th>Pohotovostní telefon</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in active_now %}
+                <tr>
+                    <td><strong style="color: #fff;">{{ s.guard_object.name }}</strong></td>
+                    <td>{{ s.employee.full_name }}</td>
+                    <td><span class="badge-tag green">{{ s.actual_start_time|date:"H:i" }}</span></td>
+                    <td>{{ s.end_time|date:"H:i" }}</td>
+                    <td>{{ s.guard_object.emergency_phone|default:"Velín" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">V tuto chvíli na žádném objektu neprobíhá aktivní služba.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

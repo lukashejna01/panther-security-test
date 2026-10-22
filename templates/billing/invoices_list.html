@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+{% block title %}Fakturace - Panther Security{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <span class="badge-tag yellow">FINANČNÍ AGENDY</span>
+        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Přehled fakturace &amp; Dokladů</h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">Správa vydaných i přijatých daňových dokladů a kontrola jejich splatnosti.</p>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{% url 'client_list' %}" class="btn btn-secondary">🏢 Správa odběratelů</a>
+        <a href="{% url 'invoice_generate' %}" class="btn btn-primary">⚡ Vystavit fakturu</a>
+        <a href="{% url 'invoice_incoming_upload' %}" class="btn btn-secondary">📥 Nahrát přijatou fakturu (OCR)</a>
+    </div>
+</div>
+
+<!-- SOUHRNNÉ KARTY -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #10b981;">
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Celkem vydané tržby</div>
+        <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 4px;">{{ total_outgoing }} Kč</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #ef4444;">
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Celkem přijaté náklady</div>
+        <div style="font-size: 24px; font-weight: 800; color: #ef4444; margin-top: 4px;">{{ total_incoming }} Kč</div>
+    </div>
+</div>
+
+<!-- VYDANÉ FAKTURY KLIENTŮM -->
+<div class="card" style="margin-bottom: 24px;">
+    <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">📄 Vydané faktury klientům ({{ outgoing_invoices|length }})</h3>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Číslo dokladu</th>
+                    <th>Odběratel</th>
+                    <th>Vystaveno</th>
+                    <th>Splatnost</th>
+                    <th>Částka s DPH</th>
+                    <th>Stav splatnosti &amp; úhrady</th>
+                    <th style="text-align: right;">Akce</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in outgoing_invoices %}
+                <tr>
+                    <td>
+                        <a href="{% url 'invoice_detail' inv.variable_symbol|default:inv.invoice_number %}" style="color: #fff; font-weight: 700; text-decoration: none;">
+                            {{ inv.invoice_number }}
+                        </a>
+                    </td>
+                    <td>
+                        <strong style="color: #fff;">{{ inv.client.name }}</strong>
+                    </td>
+                    <td>{{ inv.issue_date|date:"d.m.Y" }}</td>
+                    <td>
+                        <span style="{% if inv.payment_badge.status_type == 'overdue' %}color: #ef4444; font-weight: 700;{% endif %}">
+                            {{ inv.due_date|date:"d.m.Y" }}
+                        </span>
+                    </td>
+                    <td style="font-weight: 800; color: #10b981; font-size: 14px;">{{ inv.total_amount }} Kč</td>
+                    <td>
+                        <!-- DYNAMICKÝ ODZNAK STAVU -->
+                        <span class="badge-tag {{ inv.payment_badge.css_class }}">
+                            {{ inv.payment_badge.label }}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="display: inline-flex; gap: 6px;">
+                            <!-- Tlačítko přepnutí úhrady -->
+                            {% if inv.is_paid %}
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #fca5a5;" title="Označit jako neuhrazenou">
+                                    ↩ Zrušit úhradu
+                                </a>
+                            {% else %}
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #6ee7b7;" title="Označit jako zaplacenou">
+                                    ✓ Označit uhrazeno
+                                </a>
+                            {% endif %}
+
+                            <!-- Tisk/náhled -->
+                            <a href="{% url 'invoice_detail' inv.variable_symbol|default:inv.invoice_number %}" target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
+                                🖨️ PDF / Tisk
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Žádné vystavené faktury.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- PŘIJATÉ FAKTURY OD DODAVATELŮ -->
+<div class="card">
+    <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">📥 Přijaté faktury od dodavatelů ({{ incoming_invoices|length }})</h3>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Číslo</th>
+                    <th>Dodavatel</th>
+                    <th>Vystaveno</th>
+                    <th>Splatnost</th>
+                    <th>Částka s DPH</th>
+                    <th>Stav</th>
+                    <th style="text-align: right;">Úhrada</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in incoming_invoices %}
+                <tr>
+                    <td><strong style="color: #fff;">{{ inv.invoice_number }}</strong></td>
+                    <td>{{ inv.supplier_name|default:inv.supplier.name }}</td>
+                    <td>{{ inv.issue_date|date:"d.m.Y" }}</td>
+                    <td>{{ inv.due_date|date:"d.m.Y" }}</td>
+                    <td style="font-weight: 700; color: #ef4444;">{{ inv.total_amount }} Kč</td>
+                    <td>
+                        <span class="badge-tag {{ inv.payment_badge.css_class }}">
+                            {{ inv.payment_badge.label }}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        {% if inv.is_paid %}
+                            <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
+                                ↩ Zrušit
+                            </a>
+                        {% else %}
+                            <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #6ee7b7;">
+                                ✓ Zaplaceno
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Žádné přijaté faktury.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

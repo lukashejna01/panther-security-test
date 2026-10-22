@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+
+{% block title %}Odběratelé služeb - Panther Security{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <span class="badge-tag yellow">OBCHOD &amp; ZÁKAZNÍCI</span>
+        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Odběratelé bezpečnostních služeb</h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">Evidence smluvních partnerů, jejich objektů a vystavených faktur.</p>
+    </div>
+    <div>
+        <a href="{% url 'client_create' %}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+            ➕ Založit nového odběratele
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2 style="font-size: 17px; color: #fff; margin: 0;">🏢 Přehled evidovaných firem ({{ clients|length }})</h2>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Název firmy</th>
+                    <th>Sídlo</th>
+                    <th>IČO / DIČ</th>
+                    <th>Střežené objekty</th>
+                    <th>Kontaktní osoba</th>
+                    <th>Telefon</th>
+                    <th>Fakturační e-mail</th>
+                    <th style="text-align: right;">Detail</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in clients %}
+                <tr>
+                    <td>
+                        <a href="{% url 'client_detail' c.id %}" style="color: #fff; font-weight: 700; text-decoration: none; font-size: 14px;">
+                            {{ c.name }}
+                        </a>
+                    </td>
+                    <td>
+                        {% if c.city %}
+                            <span style="color: #cbd5e1;">{{ c.city }}{% if c.city_part %} – {{ c.city_part }}{% endif %}</span>
+                        {% else %}
+                            <span style="color: var(--text-muted);">—</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <div>{{ c.ico|default:"—" }}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">{{ c.dic|default:"" }}</div>
+                    </td>
+                    <td>
+                        <span class="badge-tag yellow">{{ c.guard_objects.all|length }} stanovišť</span>
+                    </td>
+                    <td>{{ c.contact_person|default:"—" }}</td>
+                    <td>{{ c.contact_phone|default:"—" }}</td>
+                    <td>
+                        {% if c.contact_email %}
+                            <a href="mailto:{{ c.contact_email }}" style="color: #60a5fa; text-decoration: none;">{{ c.contact_email }}</a>
+                        {% else %}
+                            <span style="color: var(--text-muted);">—</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right;">
+                        <a href="{% url 'client_detail' c.id %}" class="btn btn-secondary" style="padding: 5px 12px; font-size: 12px;">
+                            Karta klienta →
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 28px;">Zatím nejsou zaevidováni žádní odběratelé.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

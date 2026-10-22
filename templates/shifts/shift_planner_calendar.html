@@ -1,0 +1,154 @@
+{% extends 'base.html' %}
+
+{% block title %}Plánovač & Dispečerský kalendář - Panther Security{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <span class="badge-tag yellow">DISPEČERSKÝ PŘEHLED</span>
+        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Denní rozpis služeb &amp; Pohovory</h1>
+        <p style="color: var(--text-muted); font-size: 13px;">Přehled obsazení objektů a schvalování odsloužených směn.</p>
+    </div>
+
+    <!-- PŘEPÍNAČ DNE -->
+    <div class="card" style="margin: 0; padding: 10px 16px;">
+        <form method="get" style="display: flex; align-items: center; gap: 10px;">
+            <label style="color: var(--text-muted); font-size: 12px; font-weight: 700;">DEN:</label>
+            <input type="date" name="date" value="{{ selected_date|date:'Y-m-d' }}" class="form-control" style="width: auto; padding: 6px 10px;" onchange="this.form.submit()">
+        </form>
+    </div>
+</div>
+
+{% if day_interviews %}
+<div class="card" style="border-left: 4px solid #3b82f6; margin-bottom: 20px;">
+    <h3 style="font-size: 15px; color: #60a5fa; margin-top: 0; margin-bottom: 10px;">🎯 Dnešní pohovory se zájemci ({{ day_interviews|length }})</h3>
+    <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        {% for cand in day_interviews %}
+        <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 6px; padding: 8px 14px;">
+            <strong style="color: #fff;">{{ cand.full_name }}</strong> ({{ cand.phone }})
+            <div style="font-size: 12px; color: var(--panther-yellow);">⏰ {{ cand.interview_date|date:"H:i" }} &bull; {{ cand.interview_note|default:"Centrála" }}</div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: flex-start;">
+    <!-- RYCHLÉ VYPSÁNÍ SMĚNY -->
+    <div class="card">
+        <h3 style="font-size: 16px; color: var(--panther-yellow); margin-top: 0; margin-bottom: 14px;">➕ Vypsat směnu na den {{ selected_date|date:"d.m." }}</h3>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Střežený objekt *</label>
+                {{ form.guard_object }}
+            </div>
+            <div class="form-group">
+                <label>Požadovaná pozice *</label>
+                {{ form.required_position }}
+            </div>
+            <div class="form-group">
+                <label>Přiřadit strážného (nebo nechat na burzu)</label>
+                {{ form.employee }}
+            </div>
+            <div class="form-group">
+                <label>Začátek směny</label>
+                {{ form.start_time }}
+            </div>
+            <div class="form-group">
+                <label>Konec směny</label>
+                {{ form.end_time }}
+            </div>
+            <div class="form-group">
+                <label>Hodinová mzda (Kč/h)</label>
+                {{ form.hourly_rate }}
+            </div>
+            <div class="form-group">
+                <label>Instrukce velínu</label>
+                {{ form.dispatcher_notes }}
+            </div>
+            <button type="submit" name="create_shift" class="btn btn-primary" style="width: 100%;">
+                Vytvořit směnu
+            </button>
+        </form>
+    </div>
+
+    <!-- ROZPIS SMĚN DNE S PRAVIDLEM SCHVALOVÁNÍ -->
+    <div class="card">
+        <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 16px;">
+            🛡️ Směny na střežených objektech ({{ day_shifts|length }})
+        </h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Objekt</th>
+                        <th>Čas směny</th>
+                        <th>Strážný</th>
+                        <th>Stav</th>
+                        <th>Odměna</th>
+                        <th style="text-align: right;">Akce / Schválení</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for shift in day_shifts %}
+                    <tr>
+                        <td>
+                            <strong style="color: #fff;">{{ shift.guard_object.name }}</strong>
+                            <div style="font-size: 11px; color: var(--text-muted);">{{ shift.guard_object.client.name }}</div>
+                        </td>
+                        <td>
+                            <span style="color: var(--panther-yellow); font-weight: 700;">
+                                {{ shift.start_time|date:"H:i" }} – {{ shift.end_time|date:"H:i" }}
+                            </span>
+                            <div style="font-size: 11px; color: var(--text-muted);">({{ shift.planned_hours }} hod)</div>
+                        </td>
+                        <td>
+                            {% if shift.employee %}
+                                <strong style="color: #fff;">{{ shift.employee.full_name }}</strong>
+                            {% else %}
+                                <span class="badge-tag red">VOLNÁ NA BURZE</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if shift.status == 'APPROVED' %}
+                                <span class="badge-tag green">✅ SCHVÁLENO</span>
+                            {% elif shift.status == 'COMPLETED' %}
+                                <span class="badge-tag blue">🔵 ODSLOUŽENO</span>
+                            {% elif shift.status == 'IN_PROGRESS' %}
+                                <span class="badge-tag green">🟢 SLUŽBA PROBÍHÁ</span>
+                            {% elif shift.status == 'ASSIGNED' %}
+                                <span class="badge-tag yellow">PLÁNOVÁNO</span>
+                            {% else %}
+                                <span class="badge-tag red">BURZA</span>
+                            {% endif %}
+                        </td>
+                        <td style="font-weight: 700; color: #fff;">{{ shift.total_cost }} Kč</td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <!-- PRAGMATICKÉ PRAVIDLO: SCHVÁLIT LZE POUZE POKUD JE SKONČENÁ V MINULOSTI -->
+                            {% if shift.status != 'APPROVED' %}
+                                {% if shift.can_be_approved %}
+                                    <a href="{% url 'approve_shift' shift.id %}" class="btn btn-primary" style="padding: 4px 10px; font-size: 11px;" onclick="return confirm('Schválit tuto odslouženou směnu do mezd?');">
+                                        ✍️ Schválit do mezd
+                                    </a>
+                                {% else %}
+                                    <span style="font-size: 11px; color: var(--text-muted);" title="Nelze schválit směnu naplánovanou do budoucna!">
+                                        ⏳ Nelze schválit dopředu
+                                    </span>
+                                {% endif %}
+                            {% else %}
+                                <span style="font-size: 11px; color: #34d399;">V mzdách</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">Na tento den není vypsána žádná směna.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

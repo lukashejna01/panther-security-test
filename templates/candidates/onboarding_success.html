@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+
+{% block title %}Nástup zájemce: {{ candidate.full_name }}{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <a href="{% url 'candidate_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 10px;">← Zpět do náboru</a>
+    <h1 style="font-size: 26px; color: #fff; margin: 0;">Zahájení nástupu: {{ candidate.full_name }}</h1>
+    <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">1. Nahrajte doklad totožnosti (Claude OCR) &bull; 2. Zkontrolujte formulář s pojišťovnou &bull; 3. Zařaďte do kmene.</p>
+</div>
+
+<!-- KROK 1: CLAUDE OCR DOKLADU -->
+<div class="card" style="border-color: rgba(250, 204, 21, 0.4); margin-bottom: 24px;">
+    <h2 style="font-size: 16px; color: var(--panther-yellow); margin-top: 0; margin-bottom: 12px;">1. Vytěžení dokladu totožnosti (Claude AI)</h2>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group" style="margin-bottom: 12px;">
+            {{ upload_form.id_card_image }}
+        </div>
+        <button type="submit" name="scan_id" class="btn btn-primary">
+            🔍 Analyzovat občanku přes Claude AI
+        </button>
+    </form>
+</div>
+
+<!-- KROK 2: KONTROLA A ULOŽENÍ -->
+<div class="card">
+    <h2 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 16px;">2. Kontrola údajů před nástupem</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div class="form-group">
+                <label>Jméno *</label>
+                {{ employee_form.first_name }}
+            </div>
+            <div class="form-group">
+                <label>Příjmení *</label>
+                {{ employee_form.last_name }}
+            </div>
+            <div class="form-group">
+                <label>Datum narození</label>
+                {{ employee_form.birth_date }}
+            </div>
+            <div class="form-group">
+                <label>Rodné číslo *</label>
+                {{ employee_form.birth_number }}
+            </div>
+            <div class="form-group">
+                <label>Číslo OP / dokladu *</label>
+                {{ employee_form.id_card_number }}
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div class="form-group">
+                <label>Ulice</label>
+                {{ employee_form.street }}
+            </div>
+            <div class="form-group">
+                <label>Číslo popisné</label>
+                {{ employee_form.house_number }}
+            </div>
+            <div class="form-group">
+                <label>Číslo orientační</label>
+                {{ employee_form.orientation_number }}
+            </div>
+            <div class="form-group">
+                <label>Město</label>
+                {{ employee_form.city }}
+            </div>
+            <div class="form-group">
+                <label>PSČ (dohledáno)</label>
+                {{ employee_form.zip_code }}
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 15px; background: rgba(0,0,0,0.25); padding: 15px; border-radius: 8px;">
+            <div class="form-group">
+                <label>Telefon</label>
+                {{ employee_form.phone }}
+            </div>
+            <div class="form-group">
+                <label>E-mail</label>
+                {{ employee_form.email }}
+            </div>
+            <div class="form-group">
+                <label>Číslo účtu pro mzdy</label>
+                {{ employee_form.bank_account }}
+            </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 24px; border-top: 1px solid var(--border-color); padding-top: 15px;">
+            <div class="form-group">
+                <label>Typ smlouvy</label>
+                {{ employee_form.contract_type }}
+            </div>
+            <div class="form-group">
+                <label>Hodinová mzda (Kč/h)</label>
+                {{ employee_form.hourly_rate }}
+            </div>
+            <div class="form-group">
+                <label style="color: var(--panther-yellow);">Datum nástupu do práce (ČSSZ)</label>
+                {{ employee_form.start_employment_date }}
+            </div>
+            <div class="form-group">
+                <label style="color: var(--panther-yellow);">Zdravotní pojišťovna *</label>
+                {{ employee_form.health_insurance_code }}
+            </div>
+        </div>
+
+        <button type="submit" name="save_employee" class="btn btn-primary" style="padding: 12px 28px; font-size: 15px;">
+            ✅ Potvrdit nástup, vytvořit účet &amp; zařadit do kmene
+        </button>
+    </form>
+</div>
+{% endblock %}

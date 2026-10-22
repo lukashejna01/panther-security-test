@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+
+{% block title %}Výplatní páska: {{ employee.full_name }} ({{ month }}/{{ year }}){% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+    <a href="{% url 'payroll_summary' %}?year={{ year }}&month={{ month }}" class="btn btn-secondary" style="font-size: 12px;">← Zpět na mzdy</a>
+    <button onclick="window.print()" class="btn btn-primary" style="font-size: 12px;">🖨️ Vytisknout výplatní pásku</button>
+</div>
+
+<div class="card" style="max-width: 680px; margin: 0 auto; padding: 36px;">
+    <div style="border-bottom: 2px solid var(--border-color); padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between;">
+        <div>
+            <h1 style="font-size: 20px; color: #fff; margin: 0;">VÝPLATNÍ PÁSKA ZAMĚSTNANCE</h1>
+            <div style="color: var(--panther-yellow); font-weight: 700; margin-top: 4px;">Období: {{ month }} / {{ year }}</div>
+        </div>
+        <div style="text-align: right;">
+            <strong style="color: #fff;">Panther Security s.r.o.</strong>
+            <div style="font-size: 12px; color: var(--text-muted);">IČO: 22525882</div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; font-size: 13px;">
+        <div>
+            <span style="color: var(--text-muted);">Zaměstnanec:</span><br>
+            <strong style="color: #fff; font-size: 15px;">{{ employee.full_name }}</strong><br>
+            {{ employee.contract_type }} &bull; {{ employee.get_health_insurance_code_display }}
+        </div>
+        <div>
+            <span style="color: var(--text-muted);">Bankovní účet pro výplatu:</span><br>
+            <strong style="color: #fff;">{{ employee.bank_account|default:"Hotovost" }}</strong>
+        </div>
+    </div>
+
+    <table class="table" style="margin-bottom: 24px;">
+        <thead>
+            <tr>
+                <th>Objekt</th>
+                <th>Datum směny</th>
+                <th>Hodiny</th>
+                <th style="text-align: right;">Odměna</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for s in approved_shifts %}
+            <tr>
+                <td>{{ s.guard_object.name }}</td>
+                <td>{{ s.start_time|date:"d.m.Y" }}</td>
+                <td>{{ s.planned_hours }}h</td>
+                <td style="text-align: right; font-weight: 700;">{{ s.total_cost }} Kč</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted);">Žádné schválené směny.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div style="background: rgba(0,0,0,0.4); border-radius: 8px; padding: 18px; border: 1px solid var(--border-color);">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span>Celkem odpracováno hodin:</span>
+            <strong>{{ total_hours }} hod</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px;">
+            <span>Hrubá odměna:</span>
+            <strong>{{ gross_pay }} Kč</strong>
+        </div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span>Záloha na daň:</span>
+            <span>- {{ tax }} Kč</span>
+        </div>
+        <div style="display: flex; justify-content: space-between; font-size: 18px; font-weight: 900; color: var(--panther-yellow); border-top: 1px solid var(--border-color); padding-top: 10px;">
+            <span>ČISTÁ MZDA K VÝPLATĚ:</span>
+            <span>{{ net_pay }} Kč</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

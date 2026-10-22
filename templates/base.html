@@ -1,0 +1,70 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Panther Security{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=2.0">
+    <script defer src="{% static 'js/main.js' %}?v=2.0"></script>
+</head>
+<body>
+
+    {% if user.is_authenticated %}
+    <header class="top-navbar">
+        <a href="{% url 'home' %}" class="brand-logo">
+            <span class="brand-badge">PANTHER</span>
+            <span>Security Operations</span>
+        </a>
+
+        <nav class="nav-menu">
+            {% if user.is_superuser or user.employee_profile.system_role == 'OWNER' or user.employee_profile.system_role == 'MANAGER' %}
+                <a href="{% url 'manager_dashboard' %}" class="nav-item">🎛️ Dispečink</a>
+                <a href="{% url 'shift_planner_calendar' %}" class="nav-item">📅 Plánovač &amp; Kalendář</a>
+                <a href="{% url 'candidate_list' %}" class="nav-item">🎯 Nábor zájemců</a>
+                <a href="{% url 'employee_list' %}" class="nav-item">👥 Kmen zaměstnanců</a>
+                <a href="{% url 'client_list' %}" class="nav-item">🏢 Odběratelé &amp; Objekty</a>
+                <a href="{% url 'payroll_summary' %}" class="nav-item">💰 Mzdy</a>
+                {% if user.is_superuser or user.employee_profile.system_role == 'OWNER' %}
+                    <a href="{% url 'owner_dashboard' %}" class="nav-item">📊 Kokpit</a>
+                    <a href="{% url 'invoice_list' %}" class="nav-item">📄 Fakturace</a>
+                {% endif %}
+            {% else %}
+                <a href="{% url 'employee_portal' %}" class="nav-item">🛡️ Moje směny &amp; Portál</a>
+            {% endif %}
+        </nav>
+
+        <div style="display: flex; align-items: center; gap: 14px;">
+            <a href="{% url 'user_profile' %}" style="text-decoration: none; color: var(--text-secondary); font-size: 13px;">
+                👤 <strong style="color: #fff;">{{ user.first_name|default:user.username }}</strong>
+            </a>
+            <a href="{% url 'logout' %}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 12px;">
+                Odhlásit
+            </a>
+        </div>
+    </header>
+    {% endif %}
+
+    <main class="main-container">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'success' %}alert-success{% elif message.tags == 'error' %}alert-danger{% else %}alert-info{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        Panther Security s.r.o. &bull; Operační a mzdový informační systém fyzické ostrahy &bull; 2026
+    </footer>
+
+</body>
+</html>

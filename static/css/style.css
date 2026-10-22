@@ -1,0 +1,293 @@
+:root {
+    --bg-main: #0a0d14;
+    --bg-card: #121824;
+    --bg-card-hover: #182030;
+    --bg-surface: #1e293b;
+    --border-color: #243044;
+    --border-light: rgba(255, 255, 255, 0.08);
+
+    /* Panther Signature Amber / Yellow */
+    --panther-yellow: #facc15;
+    --panther-yellow-hover: #eab308;
+    --panther-yellow-glow: rgba(250, 204, 21, 0.25);
+    --panther-dark: #000000;
+
+    /* Typografie & Stavy */
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.15);
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.15);
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.15);
+    --info: #3b82f6;
+    --info-bg: rgba(59, 130, 246, 0.15);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+/* Glassmorphism Topbar */
+.top-navbar {
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 2px solid var(--panther-yellow);
+    padding: 12px 28px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.brand-logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+}
+
+.brand-badge {
+    background: var(--panther-yellow);
+    color: #000000;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 1.5px;
+}
+
+.nav-menu {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-item {
+    color: var(--text-secondary);
+    text-decoration: none;
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.nav-item:hover, .nav-item.active {
+    color: #000000;
+    background: var(--panther-yellow);
+    box-shadow: 0 0 15px var(--panther-yellow-glow);
+}
+
+.main-container {
+    flex: 1;
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 28px;
+}
+
+/* Karty */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.card:hover {
+    border-color: rgba(250, 204, 21, 0.3);
+}
+
+/* Tlačítka */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--panther-yellow);
+    color: #000000;
+}
+
+.btn-primary:hover {
+    background: var(--panther-yellow-hover);
+    box-shadow: 0 4px 20px var(--panther-yellow-glow);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #1e293b;
+    color: #f8fafc;
+    border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: #334155;
+    border-color: var(--text-secondary);
+}
+
+.btn-danger {
+    background: var(--danger-bg);
+    color: #f87171;
+    border: 1px solid var(--danger);
+}
+
+.btn-danger:hover {
+    background: #ef4444;
+    color: #ffffff;
+}
+
+/* Odznaky (Badges) */
+.badge-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-tag.yellow { background: var(--panther-yellow-glow); color: var(--panther-yellow); border: 1px solid rgba(250, 204, 21, 0.4); }
+.badge-tag.green { background: var(--success-bg); color: #34d399; border: 1px solid var(--success); }
+.badge-tag.red { background: var(--danger-bg); color: #f87171; border: 1px solid var(--danger); }
+.badge-tag.blue { background: var(--info-bg); color: #60a5fa; border: 1px solid var(--info); }
+
+/* Tabulky */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 13px;
+    text-align: left;
+}
+
+.table th {
+    background: #0f172a;
+    color: var(--text-secondary);
+    font-weight: 700;
+    padding: 12px 16px;
+    border-bottom: 2px solid var(--border-color);
+    text-transform: uppercase;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+}
+
+.table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border-light);
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    transition: background-color 0.15s ease;
+}
+
+.table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Formuláře */
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.form-control, select, textarea, input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="datetime-local"], input[type="number"] {
+    width: 100%;
+    padding: 10px 14px;
+    font-size: 13px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background: #090d16;
+    color: #ffffff;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.form-control:focus, select:focus, textarea:focus, input:focus {
+    border-color: var(--panther-yellow);
+    box-shadow: 0 0 10px var(--panther-yellow-glow);
+}
+
+/* Toast Notifikace */
+.alert {
+    padding: 12px 18px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+.alert-success { background: var(--success-bg); border: 1px solid var(--success); color: #34d399; }
+.alert-error, .alert-danger { background: var(--danger-bg); border: 1px solid var(--danger); color: #f87171; }
+.alert-info { background: var(--warning-bg); border: 1px solid var(--panther-yellow); color: var(--panther-yellow); }
+
+/* Footer */
+footer {
+    border-top: 1px solid var(--border-color);
+    padding: 20px 28px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-muted);
+    background: #090d16;
+}

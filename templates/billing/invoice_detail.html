@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Faktura_{{ invoice.invoice_number }}_PantherSecurity</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #0b0f17;
+            color: #0f172a;
+            padding: 30px 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* HORNÍ OVLÁDACÍ LIŠTA */
+        .actions-bar {
+            width: 100%;
+            max-width: 840px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 12px 20px;
+            background: #141b26;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+
+        .btn-act {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 9px 18px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s ease;
+        }
+
+        .btn-back {
+            background: rgba(255, 255, 255, 0.08);
+            color: #cbd5e1;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .btn-back:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+
+        .btn-toggle-pay {
+            background: {% if invoice.is_paid %}rgba(239, 68, 68, 0.15){% else %}rgba(16, 185, 129, 0.18){% endif %};
+            color: {% if invoice.is_paid %}#fca5a5{% else %}#6ee7b7{% endif %};
+            border: 1px solid {% if invoice.is_paid %}rgba(239, 68, 68, 0.35){% else %}rgba(16, 185, 129, 0.35){% endif %};
+        }
+        .btn-toggle-pay:hover { filter: brightness(1.15); }
+
+        .btn-print {
+            background: #facc15;
+            color: #000000;
+        }
+        .btn-print:hover { background: #eab308; }
+
+        /* A4 LIST FAKTURY */
+        .invoice-a4 {
+            width: 100%;
+            max-width: 840px;
+            min-height: 1140px;
+            background: #ffffff;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6);
+            border-radius: 4px;
+            padding: 55px 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            color: #0f172a;
+        }
+
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 20px;
+            margin-bottom: 26px;
+        }
+
+        .brand-title {
+            font-size: 25px;
+            font-weight: 900;
+            color: #000;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .brand-tag {
+            background: #000;
+            color: #facc15;
+            padding: 2px 7px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 900;
+            letter-spacing: 1px;
+        }
+
+        .brand-sub {
+            font-size: 11.5px;
+            color: #64748b;
+            margin-top: 4px;
+            font-weight: 500;
+        }
+
+        .doc-header-right {
+            text-align: right;
+        }
+
+        .doc-header-right h1 {
+            font-size: 22px;
+            font-weight: 900;
+            color: #0f172a;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        .doc-number {
+            font-size: 15px;
+            font-weight: 700;
+            color: #475569;
+        }
+
+        /* DODAVATEL & ODBĚRATEL */
+        .parties-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            margin-bottom: 26px;
+        }
+
+        .party-box h2 {
+            font-size: 10.5px;
+            font-weight: 800;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            color: #94a3b8;
+            margin-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 4px;
+        }
+
+        .party-name {
+            font-size: 16px;
+            font-weight: 800;
+            color: #0f172a;
+            margin-bottom: 4px;
+        }
+
+        .party-address {
+            font-size: 13px;
+            color: #334155;
+            line-height: 1.5;
+            min-height: 40px;
+        }
+
+        .party-reg {
+            margin-top: 7px;
+            font-size: 12.5px;
+            color: #0f172a;
+        }
+
+        /* ZAROVNANÝ BLOK KONTAKTŮ */
+        .contact-grid {
+            margin-top: 10px;
+            padding-top: 8px;
+            border-top: 1px dashed #cbd5e1;
+            font-size: 12px;
+            display: grid;
+            grid-template-columns: 95px 1fr;
+            row-gap: 4px;
+            column-gap: 8px;
+            line-height: 1.5;
+        }
+
+        .contact-grid .lbl {
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        .contact-grid .val {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        /* METADATA PLATBY */
+        .meta-strip {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            padding: 12px 18px;
+            margin-bottom: 24px;
+        }
+
+        .meta-col span {
+            display: block;
+            font-size: 10px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+        }
+
+        .meta-col strong {
+            font-size: 14px;
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .intro-text {
+            font-size: 13px;
+            color: #334155;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-left: 2px;
+        }
+
+        /* TABULKA POLOŽEK */
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+        }
+
+        .items-table th {
+            background: #0f172a;
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 11px 14px;
+            text-align: left;
+        }
+
+        .items-table th.tar, .items-table td.tar {
+            text-align: right;
+        }
+
+        .items-table th.tac, .items-table td.tac {
+            text-align: center;
+        }
+
+        .items-table td {
+            padding: 13px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 13px;
+            color: #334155;
+        }
+
+        .items-table tbody tr:last-child td {
+            border-bottom: 2px solid #0f172a;
+        }
+
+        /* SPODNÍ ČÁST: QR PLATBA + BANKOVNÍ SPOJENÍ + REKAPITULACE */
+        .bottom-summary-grid {
+            display: grid;
+            grid-template-columns: 1.15fr 0.85fr;
+            gap: 36px;
+            align-items: flex-start;
+            margin-top: 10px;
+        }
+
+        .qr-card-container {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            background: #fafafa;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 14px 18px;
+        }
+
+        .qr-card-container img {
+            width: 112px;
+            height: 112px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            flex-shrink: 0;
+        }
+
+        .payment-bank-details {
+            font-size: 12px;
+            line-height: 1.5;
+            color: #334155;
+            width: 100%;
+        }
+
+        .payment-bank-details strong.title {
+            display: block;
+            font-size: 13.5px;
+            color: #0f172a;
+            font-weight: 800;
+            margin-bottom: 6px;
+        }
+
+        .bank-info-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11.5px;
+        }
+
+        .bank-info-table td {
+            padding: 2px 0;
+        }
+
+        .bank-info-table td.label {
+            color: #64748b;
+            width: 80px;
+            font-weight: 500;
+        }
+
+        .bank-info-table td.value {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        .totals-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13.5px;
+        }
+
+        .totals-table td {
+            padding: 6px 0;
+            color: #64748b;
+        }
+
+        .totals-table td.val {
+            text-align: right;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        .totals-table tr.due-row td {
+            border-top: 2px solid #0f172a;
+            padding-top: 12px;
+            font-size: 18px;
+            font-weight: 900;
+            color: #000;
+        }
+
+        .totals-table tr.due-row td.val {
+            font-size: 20px;
+            color: #000;
+        }
+
+        /* PATIČKA */
+        .footer-note {
+            margin-top: 40px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 11.5px;
+            color: #64748b;
+            line-height: 1.6;
+        }
+
+        /* STYL PRO TISK A4 */
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+            }
+            .actions-bar {
+                display: none !important;
+            }
+            .invoice-a4 {
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                padding: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                min-height: calc(297mm - 20mm) !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- OVLÁDACÍ LIŠTA -->
+    <div class="actions-bar">
+        <div>
+            <a href="{% url 'invoice_list' %}" class="btn-act btn-back">← Zpět na seznam</a>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+            <a href="{% url 'invoice_toggle_payment' invoice.id %}" class="btn-act btn-toggle-pay">
+                {% if invoice.is_paid %}
+                    ↩ Zrušit úhradu (Označit jako neuhrazenou)
+                {% else %}
+                    ✓ Označit jako UHRAZENO
+                {% endif %}
+            </a>
+            <button onclick="window.print()" class="btn-act btn-print">
+                🖨️ Vytisknout / Uložit do PDF
+            </button>
+        </div>
+    </div>
+
+    <!-- CELÝ LIST FORMÁTU A4 -->
+    <div class="invoice-a4">
+        <div>
+            <!-- ZÁHLAVÍ FAKTURY -->
+            <div class="header-section">
+                <div>
+                    <div class="brand-title">
+                        PANTHER <span class="brand-tag">SECURITY</span>
+                    </div>
+                    <div class="brand-sub">Operační bezpečnostní agentura &bull; Ostraha objektů a majetku</div>
+                </div>
+                <div class="doc-header-right">
+                    <h1>FAKTURA – DAŇOVÝ DOKLAD</h1>
+                    <div class="doc-number">Číslo dokladu: <strong>{{ invoice.invoice_number }}</strong></div>
+                </div>
+            </div>
+
+            <!-- DODAVATEL & ODBĚRATEL -->
+            <div class="parties-container">
+                <!-- DODAVATEL -->
+                <div class="party-box">
+                    <h2>Dodavatel</h2>
+                    <div class="party-name">{{ company.name }}</div>
+                    <div class="party-address">
+                        {{ company.street }}<br>
+                        {{ company.zip }} {{ company.city }}
+                    </div>
+                    <div class="party-reg">
+                        <strong>IČO:</strong> {{ company.ico }} &nbsp;|&nbsp; <strong>DIČ:</strong> {{ company.dic }}
+                    </div>
+                    <div class="contact-grid">
+                        <div class="lbl">Kontakt:</div>
+                        <div class="val">{{ company.contact_person }} ({{ company.contact_role }})</div>
+
+                        <div class="lbl">Telefon:</div>
+                        <div class="val">{{ company.contact_phone }}</div>
+
+                        <div class="lbl">E-mail:</div>
+                        <div class="val">{{ company.email }}</div>
+                    </div>
+                </div>
+
+                <!-- ODBĚRATEL -->
+                <div class="party-box">
+                    <h2>Odběratel</h2>
+                    <div class="party-name">{{ invoice.client.name }}</div>
+                    <div class="party-address">
+                        {% if invoice.client.formatted_street_line %}
+                            {{ invoice.client.formatted_street_line }}<br>
+                            {{ invoice.client.formatted_city_line }}
+                        {% else %}
+                            Sídlo neuvedeno
+                        {% endif %}
+                    </div>
+                    <div class="party-reg">
+                        <strong>IČO:</strong> {{ invoice.client.ico|default:"—" }} &nbsp;|&nbsp; 
+                        <strong>DIČ:</strong> {{ invoice.client.dic|default:"Neplátce DPH" }}
+                    </div>
+                    <div class="contact-grid">
+                        <div class="lbl">Kontakt:</div>
+                        <div class="val">{{ invoice.client.contact_person|default:"Vedení společnosti" }}</div>
+
+                        <div class="lbl">Telefon:</div>
+                        <div class="val">{{ invoice.client.contact_phone|default:"—" }}</div>
+
+                        <div class="lbl">E-mail:</div>
+                        <div class="val">{{ invoice.client.contact_email|default:"—" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PLATEBNÍ ÚDAJE & TERMÍNY -->
+            <div class="meta-strip">
+                <div class="meta-col">
+                    <span>Variabilní symbol</span>
+                    <strong>{{ invoice.variable_symbol|default:invoice.invoice_number }}</strong>
+                </div>
+                <div class="meta-col">
+                    <span>Datum vystavení</span>
+                    <strong>{{ invoice.issue_date|date:"d.m.Y" }}</strong>
+                </div>
+                <div class="meta-col">
+                    <span>DUZP</span>
+                    <strong>{{ invoice.tax_date|date:"d.m.Y" }}</strong>
+                </div>
+                <div class="meta-col">
+                    <span>Datum splatnosti</span>
+                    <strong>{{ invoice.due_date|date:"d.m.Y" }}</strong>
+                </div>
+            </div>
+
+            <!-- ÚVODNÍ VĚTA NAD POLOŽKAMI -->
+            <div class="intro-text">
+                Fakturujeme Vám za poskytnuté bezpečnostní služby a fyzickou ostrahu dle platné smlouvy:
+            </div>
+
+            <!-- TABULKA POLOŽEK -->
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 52%;">Popis plnění</th>
+                        <th class="tac" style="width: 14%;">Počet hod. / MJ</th>
+                        <th class="tar" style="width: 17%;">Cena bez DPH</th>
+                        <th class="tar" style="width: 17%;">Celkem bez DPH</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if formatted_items %}
+                        {% for item in formatted_items %}
+                        <tr>
+                            <td>{{ item.description }}</td>
+                            <td class="tac">{{ item.quantity }}</td>
+                            <td class="tar">{{ item.unit_price }} Kč</td>
+                            <td class="tar"><strong>{{ item.total_price }} Kč</strong></td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td>Poskytování fyzické ostrahy a bezpečnostních služeb dle smlouvy</td>
+                            <td class="tac">1.00</td>
+                            <td class="tar">{{ formatted_totals.amount_without_vat }} Kč</td>
+                            <td class="tar"><strong>{{ formatted_totals.amount_without_vat }} Kč</strong></td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+
+            <!-- SPODNÍ ČÁST: BANKOVNÍ SPOJENÍ + QR PLATBA + REKAPITULACE -->
+            <div class="bottom-summary-grid">
+                <!-- QR KÓD + ÚDAJE K PLATBĚ -->
+                <div class="qr-card-container">
+                    <img src="{{ qr_code_url }}" alt="QR Platba SPAYD" title="QR Platba v mobilním bankovnictví">
+                    <div class="payment-bank-details">
+                        <strong class="title">Platební údaje</strong>
+                        <table class="bank-info-table">
+                            <tr>
+                                <td class="label">Číslo účtu:</td>
+                                <td class="value">{{ company.bank_account }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">IBAN:</td>
+                                <td class="value">{{ company.iban }}</td>
+                            </tr>
+                            <tr>
+                                <td class="label">Var. symbol:</td>
+                                <td class="value">{{ invoice.variable_symbol|default:invoice.invoice_number }}</td>
+                            </tr>
+                        </table>
+                        <div style="font-size: 10.5px; color: #64748b; margin-top: 6px;">
+                            Pohodlná úhrada naskenováním QR kódu v mobilním bankovnictví.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- REKAPITULACE DPH -->
+                <div>
+                    <table class="totals-table">
+                        <tr>
+                            <td>Základ daně (21 %):</td>
+                            <td class="val">{{ formatted_totals.amount_without_vat }} Kč</td>
+                        </tr>
+                        <tr>
+                            <td>DPH 21 %:</td>
+                            <td class="val">{{ formatted_totals.vat_amount }} Kč</td>
+                        </tr>
+                        <tr class="due-row">
+                            <td>Celkem k úhradě:</td>
+                            <td class="val">{{ formatted_totals.total_amount }} Kč</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- POZNÁMKA A ČISTÁ JEDNOŘÁDKOVÁ PATIČKA -->
+        <div class="footer-note">
+            {% if invoice.notes %}
+                <div style="margin-bottom: 12px; font-size: 11px; color: #475569;">
+                    <strong>Poznámka:</strong> {{ invoice.notes }}
+                </div>
+            {% endif %}
+
+            <div style="display: flex; justify-content: center; align-items: center; gap: 14px; font-size: 12px; color: #334155; padding-top: 4px;">
+                <div style="display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="font-size: 14px;">🌐</span>
+                    <strong style="color: #0f172a; letter-spacing: 0.2px;">www.panther-security.cz</strong>
+                </div>
+                
+                <span style="color: #cbd5e1; font-weight: 300;">|</span>
+
+                <div style="display: inline-flex; align-items: center; gap: 6px;">
+                    <span style="color: #64748b;">Obchodní oddělení:</span>
+                    <strong style="color: #0f172a;">obchod@panther-security.cz</strong>
+                </div>
+            </div>
+        </div>
+
+</body>
+</html>

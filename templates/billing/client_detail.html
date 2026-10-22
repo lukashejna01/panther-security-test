@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+
+{% block title %}Karta odběratele: {{ client.name }}{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <a href="{% url 'client_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 10px;">
+            ← Zpět na seznam odběratelů
+        </a>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h1 style="font-size: 28px; font-weight: 800; color: #fff; margin: 0;">{{ client.name }}</h1>
+            {% if client.is_active %}
+                <span class="badge-tag green">● Aktivní klient</span>
+            {% else %}
+                <span class="badge-tag red">● Neaktivní</span>
+            {% endif %}
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">
+            IČO: <strong style="color: #fff;">{{ client.ico|default:"—" }}</strong> &bull; 
+            DIČ: <strong style="color: #fff;">{{ client.dic|default:"Neplátce DPH" }}</strong>
+        </p>
+    </div>
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{% url 'client_update' client.id %}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+            ✏️ Upravit údaje klienta
+        </a>
+        <a href="{% url 'invoice_generate' %}" class="btn btn-primary">
+            ⚡ Vystavit fakturu
+        </a>
+    </div>
+</div>
+
+<!-- INFO BLOKY: SÍDLO + OBJEKTY + KONTAKTY -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 24px;">
+    
+    <!-- 1. FIREMNÍ ÚDAJE & HLAVNÍ KONTAKT -->
+    <div class="card" style="border-left: 4px solid var(--panther-yellow);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+            <h3 style="font-size: 16px; color: var(--panther-yellow); margin: 0;">🏢 Sídlo a výchozí kontakt</h3>
+            <a href="{% url 'client_update' client.id %}" style="color: var(--text-muted); font-size: 12px; text-decoration: none;">✏️ Upravit</a>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px;">
+            <div>
+                <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Fakturační adresa</span>
+                <strong style="color: #fff; font-size: 14px;">
+                    {% if client.formatted_street_line %}
+                        {{ client.formatted_street_line }}<br>
+                        {{ client.formatted_city_line }}
+                    {% else %}
+                        Sídlo neuvedeno
+                    {% endif %}
+                </strong>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding-top: 8px;">
+                <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Hlavní zástupce</span>
+                <strong style="color: #fff;">{{ client.contact_person|default:"—" }}</strong>
+            </div>
+            <div>
+                <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">Telefon</span>
+                <div style="color: #fff;">{{ client.contact_phone|default:"—" }}</div>
+            </div>
+            <div>
+                <span style="color: var(--text-muted); display: block; font-size: 11px; text-transform: uppercase;">E-mail</span>
+                <div style="color: #60a5fa;">{{ client.contact_email|default:"—" }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. KONTAKTNÍ OSOBY -->
+    <div class="card" style="border-left: 4px solid #60a5fa;">
+        <h3 style="font-size: 16px; color: #60a5fa; margin-top: 0; margin-bottom: 12px;">👥 Kontaktní osoby klienta &amp; objektů ({{ contacts|length }})</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; max-height: 280px; overflow-y: auto;">
+            {% for c in contacts %}
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <strong style="color: #fff; font-size: 14px;">{{ c.name }}</strong>
+                        {% if c.role_or_title %}
+                            <span style="color: var(--panther-yellow); font-size: 12px;"> &bull; {{ c.role_or_title }}</span>
+                        {% endif %}
+                    </div>
+                    {% if c.guard_object %}
+                        <span class="badge-tag blue" style="font-size: 10px;">{{ c.guard_object.name }}</span>
+                    {% else %}
+                        <span class="badge-tag yellow" style="font-size: 10px;">Celá firma</span>
+                    {% endif %}
+                </div>
+                <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; gap: 14px; flex-wrap: wrap;">
+                    {% if c.phone %}<span>📞 {{ c.phone }}</span>{% endif %}
+                    {% if c.email %}<span>✉️ <a href="mailto:{{ c.email }}" style="color: #60a5fa; text-decoration: none;">{{ c.email }}</a></span>{% endif %}
+                </div>
+                {% if c.notes %}
+                    <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">ℹ️ {{ c.notes }}</div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div style="color: var(--text-muted); font-size: 13px;">Zatím nejsou přidány žádné další kontaktní osoby.</div>
+            {% endfor %}
+        </div>
+
+        <details style="background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); border-radius: 8px; padding: 12px;">
+            <summary style="cursor: pointer; font-weight: 700; color: #60a5fa; font-size: 13px;">
+                ➕ Přidat novou kontaktní osobu
+            </summary>
+            <form method="post" style="margin-top: 14px;">
+                {% csrf_token %}
+                <div class="form-group" style="margin-bottom: 10px;">
+                    <label style="font-size: 12px;">Přiřadit ke stanovišti / objektu</label>
+                    {{ contact_form.guard_object }}
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                    <div class="form-group">
+                        <label style="font-size: 12px;">Jméno a příjmení *</label>
+                        {{ contact_form.name }}
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 12px;">Pozice / Role</label>
+                        {{ contact_form.role_or_title }}
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px;">
+                    <div class="form-group">
+                        <label style="font-size: 12px;">Telefon</label>
+                        {{ contact_form.phone }}
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 12px;">E-mail</label>
+                        {{ contact_form.email }}
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="font-size: 12px;">Poznámka / Dostupnost</label>
+                    {{ contact_form.notes }}
+                </div>
+                <button type="submit" name="add_contact_person" class="btn btn-secondary" style="width: 100%;">
+                    💾 Uložit kontakt
+                </button>
+            </form>
+        </details>
+    </div>
+
+    <!-- 3. STŘEŽENÉ OBJEKTY -->
+    <div class="card" style="border-left: 4px solid #34d399;">
+        <h3 style="font-size: 16px; color: #34d399; margin-top: 0; margin-bottom: 12px;">🛡️ Střežené objekty ({{ guard_objects|length }})</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 18px; max-height: 280px; overflow-y: auto;">
+            {% for obj in guard_objects %}
+            <div style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <div>
+                        <strong style="color: #fff; font-size: 14px;">{{ obj.name }}</strong>
+                        <div style="font-size: 12px; color: var(--text-muted); margin-top: 2px;">{{ obj.full_address }}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <span class="badge-tag yellow" style="font-size: 11px;">{{ obj.hourly_rate_billing }} Kč/h</span>
+                        <div style="margin-top: 6px;">
+                            <a href="{% url 'guard_object_update' obj.id %}" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;">
+                                ✏️ Upravit
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% if obj.emergency_phone %}
+                    <div style="font-size: 11px; color: #facc15; margin-top: 6px;">🚨 Velín: {{ obj.emergency_phone }}</div>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div style="color: var(--text-muted); font-size: 13px;">Tento odběratel zatím nemá žádné přiřazené objekty.</div>
+            {% endfor %}
+        </div>
+
+        <details style="background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); border-radius: 8px; padding: 12px;">
+            <summary style="cursor: pointer; font-weight: 700; color: #34d399; font-size: 13px;">
+                ➕ Přidat nový objekt pod tohoto klienta
+            </summary>
+            <form method="post" style="margin-top: 14px;">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Název objektu *</label>
+                    {{ object_form.name }}
+                </div>
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 8px;">
+                    <div class="form-group">
+                        <label>Ulice *</label>
+                        {{ object_form.street }}
+                    </div>
+                    <div class="form-group">
+                        <label>Číslo *</label>
+                        {{ object_form.house_number }}
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 8px;">
+                    <div class="form-group">
+                        <label>Město *</label>
+                        {{ object_form.city }}
+                    </div>
+                    <div class="form-group">
+                        <label>PSČ *</label>
+                        {{ object_form.zip_code }}
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="form-group">
+                        <label>Sazba strážného (Kč/h)</label>
+                        {{ object_form.hourly_rate_cost }}
+                    </div>
+                    <div class="form-group">
+                        <label style="color: var(--panther-yellow);">Fakturace klientovi (Kč/h) *</label>
+                        {{ object_form.hourly_rate_billing }}
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Pohotovostní telefon</label>
+                    {{ object_form.emergency_phone }}
+                </div>
+                <div class="form-group">
+                    <label>Instrukce / Směrnice</label>
+                    {{ object_form.instructions }}
+                </div>
+                <button type="submit" name="add_guard_object" class="btn btn-primary" style="width: 100%;">
+                    Uložit a přiřadit objekt
+                </button>
+            </form>
+        </details>
+    </div>
+</div>
+
+<!-- TABULKA VYSTAVENÝCH FAKTUR TOHOTO KLIENTA SE STEJNÝM OVLÁDÁNÍM -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px;">
+        <h3 style="font-size: 18px; font-weight: 700; color: #fff; margin: 0;">
+            📄 Faktury vystavené tomuto odběrateli ({{ invoices|length }})
+        </h3>
+        <div style="font-size: 14px; color: #10b981; font-weight: 800;">
+            Celkem vyfakturováno: {{ total_invoiced }} Kč
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Číslo dokladu</th>
+                    <th>Datum vystavení</th>
+                    <th>DUZP</th>
+                    <th>Splatnost</th>
+                    <th>Základ bez DPH</th>
+                    <th>Celkem s DPH</th>
+                    <th>Stav splatnosti &amp; úhrady</th>
+                    <th style="text-align: right;">Akce</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for inv in invoices %}
+                <tr>
+                    <td>
+                        <a href="{% url 'invoice_detail' inv.variable_symbol|default:inv.invoice_number %}" target="_blank" style="color: #fff; font-weight: 700; text-decoration: none;">
+                            {{ inv.invoice_number }}
+                        </a>
+                    </td>
+                    <td>{{ inv.issue_date|date:"d.m.Y" }}</td>
+                    <td>{{ inv.tax_date|date:"d.m.Y" }}</td>
+                    <td>
+                        <span style="{% if inv.payment_badge.status_type == 'overdue' %}color: #ef4444; font-weight: 700;{% endif %}">
+                            {{ inv.due_date|date:"d.m.Y" }}
+                        </span>
+                    </td>
+                    <td>{{ inv.amount_without_vat }} Kč</td>
+                    <td style="font-weight: 800; color: #10b981; font-size: 14px;">{{ inv.total_amount }} Kč</td>
+                    <td>
+                        <!-- DYNAMICKÝ ODZNAK STAVU -->
+                        <span class="badge-tag {{ inv.payment_badge.css_class }}">
+                            {{ inv.payment_badge.label }}
+                        </span>
+                    </td>
+                    <td style="text-align: right;">
+                        <div style="display: inline-flex; gap: 6px;">
+                            <!-- Tlačítko přepnutí úhrady -->
+                            {% if inv.is_paid %}
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #fca5a5;" title="Označit jako neuhrazenou">
+                                    ↩ Zrušit
+                                </a>
+                            {% else %}
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #6ee7b7;" title="Označit jako zaplacenou">
+                                    ✓ Zaplaceno
+                                </a>
+                            {% endif %}
+
+                            <!-- Tisk/náhled -->
+                            <a href="{% url 'invoice_detail' inv.variable_symbol|default:inv.invoice_number %}" target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
+                                🖨️ PDF
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                        Pro tohoto odběratele zatím nebyla vystavena žádná faktura.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

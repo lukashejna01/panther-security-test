@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block title %}Vyřadit zájemce: {{ candidate.full_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 40px auto;">
+    <div class="card" style="border-color: var(--danger); text-align: center;">
+        <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+        <h2 style="color: #fff; margin-bottom: 6px;">Vyřadit zájemce do archivu?</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+            Uchazeč <strong>{{ candidate.full_name }}</strong> bude přesunut do archivu.
+        </p>
+
+        <form method="post" style="text-align: left;">
+            {% csrf_token %}
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Uveďte důvod vyřazení *</label>
+                {{ form.rejection_reason }}
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <a href="{% url 'candidate_list' %}" class="btn btn-secondary">Zrušit</a>
+                <button type="submit" class="btn btn-danger">Přesunout do archivu</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

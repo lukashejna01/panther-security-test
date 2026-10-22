@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Naplánovat pohovor: {{ candidate.full_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 520px; margin: 30px auto;">
+    <a href="{% url 'candidate_list' %}" class="btn btn-secondary" style="margin-bottom: 16px; font-size: 12px;">← Zpět do náboru</a>
+    <div class="card">
+        <h2 style="font-size: 20px; color: #fff; margin-bottom: 6px;">📅 Naplánovat pohovor</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">Uchazeč: <strong style="color: var(--panther-yellow);">{{ candidate.full_name }}</strong> ({{ candidate.phone }})</p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Datum a čas pohovoru *</label>
+                {{ form.interview_date }}
+            </div>
+            <div class="form-group">
+                <label>Místo / Instrukce k pohovoru</label>
+                {{ form.interview_note }}
+            </div>
+            <div class="form-group" style="margin-bottom: 24px;">
+                <label>Stav zájemce</label>
+                {{ form.status }}
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                Uložit termín pohovoru
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

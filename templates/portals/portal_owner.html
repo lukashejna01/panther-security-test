@@ -1,0 +1,192 @@
+{% extends 'base.html' %}
+
+{% block title %}Finanční kokpit & Statistiky - Panther Security{% endblock %}
+
+{% block content %}
+<!-- Načtení Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <span class="badge-tag yellow">EKONOMICKÝ KOKPIT MAJITELE</span>
+        <h1 style="font-size: 28px; font-weight: 800; color: #fff; margin: 6px 0 0;">Finanční bilance &amp; Statistiky</h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Přehled hospodaření, porovnání tržeb, mezd a dodavatelských nákladů.</p>
+    </div>
+
+    <!-- PŘEPÍNAČ OBDOBÍ -->
+    <div class="card" style="margin: 0; padding: 10px 16px;">
+        <form method="get" style="display: flex; gap: 12px; align-items: center;">
+            <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase;">Měsíc:</label>
+            <input type="number" name="month" min="1" max="12" value="{{ month }}" class="form-control" style="width: 70px; padding: 6px 10px;" onchange="this.form.submit()">
+            
+            <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase;">Rok:</label>
+            <input type="number" name="year" min="2024" max="2030" value="{{ year }}" class="form-control" style="width: 90px; padding: 6px 10px;" onchange="this.form.submit()">
+        </form>
+    </div>
+</div>
+
+<!-- KARTY SOUČTŮ PRO VYBRANÉ OBDOBÍ -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="card" style="margin: 0; padding: 20px; border-left: 4px solid #10b981;">
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Vydané tržby (Klienti)</div>
+        <div style="font-size: 26px; font-weight: 800; color: #10b981; margin-top: 6px;">
+            + {{ total_revenue }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 400;">Kč</span>
+        </div>
+    </div>
+
+    <div class="card" style="margin: 0; padding: 20px; border-left: 4px solid #ef4444;">
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Náklady (Dodavatelé)</div>
+        <div style="font-size: 26px; font-weight: 800; color: #ef4444; margin-top: 6px;">
+            - {{ total_costs }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 400;">Kč</span>
+        </div>
+    </div>
+
+    <div class="card" style="margin: 0; padding: 20px; border-left: 4px solid var(--panther-yellow);">
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Schválené mzdy strážných</div>
+        <div style="font-size: 26px; font-weight: 800; color: var(--panther-yellow); margin-top: 6px;">
+            - {{ total_payroll }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 400;">Kč</span>
+        </div>
+    </div>
+
+    <div class="card" style="margin: 0; padding: 20px; border-left: 4px solid {% if net_profit >= 0 %}#3b82f6{% else %}#ef4444{% endif %};">
+        <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Čistý hospodářský zisk</div>
+        <div style="font-size: 26px; font-weight: 800; color: {% if net_profit >= 0 %}#60a5fa{% else %}#ef4444{% endif %}; margin-top: 6px;">
+            {{ net_profit }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 400;">Kč</span>
+        </div>
+    </div>
+</div>
+
+<!-- DATA PRO GRAFY PŘEDANÁ ČISTĚ PŘES DATA-ATRIBUTY (ŽÁDNÉ VAROVÁNÍ VE VS CODE) -->
+<div id="chart-metrics"
+     data-revenue="{{ total_revenue|default:0 }}"
+     data-costs="{{ total_costs|default:0 }}"
+     data-payroll="{{ total_payroll|default:0 }}"
+     data-profit="{{ net_profit|default:0 }}"
+     style="display: none;"></div>
+
+<!-- GRAFY CHART.JS -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 24px; margin-bottom: 24px;">
+    
+    <!-- SLOUPCOVÝ GRAF: CASH FLOW -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0;">📊 Porovnání toku financí za období {{ month }}/{{ year }}</h3>
+        </div>
+        <div style="position: relative; height: 260px;">
+            <canvas id="cashflowBarChart"></canvas>
+        </div>
+    </div>
+
+    <!-- PRSTENCOVÝ GRAF: ROZPAD NÁKLADŮ -->
+    <div class="card">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h3 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0;">🍩 Rozpad celkových nákladů firmy</h3>
+        </div>
+        <div style="position: relative; height: 260px;">
+            <canvas id="costDoughnutChart"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<!-- SKRIPT ČISTÝ PRO LINTER -->
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var metricsEl = document.getElementById('chart-metrics');
+    if (!metricsEl) return;
+
+    var revenue = parseFloat(metricsEl.dataset.revenue) || 0;
+    var costs = parseFloat(metricsEl.dataset.costs) || 0;
+    var payroll = parseFloat(metricsEl.dataset.payroll) || 0;
+    var profit = parseFloat(metricsEl.dataset.profit) || 0;
+
+    // 1. Sloupcový graf cash flow
+    var barCanvas = document.getElementById('cashflowBarChart');
+    if (barCanvas) {
+        var ctxBar = barCanvas.getContext('2d');
+        new Chart(ctxBar, {
+            type: 'bar',
+            data: {
+                labels: ['Tržby (Klienti)', 'Náklady (Dodavatelé)', 'Mzdy (Strážní)', 'Čistý zisk'],
+                datasets: [{
+                    data: [revenue, costs, payroll, profit],
+                    backgroundColor: [
+                        '#10b981',
+                        '#ef4444',
+                        '#facc15',
+                        '#3b82f6'
+                    ],
+                    borderRadius: 6,
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return context.raw.toLocaleString('cs-CZ') + ' Kč';
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        grid: { color: 'rgba(255, 255, 255, 0.06)' },
+                        ticks: {
+                            color: '#94a3b8',
+                            callback: function (val) {
+                                return val.toLocaleString('cs-CZ') + ' Kč';
+                            }
+                        }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#f8fafc', font: { weight: '600' } }
+                    }
+                }
+            }
+        });
+    }
+
+    // 2. Prstencový graf nákladů
+    var doughnutCanvas = document.getElementById('costDoughnutChart');
+    if (doughnutCanvas) {
+        var ctxPie = doughnutCanvas.getContext('2d');
+        new Chart(ctxPie, {
+            type: 'doughnut',
+            data: {
+                labels: ['Mzdy personálu', 'Náklady na dodavatele'],
+                datasets: [{
+                    data: [payroll, costs],
+                    backgroundColor: ['#facc15', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: { color: '#f8fafc', padding: 20, font: { size: 12 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return ' ' + context.label + ': ' + context.raw.toLocaleString('cs-CZ') + ' Kč';
+                            }
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

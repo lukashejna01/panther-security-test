@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+
+{% block title %}Kmen zaměstnanců - Panther Security{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <span class="badge-tag yellow">AKTIVNÍ PERSONÁL</span>
+        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Kmenový stav zaměstnanců</h1>
+        <p style="color: var(--text-muted); font-size: 13px;">Pracovníci fyzické ostrahy, velíni a dispečeři.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{% url 'employees_archive_list' %}" class="btn btn-secondary">
+            🗄️ Archiv propuštěných zaměstnanců
+        </a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Jméno a příjmení</th>
+                    <th>Role</th>
+                    <th>Pozice</th>
+                    <th>Smlouva</th>
+                    <th>Hodinová sazba</th>
+                    <th>Pojišťovna</th>
+                    <th>ČSSZ ONZ</th>
+                    <th>Telefon</th>
+                    <th style="text-align: right;">Akce</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in employees %}
+                <tr>
+                    <td>
+                        <strong style="color: #fff; font-size: 14px;">{{ emp.full_name }}</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">{{ emp.user.username }}</div>
+                    </td>
+                    <td><span class="badge-tag blue">{{ emp.get_system_role_display }}</span></td>
+                    <td>{{ emp.position.title|default:"Strážný" }}</td>
+                    <td><span class="badge-tag yellow">{{ emp.contract_type }}</span></td>
+                    <td style="font-weight: 700; color: #fff;">{{ emp.hourly_rate }} Kč/h</td>
+                    <td>{{ emp.health_insurance_code }}</td>
+                    <td>
+                        {% if emp.is_reported_cssz %}
+                            <span class="badge-tag green">✅ Nahlášeno</span>
+                        {% else %}
+                            <a href="{% url 'download_cssz_onz' emp.id %}" class="badge-tag red" style="text-decoration: none;">⚠️ Odeslat</a>
+                        {% endif %}
+                    </td>
+                    <td>{{ emp.phone }}</td>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <a href="{% url 'employee_detail' emp.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Karta</a>
+                        <a href="{% url 'archive_employee' emp.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" title="Ukončit poměr">Ukončit</a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Zatím nejsou zaevidováni žádní aktivní zaměstnanci.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+
+{% block title %}Vítejte - Panther Security{% endblock %}
+
+{% block content %}
+<div style="max-width: 520px; margin: 60px auto 0; text-align: center;">
+    <div class="card" style="padding: 48px 36px; border-color: rgba(250, 204, 21, 0.3);">
+        <span class="brand-badge" style="display: inline-block; margin-bottom: 20px;">PANTHER OPERATIONS</span>
+        <h1 style="font-size: 26px; font-weight: 800; margin-bottom: 12px; color: #fff;">
+            Informační systém ostrahy
+        </h1>
+        <p style="color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 32px;">
+            Interní portál Panther Security pro plánování služeb, odbavení docházky strážných, nábor a mzdovou agendu.
+        </p>
+
+        <div>
+            <a href="{% url 'login' %}" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 15px;">
+                🔑 Vstoupit do systému
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

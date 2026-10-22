@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+
+{% block title %}Karta zaměstnance: {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<!-- HORNÍ LIŠTA A RYCHLÉ AKCE -->
+<div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+    <div>
+        <a href="{% url 'employee_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 12px;">
+            ← Zpět do kmene zaměstnanců
+        </a>
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <h1 style="font-size: 30px; font-weight: 800; color: #fff; margin: 0;">
+                {{ employee.full_name }}
+            </h1>
+            <span class="badge-tag blue">{{ employee.get_system_role_display }}</span>
+            {% if employee.is_active %}
+                <span class="badge-tag green">● Aktivní v kmeni</span>
+            {% else %}
+                <span class="badge-tag red">● Ukončený poměr</span>
+            {% endif %}
+        </div>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 6px 0 0;">
+            Uživatelský účet: <strong style="color: #fff;">{{ employee.user.username }}</strong> &bull; V evidenci od: {{ employee.start_employment_date|date:"d.m.Y" }}
+        </p>
+    </div>
+
+    <!-- TLAČÍTKA AKCÍ -->
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <a href="{% url 'download_cssz_onz' employee.id %}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+            🏛️ Stáhnout ČSSZ ONZ (XML)
+        </a>
+        {% if employee.is_active %}
+        <a href="{% url 'archive_employee' employee.id %}" class="btn btn-danger" style="display: inline-flex; align-items: center; gap: 6px;">
+            ⚠️ Ukončit poměr
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- RYCHLÉ METRIKY V HLAVIČCE -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid var(--panther-yellow);">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">Hodinová sazba</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
+            {{ employee.hourly_rate }} <span style="font-size: 13px; font-weight: 400; color: var(--text-muted);">Kč/h</span>
+        </div>
+    </div>
+
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #3b82f6;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">Typ smlouvy</div>
+        <div style="font-size: 22px; font-weight: 800; color: #fff; margin-top: 4px;">
+            {{ employee.contract_type }}
+        </div>
+    </div>
+
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #10b981;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">Zdravotní pojišťovna</div>
+        <div style="font-size: 18px; font-weight: 800; color: #fff; margin-top: 6px;">
+            Kód {{ employee.health_insurance_code }}
+        </div>
+    </div>
+
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid {% if employee.is_reported_cssz %}#10b981{% else %}#ef4444{% endif %};">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">Hlášení ČSSZ (ONZ)</div>
+        <div style="margin-top: 6px;">
+            {% if employee.is_reported_cssz %}
+                <span class="badge-tag green">✅ Odesláno ({{ employee.reported_cssz_date|date:"d.m.Y" }})</span>
+            {% else %}
+                <span class="badge-tag red">⚠️ Neodesláno</span>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- DETAILNÍ KARTY: IDENTITA, SMLOUVA A KONTAKTY -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; margin-bottom: 24px;">
+    
+    <!-- KARTA 1: OSOBNÍ A ÚŘEDNÍ IDENTITA -->
+    <div class="card">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <span style="font-size: 18px;">🪪</span>
+            <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0;">Osobní a úřední identita (OP)</h2>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Rodné číslo:</span>
+                <strong style="color: #fff; font-size: 14px; font-family: monospace;">{{ employee.birth_number|default:"—" }}</strong>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Datum narození:</span>
+                <span style="color: #fff;">{{ employee.birth_date|date:"d.m.Y"|default:"—" }}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Číslo dokladu (OP / pas):</span>
+                <span style="color: #fff; font-family: monospace;">{{ employee.id_card_number|default:"—" }}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Zdravotní pojišťovna:</span>
+                <span style="color: #fff; font-weight: 600;">{{ employee.get_health_insurance_code_display }}</span>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">
+                <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 4px;">Trvalé bydliště</span>
+                <div style="color: #fff; font-size: 14px; line-height: 1.4;">
+                    {{ employee.full_address }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KARTA 2: PRACOVNĚ-PRÁVNÍ A MZDOVÉ ÚDAJE -->
+    <div class="card">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <span style="font-size: 18px;">💼</span>
+            <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0;">Pracovní zařazení & Mzda</h2>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Pracovní pozice:</span>
+                <span style="color: #fff; font-weight: 600;">{{ employee.position.title|default:"Strážný / Ostraha" }}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Oddělení:</span>
+                <span style="color: #fff;">{{ employee.department.name|default:"Fyzická ostraha" }}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Sjednaná hodinová odměna:</span>
+                <strong style="color: var(--panther-yellow); font-size: 15px;">{{ employee.hourly_rate }} Kč / hod</strong>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Datum vzniku poměru:</span>
+                <span style="color: #fff;">{{ employee.start_employment_date|date:"d.m.Y" }}</span>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">
+                <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 4px;">Bankovní účet pro výplatu mezd</span>
+                <div style="color: var(--panther-yellow); font-size: 15px; font-family: monospace; font-weight: 700;">
+                    {{ employee.bank_account|default:"Neuveden (hotovostní výplata)" }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KARTA 3: DISPEČERSKÉ KONTAKTY -->
+    <div class="card">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 18px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <span style="font-size: 18px;">📱</span>
+            <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0;">Kontakty & Spojení</h2>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 14px;">
+            <div>
+                <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 4px;">Služební telefon pro dispečink</span>
+                <div style="font-size: 16px; font-weight: 700; color: #fff;">
+                    {% if employee.phone %}
+                        <a href="tel:{{ employee.phone }}" style="color: #fff; text-decoration: none;">📞 {{ employee.phone }}</a>
+                    {% else %}
+                        <span style="color: var(--text-muted);">Nezadán</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div>
+                <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 4px;">E-mailová adresa</span>
+                <div style="font-size: 14px; color: #fff;">
+                    {% if employee.email %}
+                        <a href="mailto:{{ employee.email }}" style="color: #60a5fa; text-decoration: none;">✉️ {{ employee.email }}</a>
+                    {% else %}
+                        <span style="color: var(--text-muted);">Nezadán</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">
+                <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 4px;">Systémový přístup</span>
+                <div style="font-size: 13px; color: #fff;">
+                    Login: <strong style="color: var(--panther-yellow);">{{ employee.user.username }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- HISTORIE SMĚN ZAMĚSTNANCE -->
+<div class="card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h3 style="font-size: 17px; font-weight: 700; color: #fff; margin: 0;">
+            🛡️ Poslední odsloužené a plánované směny
+        </h3>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Střežený objekt</th>
+                    <th>Začátek služby</th>
+                    <th>Konec služby</th>
+                    <th>Počet hodin</th>
+                    <th>Stav směny</th>
+                    <th style="text-align: right;">Nárok na mzdu</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in shifts %}
+                <tr>
+                    <td>
+                        <strong style="color: #fff;">{{ s.guard_object.name }}</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">{{ s.guard_object.client.name }}</div>
+                    </td>
+                    <td>{{ s.start_time|date:"d.m.Y H:i" }}</td>
+                    <td>{{ s.end_time|date:"H:i" }}</td>
+                    <td>{{ s.planned_hours }} hod</td>
+                    <td>
+                        {% if s.status == 'APPROVED' %}
+                            <span class="badge-tag green">✅ Schváleno v mzdách</span>
+                        {% elif s.status == 'COMPLETED' %}
+                            <span class="badge-tag blue">🔵 Čeká na schválení</span>
+                        {% elif s.status == 'IN_PROGRESS' %}
+                            <span class="badge-tag green">🟢 Služba probíhá</span>
+                        {% else %}
+                            <span class="badge-tag yellow">{{ s.get_status_display }}</span>
+                        {% endif %}
+                    </td>
+                    <td style="text-align: right; font-weight: 700; color: #fff;">
+                        {{ s.total_cost }} Kč
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                        Zaměstnanec zatím nemá zaevidované žádné směny.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

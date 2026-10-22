@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+
+{% block title %}Portál strážného - Panther Security{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <span class="badge-tag yellow">PRACOVNÍ PROSTŘEDÍ STRÁŽNÉHO</span>
+    <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Vítejte ve službě, {{ profile.first_name }}</h1>
+    <p style="color: var(--text-muted); font-size: 13px;">Rozpis služeb, mobilní odbavení docházky a přehled mezd.</p>
+</div>
+
+<!-- KARTY STATISTIK -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid var(--panther-yellow);">
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Schválený výdělek tento měsíc</div>
+        <div style="font-size: 24px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
+            {{ month_earned }} <span style="font-size: 14px; font-weight: 400; color: var(--text-muted);">Kč</span>
+        </div>
+    </div>
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #3b82f6;">
+        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Odslouženo schválených hodin</div>
+        <div style="font-size: 24px; font-weight: 800; color: #60a5fa; margin-top: 4px;">
+            {{ month_hours }} <span style="font-size: 14px; font-weight: 400; color: var(--text-muted);">hod</span>
+        </div>
+    </div>
+</div>
+
+{% if in_progress_shift %}
+<div class="card" style="border: 2px solid #10b981; background: rgba(16, 185, 129, 0.05); margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+        <div>
+            <span class="badge-tag green">🟢 AKTUÁLNĚ SLOUŽÍTE</span>
+            <h2 style="font-size: 20px; color: #fff; margin: 8px 0 2px;">{{ in_progress_shift.guard_object.name }}</h2>
+            <div style="color: var(--text-muted); font-size: 13px;">Check-in: <strong>{{ in_progress_shift.actual_start_time|date:"H:i" }}</strong></div>
+        </div>
+        <div>
+            <a href="{% url 'shift_detail' in_progress_shift.id %}" class="btn btn-primary" style="padding: 12px 20px;">
+                📝 Ukončit službu (Check-out)
+            </a>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 24px;">
+    <!-- PLÁNOVANÉ SMĚNY -->
+    <div class="card">
+        <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">📅 Moje plánované budoucí směny</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Objekt</th>
+                        <th>Termín</th>
+                        <th>Hodiny</th>
+                        <th style="text-align: right;">Akce</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in upcoming_shifts %}
+                    <tr>
+                        <td><strong style="color: #fff;">{{ s.guard_object.name }}</strong></td>
+                        <td><span style="color: var(--panther-yellow);">{{ s.start_time|date:"d.m. H:i" }} – {{ s.end_time|date:"H:i" }}</span></td>
+                        <td>{{ s.planned_hours }}h</td>
+                        <td style="text-align: right;">
+                            <a href="{% url 'shift_detail' s.id %}" class="btn btn-primary" style="padding: 4px 8px; font-size: 11px;">Nastoupit (Check-in)</a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 18px;">Nemáte naplánovány žádné budoucí směny.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ČEKAJÍCÍ NA SCHVÁLENÍ -->
+    <div class="card">
+        <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">⏳ Odslouženo (Čeká na schválení dispečinku)</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Objekt</th>
+                        <th>Odslouženo</th>
+                        <th>Částka</th>
+                        <th>Stav</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in pending_shifts %}
+                    <tr>
+                        <td><strong style="color: #fff;">{{ s.guard_object.name }}</strong></td>
+                        <td>{{ s.start_time|date:"d.m." }} ({{ s.planned_hours }}h)</td>
+                        <td style="font-weight: 700; color: #fff;">{{ s.total_cost }} Kč</td>
+                        <td><span class="badge-tag blue">Čeká na podpis</span></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 18px;">Všechny odsloužené směny máte schválené.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- BURZA -->
+<div class="card" style="margin-top: 24px;">
+    <h3 style="font-size: 16px; color: var(--panther-yellow); margin-top: 0; margin-bottom: 14px;">⚡ Volné směny k rozebrání na burze</h3>
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Střežený objekt</th>
+                    <th>Termín</th>
+                    <th>Délka</th>
+                    <th>Sazba</th>
+                    <th>Celkem</th>
+                    <th style="text-align: right;">Akce</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in open_shifts %}
+                <tr>
+                    <td><strong style="color: #fff;">{{ s.guard_object.name }}</strong></td>
+                    <td>{{ s.start_time|date:"d.m.Y H:i" }} – {{ s.end_time|date:"H:i" }}</td>
+                    <td>{{ s.planned_hours }} hod</td>
+                    <td>{{ s.hourly_rate }} Kč/h</td>
+                    <td style="font-weight: 700; color: var(--panther-yellow);">{{ s.total_cost }} Kč</td>
+                    <td style="text-align: right;">
+                        <a href="{% url 'claim_shift' s.id %}" class="btn btn-primary" style="padding: 5px 12px; font-size: 12px;" onclick="return confirm('Opravdu chcete tuto směnu převzít?');">
+                            Převzít směnu
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 18px;">Na burze momentálně nejsou žádné volné směny.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

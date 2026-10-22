@@ -1,0 +1,141 @@
+{% extends 'web/base_public.html' %}
+
+{% block title %}Panther Intel | Bezpečnostní analýzy, novinky a kazuistiky{% endblock %}
+
+{% block content %}
+<div class="magazine-header">
+    <div class="calc-badge">⚡ Panther Intel &amp; Security News</div>
+    <h1 style="font-size: clamp(28px, 4vw, 42px); font-weight: 800; color: #fff; margin: 8px 0 12px;">
+        Zprávy, kazuistiky a bezpečnostní analýzy
+    </h1>
+    <p style="font-size: 15px; color: var(--text-muted); max-width: 720px; line-height: 1.6;">
+        Sledujte aktuální dění ze světa fyzické i technické ostrahy, legislativní změny pro rok 2026 a reálná hlášení z terénních zásahů našich jednotek.
+    </p>
+
+    <!-- VYHLEDÁVÁNÍ & FILTROVÁNÍ -->
+    <div class="magazine-search-bar">
+        <div class="search-input-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="article-search" placeholder="Hledat v článcích a analýzách..." class="search-input">
+        </div>
+    </div>
+
+    <!-- ŠTÍTKY KATEGORIÍ (ŽIVÝ FILTER) -->
+    <div class="filter-pills" id="category-filters">
+        <a href="{% url 'web:article_list' %}" class="filter-pill {% if not active_category %}active{% endif %}" data-category="all">
+            🌐 Všechny kategorie
+        </a>
+        {% for cat in categories %}
+            <a href="?kategorie={{ cat.slug }}" class="filter-pill {% if active_category == cat.slug %}active{% endif %}" data-category="{{ cat.slug }}">
+                {{ cat.icon }} {{ cat.name }}
+            </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- 1. HLAVNÍ DOPORUČENÝ ČLÁNEK (POKUD JE K DISPOZICI) -->
+{% with articles|first as top_article %}
+{% if top_article and not active_category %}
+<a href="{% url 'web:article_detail' top_article.slug %}" class="featured-article-card article-item" data-title="{{ top_article.title|lower }}" data-perex="{{ top_article.perex|lower }}">
+    <div>
+        {% if top_article.featured_image %}
+            <img src="{{ top_article.featured_image.url }}" alt="{{ top_article.title }}" class="featured-img">
+        {% else %}
+            <div class="article-img-placeholder" style="height: 100%; min-height: 260px;">🛡️</div>
+        {% endif %}
+    </div>
+    <div class="featured-body">
+        <div class="featured-badge">⭐ Hlavní téma</div>
+        <div class="article-meta" style="margin-bottom: 12px;">
+            <span>{{ top_article.category.name|default:"Bezpečnost" }}</span>
+            <span>⏱️ {{ top_article.reading_time_minutes }} min čtení &bull; {{ top_article.published_at|date:"d. m. Y"|default:top_article.created_at|date:"d. m. Y" }}</span>
+        </div>
+        <h2 style="font-size: 24px; font-weight: 800; color: #fff; margin-bottom: 12px; line-height: 1.3;">
+            {{ top_article.title }}
+        </h2>
+        <p style="font-size: 14px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px;">
+            {{ top_article.perex|truncatewords:35 }}
+        </p>
+        <div style="color: var(--panther-yellow); font-size: 13px; font-weight: 700;">
+            Otevřít celou zprávu →
+        </div>
+    </div>
+</a>
+{% endif %}
+{% endwith %}
+
+<!-- 2. MŘÍŽKA OSTATNÍCH ČLÁNKŮ -->
+<div class="services-grid" id="articles-grid" style="margin-bottom: 40px;">
+    {% for article in articles %}
+        {% if not forloop.first or active_category %}
+        <a href="{% url 'web:article_detail' article.slug %}" class="article-card article-item" data-title="{{ article.title|lower }}" data-perex="{{ article.perex|lower }}">
+            {% if article.featured_image %}
+                <img src="{{ article.featured_image.url }}" alt="{{ article.title }}" class="article-img">
+            {% else %}
+                <div class="article-img-placeholder">🛡️</div>
+            {% endif %}
+            <div class="article-body">
+                <div class="article-meta">
+                    <span>{{ article.category.name|default:"Bezpečnost" }}</span>
+                    <span>⏱️ {{ article.reading_time_minutes }} min</span>
+                </div>
+                <h3 class="article-heading">{{ article.title }}</h3>
+                <p class="article-perex">{{ article.perex|truncatewords:22 }}</p>
+                <div class="article-meta" style="margin-top: 16px; margin-bottom: 0; padding-top: 12px; border-top: 1px solid rgba(51, 65, 85, 0.4);">
+                    <span style="font-size: 11px;">{{ article.published_at|date:"d. m. Y"|default:article.created_at|date:"d. m. Y" }}</span>
+                    <span class="article-link-text" style="margin-top: 0;">Číst →</span>
+                </div>
+            </div>
+        </a>
+        {% endif %}
+    {% empty %}
+    <div style="grid-column: 1 / -1; background: var(--bg-card); padding: 40px; border-radius: 14px; text-align: center; color: var(--text-muted); border: 1px solid var(--border-subtle);">
+        <div style="font-size: 36px; margin-bottom: 12px;">📂</div>
+        <h3 style="color: #fff; margin-bottom: 8px;">V této kategorii zatím nejsou žádné články</h3>
+        <p style="font-size: 13px; margin-bottom: 16px;">Vyberte jinou kategorii nebo se vraťte na celkový přehled.</p>
+        <a href="{% url 'web:article_list' %}" class="btn-secondary-action" style="font-size: 13px; padding: 8px 18px;">
+            Zobrazit všechny zprávy
+        </a>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- KDYŽ ŽIVÉ HLEDÁNÍ NIC NENAJDEN (JS PLACEHOLDER) -->
+<div id="no-search-results" style="display: none; background: var(--bg-card); padding: 40px; border-radius: 14px; text-align: center; color: var(--text-muted); border: 1px solid var(--border-subtle); margin-bottom: 40px;">
+    <div style="font-size: 32px; margin-bottom: 10px;">🔍</div>
+    <h3 style="color: #fff; margin-bottom: 6px;">Nenalezen žádný článek odpovídající hledání</h3>
+    <p style="font-size: 13px;">Zkuste upravit klíčové slovo.</p>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // ŽIVÉ RYCHLÉ VYHLEDÁVÁNÍ V ČLÁNCÍCH BEZ RELOADU
+    const searchInput = document.getElementById('article-search');
+    const articleItems = document.querySelectorAll('.article-item');
+    const noResults = document.getElementById('no-search-results');
+
+    searchInput.addEventListener('input', function(e) {
+        const query = e.target.value.trim().toLowerCase();
+        let visibleCount = 0;
+
+        articleItems.forEach(item => {
+            const title = item.getAttribute('data-title') || '';
+            const perex = item.getAttribute('data-perex') || '';
+
+            if (title.includes(query) || perex.includes(query)) {
+                item.style.display = '';
+                visibleCount++;
+            } else {
+                item.style.display = 'none';
+            }
+        });
+
+        if (visibleCount === 0 && articleItems.length > 0) {
+            noResults.style.display = 'block';
+        } else {
+            noResults.style.display = 'none';
+        }
+    });
+</script>
+{% endblock %}

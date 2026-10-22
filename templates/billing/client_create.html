@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Nový odběratel - Panther Security{% endblock %}
+
+{% block content %}
+<div style="max-width: 720px; margin: 0 auto;">
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'client_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 10px;">
+            ← Zpět na seznam odběratelů
+        </a>
+        <span class="badge-tag yellow" style="display: block; width: fit-content; margin-top: 8px;">NOVÝ KLIENT</span>
+        <h1 style="font-size: 26px; font-weight: 800; color: #fff; margin: 6px 0 0;">Založení nového odběratele</h1>
+    </div>
+
+    <div class="card" style="border-top: 4px solid var(--panther-yellow);">
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="color: #fff; font-weight: 600;">Název společnosti / firmy *</label>
+                {{ form.name }}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+                <div class="form-group">
+                    <label style="color: #fff; font-weight: 600;">IČO</label>
+                    {{ form.ico }}
+                </div>
+                <div class="form-group">
+                    <label style="color: #fff; font-weight: 600;">DIČ</label>
+                    {{ form.dic }}
+                </div>
+            </div>
+
+            <!-- STRUKTUROVANÁ ADRESA SÍDLA -->
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+                <label style="color: var(--panther-yellow); font-weight: 700; display: block; margin-bottom: 10px; font-size: 13px;">
+                    📍 Sídlo / Fakturační adresa
+                </label>
+                
+                <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div class="form-group">
+                        <label style="font-size: 11px;">Ulice</label>
+                        {{ form.street }}
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px;">Číslo popisné</label>
+                        {{ form.house_number }}
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px;">Číslo orientační</label>
+                        {{ form.orientation_number }}
+                    </div>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1.5fr 1.5fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label style="font-size: 11px;">Město</label>
+                        {{ form.city }}
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px;">Městská část / Obvod</label>
+                        {{ form.city_part }}
+                    </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px;">PSČ</label>
+                        {{ form.zip_code }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- KONTAKTY -->
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="color: #fff; font-weight: 600;">Hlavní kontaktní osoba</label>
+                {{ form.contact_person }}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px;">
+                <div class="form-group">
+                    <label style="color: #fff; font-weight: 600;">Telefon</label>
+                    {{ form.contact_phone }}
+                </div>
+                <div class="form-group">
+                    <label style="color: #fff; font-weight: 600;">Fakturační e-mail</label>
+                    {{ form.contact_email }}
+                </div>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <a href="{% url 'client_list' %}" class="btn btn-secondary">Zrušit</a>
+                <button type="submit" class="btn btn-primary" style="padding: 10px 24px;">
+                    💾 Vytvořit odběratele
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

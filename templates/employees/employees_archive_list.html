@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Archiv zaměstnanců - Panther Security{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <a href="{% url 'employee_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 10px;">← Zpět do kmene</a>
+    <h1 style="font-size: 26px; color: #fff; margin: 0;">🗄️ Archiv bývalých zaměstnanců</h1>
+    <p style="color: var(--text-muted); font-size: 13px;">Ukončené pracovní poměry a dohody.</p>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Jméno a příjmení</th>
+                    <th>Ukončeno dne</th>
+                    <th>Důvod ukončení</th>
+                    <th>Typ smlouvy</th>
+                    <th>Telefon</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for emp in archived_employees %}
+                <tr>
+                    <td><strong style="color: #fff;">{{ emp.full_name }}</strong></td>
+                    <td><span class="badge-tag red">{{ emp.termination_date|date:"d.m.Y"|default:"—" }}</span></td>
+                    <td>{{ emp.termination_reason|default:"Dohoda" }}</td>
+                    <td>{{ emp.contract_type }}</td>
+                    <td>{{ emp.phone }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">V archivu zaměstnanců nejsou žádné záznamy.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

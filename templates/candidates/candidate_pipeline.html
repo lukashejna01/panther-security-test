@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+
+{% block title %}Nábor zájemců - Panther Security{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <span class="badge-tag yellow">PERSONÁLNÍ AGENTURA</span>
+        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Náborová pipeline &amp; Zájemci</h1>
+        <p style="color: var(--text-muted); font-size: 13px;">Evidence uchazečů o práci, plánování pohovorů a nástup do služby.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{% url 'candidates_archive_list' %}" class="btn btn-secondary">
+            🗄️ Archiv vyřazených zájemců
+        </a>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: flex-start;">
+    <!-- FORMULÁŘ PŘIDÁNÍ ZÁJEMCE S VOLITELNÝM POHOVOREM -->
+    <div class="card">
+        <h2 style="font-size: 17px; color: var(--panther-yellow); margin-bottom: 16px;">➕ Zadat nového zájemce</h2>
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Jméno *</label>
+                {{ form.first_name }}
+            </div>
+            <div class="form-group">
+                <label>Příjmení *</label>
+                {{ form.last_name }}
+            </div>
+            <div class="form-group">
+                <label>Telefon *</label>
+                {{ form.phone }}
+            </div>
+            <div class="form-group">
+                <label>E-mail (volitelné)</label>
+                {{ form.email }}
+            </div>
+            <div class="form-group" style="background: rgba(250, 204, 21, 0.05); padding: 12px; border-radius: 8px; border: 1px dashed var(--border-color);">
+                <label style="color: var(--panther-yellow);">📅 Termín pohovoru (volitelný)</label>
+                {{ form.interview_date }}
+                <div style="margin-top: 8px;">
+                    {{ form.interview_note }}
+                </div>
+                <small style="color: var(--text-muted); display: block; margin-top: 4px; font-size: 11px;">Můžete nechat prázdné a naplánovat kdykoliv později.</small>
+            </div>
+            <div class="form-group">
+                <label>Poznámka / Odkud přišel</label>
+                {{ form.note }}
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                Zaevidovat do náboru
+            </button>
+        </form>
+    </div>
+
+    <!-- SEZNAM KANDIDÁTŮ -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- KANDIDÁTI S POHOVOREM -->
+        <div class="card" style="border-left: 4px solid var(--panther-yellow);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+                <h3 style="font-size: 16px; color: #fff;">📅 Pozváni na pohovor ({{ interview_candidates|length }})</h3>
+            </div>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Jméno uchazeče</th>
+                            <th>Termín pohovoru</th>
+                            <th>Místo / Poznámka</th>
+                            <th>Kontakt</th>
+                            <th style="text-align: right;">Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cand in interview_candidates %}
+                        <tr>
+                            <td><strong style="color: #fff; font-size: 14px;">{{ cand.full_name }}</strong></td>
+                            <td>
+                                <span class="badge-tag yellow">{{ cand.interview_date|date:"d.m.Y H:i" }}</span>
+                            </td>
+                            <td>{{ cand.interview_note|default:"Centrála" }}</td>
+                            <td>{{ cand.phone }}</td>
+                            <td style="text-align: right; white-space: nowrap;">
+                                <a href="{% url 'candidate_onboard' cand.id %}" class="btn btn-primary" style="padding: 5px 10px; font-size: 11px;">
+                                    🚀 Nástup (OP)
+                                </a>
+                                <a href="{% url 'schedule_interview' cand.id %}" class="btn btn-secondary" style="padding: 5px 8px; font-size: 11px;" title="Upravit pohovor">
+                                    ✏️
+                                </a>
+                                <a href="{% url 'archive_candidate' cand.id %}" class="btn btn-danger" style="padding: 5px 8px; font-size: 11px;" title="Vyřadit do archivu">
+                                    🗑️
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 18px;">Žádný zájemce aktuálně nečeká na pohovor.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- NOVÍ ZÁJEMCI -->
+        <div class="card">
+            <h3 style="font-size: 16px; color: #fff; margin-bottom: 14px;">🆕 Noví zájemci (Čekají na kontaktování)</h3>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Jméno uchazeče</th>
+                            <th>Telefon</th>
+                            <th>Poznámka</th>
+                            <th>Zaevidován</th>
+                            <th style="text-align: right;">Akce</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cand in new_candidates %}
+                        <tr>
+                            <td><strong style="color: #fff;">{{ cand.full_name }}</strong></td>
+                            <td>{{ cand.phone }}</td>
+                            <td>{{ cand.note|default:"—" }}</td>
+                            <td style="color: var(--text-muted);">{{ cand.created_at|date:"d.m.Y" }}</td>
+                            <td style="text-align: right; white-space: nowrap;">
+                                <a href="{% url 'schedule_interview' cand.id %}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">
+                                    📅 Naplánovat pohovor
+                                </a>
+                                <a href="{% url 'candidate_onboard' cand.id %}" class="btn btn-primary" style="padding: 5px 10px; font-size: 11px;">
+                                    🚀 Nástup (OP)
+                                </a>
+                                <a href="{% url 'archive_candidate' cand.id %}" class="btn btn-danger" style="padding: 5px 8px; font-size: 11px;" title="Vyřadit">
+                                    ✕
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 18px;">Žádní noví nezařazení zájemci.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

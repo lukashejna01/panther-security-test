@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block title %}Archiv zájemců - Panther Security{% endblock %}
+
+{% block content %}
+<div style="margin-bottom: 24px;">
+    <a href="{% url 'candidate_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 10px;">← Zpět do aktivního náboru</a>
+    <h1 style="font-size: 26px; color: #fff; margin: 0;">🗄️ Samostatný archiv zájemců o práci</h1>
+    <p style="color: var(--text-muted); font-size: 13px;">Historie vyřazených a zamítnutých uchazečů s uvedenými důvody.</p>
+</div>
+
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Jméno a příjmení</th>
+                    <th>Telefon</th>
+                    <th>E-mail</th>
+                    <th>Důvod vyřazení</th>
+                    <th>Datum vyřazení</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cand in archived_candidates %}
+                <tr>
+                    <td><strong style="color: #fff;">{{ cand.full_name }}</strong></td>
+                    <td>{{ cand.phone }}</td>
+                    <td>{{ cand.email|default:"—" }}</td>
+                    <td><span class="badge-tag red">{{ cand.rejection_reason|default:"Bez udání důvodu" }}</span></td>
+                    <td style="color: var(--text-muted);">{{ cand.updated_at|date:"d.m.Y H:i" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">V archivu zájemců nejsou žádné záznamy.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

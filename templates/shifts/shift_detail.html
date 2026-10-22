@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Detail směny: {{ shift.guard_object.name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 30px auto;">
+    <a href="{% url 'employee_portal' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 16px;">← Zpět na přehled</a>
+    
+    <div class="card">
+        <span class="badge-tag yellow">DETAIL SMĚNY</span>
+        <h1 style="font-size: 24px; color: #fff; margin: 8px 0 4px;">{{ shift.guard_object.name }}</h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">{{ shift.guard_object.full_address }}</p>
+
+        <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 14px;">
+            <p><strong>Plánovaný čas:</strong> {{ shift.start_time|date:"d.m.Y H:i" }} – {{ shift.end_time|date:"H:i" }}</p>
+            <p><strong>Délka:</strong> {{ shift.planned_hours }} hod</p>
+            <p><strong>Sazba:</strong> {{ shift.hourly_rate }} Kč/h (Celkem: {{ shift.total_cost }} Kč)</p>
+            <p><strong>Instrukce ze stanoviště:</strong> {{ shift.guard_object.instructions|default:"Dle běžného režimu" }}</p>
+        </div>
+
+        <!-- FORMULÁŘ CHECK-IN A CHECK-OUT -->
+        <form method="post">
+            {% csrf_token %}
+            {% if shift.status == 'ASSIGNED' or shift.status == 'OPEN' %}
+                <button type="submit" name="action" value="check_in" class="btn btn-primary" style="width: 100%; padding: 14px; font-size: 15px;">
+                    🟢 Zahájit službu (Check-in)
+                </button>
+            {% elif shift.status == 'IN_PROGRESS' %}
+                <div class="form-group">
+                    <label>Hlášení ze služby / Zápis závad</label>
+                    <textarea name="guard_notes" class="form-control" rows="3" placeholder="Služba proběhla v pořádku, bez incidentů..."></textarea>
+                </div>
+                <button type="submit" name="action" value="check_out" class="btn btn-danger" style="width: 100%; padding: 14px; font-size: 15px;">
+                    🔴 Ukončit službu a odevzdat hlášení (Check-out)
+                </button>
+            {% else %}
+                <div class="alert alert-info">
+                    Tato směna má stav: <strong>{{ shift.get_status_display }}</strong>
+                </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+{% endblock %}

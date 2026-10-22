@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Ukončit poměr: {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 500px; margin: 40px auto;">
+    <div class="card" style="border-color: var(--danger); text-align: center;">
+        <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
+        <h2 style="color: #fff; margin-bottom: 6px;">Ukončit pracovní poměr?</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
+            Zaměstnanec <strong>{{ employee.full_name }}</strong> bude deaktivován a přesunut do archivu zaměstnanců.
+        </p>
+
+        <form method="post" style="text-align: left;">
+            {% csrf_token %}
+            <div class="form-group">
+                <label>Datum ukončení poměru *</label>
+                {{ form.termination_date }}
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Důvod ukončení *</label>
+                {{ form.termination_reason }}
+            </div>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <a href="{% url 'employee_list' %}" class="btn btn-secondary">Zrušit</a>
+                <button type="submit" class="btn btn-danger">Ukončit a archivovat</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

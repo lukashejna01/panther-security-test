@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Nahrát přijatou fakturu (OCR) - Panther Security{% endblock %}
+
+{% block content %}
+<div style="max-width: 700px; margin: 30px auto;">
+    <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 16px;">← Zpět na přehled</a>
+    
+    <div class="card" style="border-color: rgba(250, 204, 21, 0.4); margin-bottom: 20px;">
+        <h2 style="font-size: 16px; color: var(--panther-yellow); margin-top: 0; margin-bottom: 12px;">1. Nahrát doklad k analýze přes Claude AI</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group" style="margin-bottom: 12px;">
+                {{ upload_form.invoice_file }}
+            </div>
+            <button type="submit" name="scan_invoice" class="btn btn-primary">
+                🔍 Analyzovat fakturu přes Claude AI
+            </button>
+        </form>
+    </div>
+
+    <div class="card">
+        <h2 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 16px;">2. Kontrola údajů a uložení do nákladů</h2>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div class="form-group">
+                    <label>Dodavatel *</label>
+                    {{ invoice_form.supplier_name }}
+                </div>
+                <div class="form-group">
+                    <label>Číslo faktury *</label>
+                    {{ invoice_form.invoice_number }}
+                </div>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 12px;">
+                <div class="form-group">
+                    <label>Základ bez DPH</label>
+                    {{ invoice_form.amount_without_vat }}
+                </div>
+                <div class="form-group">
+                    <label>DPH</label>
+                    {{ invoice_form.vat_amount }}
+                </div>
+                <div class="form-group">
+                    <label style="color: #ef4444;">Celkem s DPH *</label>
+                    {{ invoice_form.total_amount }}
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Poznámka / Předmět</label>
+                {{ invoice_form.notes }}
+            </div>
+            <button type="submit" name="save_invoice" class="btn btn-primary" style="width: 100%;">
+                💾 Uložit přijatou fakturu do nákladů
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
