@@ -8,9 +8,9 @@ load_dotenv()
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv('SECRET_KEY', 'panther-security-default-dev-key')
-DEBUG = os.getenv('DEBUG', 'True') == 'True'
+DEBUG = False
 
-ALLOWED_HOSTS = [host.strip() for host in os.getenv('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')]
+ALLOWED_HOSTS = ['www.panther-security.cz', 'panther-security.cz', 'webapp-3258159.pythonanywhere.com', 'localhost', '127.0.0.1']
 
 # Aplikace projektu
 INSTALLED_APPS = [
