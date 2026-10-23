@@ -291,3 +291,55 @@ footer {
     color: var(--text-muted);
     background: #090d16;
 }
+
+
+/* Globální ošetření přetékání pro core */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+/* Flexibilní šířka pro všechny hlavní kontejnery core */
+.container, .wrapper, main, .core-content, .content, header, footer {
+    width: 100% !important;
+    max-width: 1200px;
+    box-sizing: border-box;
+    padding-left: 16px;
+    padding-right: 16px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Zajištění, aby média nepřetekla displej mobilu */
+img, video, iframe, svg {
+    max-width: 100% !important;
+    height: auto;
+}
+
+/* Zalamování prvků na mobilních displejích */
+@media screen and (max-width: 768px) {
+    /* Změna řádků a mřížek na sloupec pod sebe */
+    .row, .flex-row, .grid, nav, .navbar, .nav-menu {
+        flex-direction: column !important;
+        flex-wrap: wrap !important;
+        display: flex !important;
+        width: 100% !important;
+    }
+
+    /* Sloupce a sekce na plnou šířku */
+    .col, .column, [class*="col-"], .sidebar, .main {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+    }
+
+    /* Tabulky s vodorovným posunem namísto rozbití stránky */
+    table {
+        display: block;
+        width: 100%;
+        overflow-x: auto;
+    }
+}
