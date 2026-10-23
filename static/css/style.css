@@ -456,3 +456,52 @@ footer {
         overflow-x: auto;
     }
 }
+
+/* Responzivní formuláře a řádky pro mobil */
+@media screen and (max-width: 768px) {
+    /* Rozpad všech vícesloupcových řádků formulářů pod sebe */
+    .form-row,
+    .form-grid,
+    .grid-2,
+    .grid-3,
+    .grid-4,
+    [class*="grid"],
+    form .row {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 12px !important;
+    }
+
+    /* Každé pole a obal formuláře zabere celou šířku */
+    .form-group,
+    .form-control,
+    input[type="date"],
+    input[type="number"],
+    input[type="text"],
+    select,
+    textarea {
+        width: 100% !important;
+        min-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Hlavička položek faktury a tlačítko přidat */
+    .card-header,
+    .d-flex,
+    .flex-between {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+        gap: 10px !important;
+    }
+
+    .card-header .btn,
+    .card-header button {
+        width: 100% !important;
+    }
+
+    /* Zvětšení klikací plochy pro prsty na mobilu */
+    input, select, textarea {
+        font-size: 16px !important; /* Zabrání nechtěnému přibližování (zoomu) v Safari na iPhone */
+        padding: 12px 14px !important;
+    }
+}
