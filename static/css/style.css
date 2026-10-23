@@ -34,6 +34,13 @@
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
+    margin: 0;
+    padding: 0;
+}
+
 body {
     background-color: var(--bg-main);
     color: var(--text-primary);
@@ -46,7 +53,7 @@ body {
 
 /* Glassmorphism Topbar */
 .top-navbar {
-    background: rgba(15, 23, 42, 0.85);
+    background: rgba(15, 23, 42, 0.95);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 2px solid var(--panther-yellow);
@@ -56,7 +63,8 @@ body {
     align-items: center;
     position: sticky;
     top: 0;
-    z-index: 100;
+    z-index: 1000;
+    width: 100%;
 }
 
 .brand-logo {
@@ -68,6 +76,7 @@ body {
     font-weight: 800;
     font-size: 18px;
     letter-spacing: 0.5px;
+    z-index: 1001;
 }
 
 .brand-badge {
@@ -80,16 +89,26 @@ body {
     letter-spacing: 1.5px;
 }
 
+/* Navigace a uživatelský panel v desktopovém zobrazení */
+.nav-collapse {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex: 1;
+    margin-left: 28px;
+}
+
 .nav-menu {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-wrap: wrap;
 }
 
 .nav-item {
     color: var(--text-secondary);
     text-decoration: none;
-    padding: 8px 14px;
+    padding: 8px 12px;
     border-radius: 8px;
     font-weight: 600;
     font-size: 13px;
@@ -97,6 +116,7 @@ body {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    white-space: nowrap;
 }
 
 .nav-item:hover, .nav-item.active {
@@ -105,6 +125,60 @@ body {
     box-shadow: 0 0 15px var(--panther-yellow-glow);
 }
 
+.nav-user-panel {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.nav-user-link {
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.nav-user-link strong {
+    color: #ffffff;
+}
+
+/* Hamburger tlačítko (výchozí stav: na desktopu skryté) */
+.hamburger-btn {
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 28px;
+    height: 20px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    z-index: 1001;
+}
+
+.hamburger-btn span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background-color: var(--panther-yellow);
+    border-radius: 3px;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Animace křížku při otevření */
+.hamburger-btn.is-open span:nth-child(1) {
+    transform: translateY(8.5px) rotate(45deg);
+}
+
+.hamburger-btn.is-open span:nth-child(2) {
+    opacity: 0;
+}
+
+.hamburger-btn.is-open span:nth-child(3) {
+    transform: translateY(-8.5px) rotate(-45deg);
+}
+
+/* Hlavní kontejner */
 .main-container {
     flex: 1;
     width: 100%;
@@ -282,6 +356,12 @@ body {
 .alert-error, .alert-danger { background: var(--danger-bg); border: 1px solid var(--danger); color: #f87171; }
 .alert-info { background: var(--warning-bg); border: 1px solid var(--panther-yellow); color: var(--panther-yellow); }
 
+/* Média a obrázky */
+img, video, iframe, svg {
+    max-width: 100% !important;
+    height: auto;
+}
+
 /* Footer */
 footer {
     border-top: 1px solid var(--border-color);
@@ -292,43 +372,77 @@ footer {
     background: #090d16;
 }
 
+/* --- RESPONZIVNÍ PRAVIDLA PRO MOBILY A TABLETY --- */
+@media screen and (max-width: 1024px) {
+    .hamburger-btn {
+        display: flex;
+    }
 
-/* Globální ošetření přetékání pro core */
-html, body {
-    max-width: 100%;
-    overflow-x: hidden;
-    margin: 0;
-    padding: 0;
-}
+    .top-navbar {
+        padding: 14px 20px;
+    }
 
-/* Flexibilní šířka pro všechny hlavní kontejnery core */
-.container, .wrapper, main, .core-content, .content, header, footer {
-    width: 100% !important;
-    max-width: 1200px;
-    box-sizing: border-box;
-    padding-left: 16px;
-    padding-right: 16px;
-    margin-left: auto;
-    margin-right: auto;
-}
+    .nav-collapse {
+        display: none; /* Skryto ve výchozím stavu na mobilu */
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background: #0f172a;
+        border-bottom: 2px solid var(--panther-yellow);
+        flex-direction: column;
+        align-items: stretch;
+        padding: 20px;
+        margin-left: 0;
+        gap: 16px;
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.6);
+    }
 
-/* Zajištění, aby média nepřetekla displej mobilu */
-img, video, iframe, svg {
-    max-width: 100% !important;
-    height: auto;
-}
+    /* Třída přidaná JavaScriptem po kliknutí na hamburger */
+    .nav-collapse.active {
+        display: flex;
+    }
 
-/* Zalamování prvků na mobilních displejích */
-@media screen and (max-width: 768px) {
-    /* Změna řádků a mřížek na sloupec pod sebe */
-    .row, .flex-row, .grid, nav, .navbar, .nav-menu {
+    .nav-menu {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+        width: 100%;
+    }
+
+    .nav-item {
+        padding: 12px 16px;
+        font-size: 15px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.03);
+    }
+
+    .nav-user-panel {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        border-top: 1px solid var(--border-color);
+        padding-top: 16px;
+        margin-top: 8px;
+        width: 100%;
+    }
+
+    .main-container {
+        padding: 16px;
+    }
+
+    .card {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+
+    .row, .flex-row, .grid {
         flex-direction: column !important;
         flex-wrap: wrap !important;
         display: flex !important;
         width: 100% !important;
     }
 
-    /* Sloupce a sekce na plnou šířku */
     .col, .column, [class*="col-"], .sidebar, .main {
         width: 100% !important;
         max-width: 100% !important;
@@ -336,7 +450,6 @@ img, video, iframe, svg {
         margin-right: 0 !important;
     }
 
-    /* Tabulky s vodorovným posunem namísto rozbití stránky */
     table {
         display: block;
         width: 100%;
