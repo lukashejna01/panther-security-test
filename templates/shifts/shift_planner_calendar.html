@@ -18,12 +18,12 @@
     </div>
 </div>
 
-<!-- VOLBA REŽIMU ZOBRAZENÍ -->
+<!-- VOLBA REŽIMU ZOBRAZENÍ (PŘEPÍNAČ) -->
 <div style="display: flex; gap: 10px; margin-bottom: 20px;">
-    <a href="?date={{ selected_date|date:'Y-m-d' }}&mode=objects" class="btn {% if view_mode == 'objects' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px;">
+    <a href="?date={{ selected_date|date:'Y-m-d' }}&mode=objects" class="btn {% if view_mode == 'objects' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px; padding: 10px 18px;">
         🏢 Pohled dle střežených OBJEKTŮ
     </a>
-    <a href="?date={{ selected_date|date:'Y-m-d' }}&mode=employees" class="btn {% if view_mode == 'employees' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px;">
+    <a href="?date={{ selected_date|date:'Y-m-d' }}&mode=employees" class="btn {% if view_mode == 'employees' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px; padding: 10px 18px;">
         👥 Pohled dle ZAMĚSTNANCŮ
     </a>
 </div>
