@@ -24,6 +24,7 @@ from .employee_views import (
 )
 from .shift_views import (
     shift_planner_calendar_view,
+    employee_calendar_view,
     approve_shift_view,
     shift_detail_view,
     claim_shift_view,
