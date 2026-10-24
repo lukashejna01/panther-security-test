@@ -10,10 +10,11 @@ urlpatterns = [
     
     # Portály po přihlášení
     path('portal/', views.employee_portal_view, name='employee_portal'),
+    path('portal/kalendar/', views.employee_calendar_view, name='employee_calendar'),
     path('dispecink/', views.manager_dashboard_view, name='manager_dashboard'),
     path('dashboard/', views.owner_dashboard_view, name='owner_dashboard'),
 
-    # Plánovač směn a kalendář
+    # Plánovač směn a kalendář (dle objektů i dle zaměstnanců)
     path('dispecink/planovac/', views.shift_planner_calendar_view, name='shift_planner_calendar'),
     path('portal/smena/<int:shift_id>/', views.shift_detail_view, name='shift_detail'),
     path('smena/<int:shift_id>/prevzit/', views.claim_shift_view, name='claim_shift'),

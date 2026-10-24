@@ -1,60 +1,58 @@
 """
 Hlavní portály:
-- Portál strážného (plánované směny, probíhající služba, čekající na schválení, schválené do mzdy)
+- Portál strážného (týdenní náhled 7 dní, čekající na podpis, schválené do mzdy, burza)
 - Dispečink manažera (čekající směny ke schválení, přehled stanovišť)
 - Kokpit majitele (ziskovost, ekonomika, marže)
 """
 
 from decimal import Decimal
+from datetime import timedelta
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render
 from django.utils import timezone
 
 from core.decorators import role_required
 from core.models import Candidate, GuardObject, Invoice, InvoiceType, Shift, ShiftStatus, SystemRole
+from core.views.shift_views import _auto_complete_expired_shifts
 
 
 @login_required
 @role_required([SystemRole.STAFF, SystemRole.MANAGER, SystemRole.OWNER])
 def employee_portal_view(request):
     """
-    Portál zaměstnance se 4 jasnými sekcemi:
-    1. Právě probíhající směna (pokud slouží teď)
-    2. Plánované budoucí směny
-    3. Odsloužené směny čekající na schválení manažerem
-    4. Schválené směny (připsané do měsíční mzdy)
+    Portál zaměstnance bez manuálního check-inu:
+    - Přehled nadcházejících směn na nejbližších 7 dní
+    - Odsloužené směny čekající na schválení manažerem (automaticky po uplynutí konce směny)
+    - Schválené směny v aktuálním měsíci připsané do mzdy
+    - Burza volných směn
     """
+    _auto_complete_expired_shifts()
     profile = getattr(request.user, 'employee_profile', None)
     now = timezone.now()
+    seven_days_later = now + timedelta(days=7)
 
-    in_progress_shift = None
-    upcoming_shifts = []
+    upcoming_week_shifts = []
     pending_shifts = []
     approved_shifts = []
     month_earned = 0.0
     month_hours = 0.0
 
     if profile:
-        # 1. Probíhající směna
-        in_progress_shift = Shift.objects.filter(
-            employee=profile,
-            status=ShiftStatus.IN_PROGRESS
-        ).first()
-
-        # 2. Plánované budoucí směny
-        upcoming_shifts = Shift.objects.filter(
+        # Plánované budoucí směny na příštích 7 dní
+        upcoming_week_shifts = Shift.objects.filter(
             employee=profile,
             status=ShiftStatus.ASSIGNED,
-            start_time__gte=now
+            start_time__gte=now,
+            start_time__lte=seven_days_later
         ).select_related('guard_object').order_by('start_time')
 
-        # 3. Odslouženo - čeká na schválení
+        # Odslouženo - čeká na schválení manažerem
         pending_shifts = Shift.objects.filter(
             employee=profile,
             status=ShiftStatus.COMPLETED
         ).select_related('guard_object').order_by('-end_time')
 
-        # 4. Schváleno v aktuálním měsíci (připsáno do mzdy)
+        # Schváleno v aktuálním měsíci (připsáno do mzdy)
         first_day_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         approved_shifts = Shift.objects.filter(
             employee=profile,
@@ -66,7 +64,7 @@ def employee_portal_view(request):
             month_hours += float(s.planned_hours)
             month_earned += float(s.total_cost)
 
-    # Volné směny z burzy
+    # Volné směny z burzy k rozebrání
     open_shifts = Shift.objects.filter(
         status=ShiftStatus.OPEN,
         start_time__gte=now
@@ -74,8 +72,7 @@ def employee_portal_view(request):
 
     context = {
         'profile': profile,
-        'in_progress_shift': in_progress_shift,
-        'upcoming_shifts': upcoming_shifts,
+        'upcoming_week_shifts': upcoming_week_shifts,
         'pending_shifts': pending_shifts,
         'approved_shifts': approved_shifts,
         'open_shifts': open_shifts,
@@ -88,27 +85,19 @@ def employee_portal_view(request):
 @login_required
 @role_required([SystemRole.MANAGER, SystemRole.OWNER])
 def manager_dashboard_view(request):
-    """
-    Dispečerský portál manažera:
-    - Směny čekající na schválení po skončení služby (schválení do mezd)
-    - Dnešní operativní stav stanovišť
-    - Rychlý náhled náborové pipeline
-    """
+    """Dispečerský portál manažera se směnami čekajícími na schválení."""
+    _auto_complete_expired_shifts()
     now = timezone.now()
 
-    # Směny ke schválení (skončily a čekají na podpis manažera)
     shifts_to_approve = Shift.objects.filter(
         status=ShiftStatus.COMPLETED
     ).select_related('guard_object', 'employee').order_by('-end_time')
 
-    # Dnes ve službě
-    active_now = Shift.objects.filter(status=ShiftStatus.IN_PROGRESS).select_related('guard_object', 'employee')
     open_market = Shift.objects.filter(status=ShiftStatus.OPEN, start_time__gte=now).count()
     active_candidates_count = Candidate.objects.filter(is_archived=False).count()
 
     context = {
         'shifts_to_approve': shifts_to_approve,
-        'active_now': active_now,
         'open_market_count': open_market,
         'active_candidates_count': active_candidates_count,
     }
@@ -118,11 +107,8 @@ def manager_dashboard_view(request):
 @login_required
 @role_required([SystemRole.OWNER])
 def owner_dashboard_view(request):
-    """
-    Ekonomický kokpit majitele:
-    - Finanční bilance (vydané tržby vs. dodavatelé vs. schválené mzdy)
-    - Ziskovost jednotlivých střežených objektů
-    """
+    """Ekonomický kokpit majitele."""
+    _auto_complete_expired_shifts()
     now = timezone.now()
     year = int(request.GET.get('year', now.year))
     month = int(request.GET.get('month', now.month))

@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block title %}Můj kalendář směn - Panther Security{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
+    <div>
+        <a href="{% url 'employee_portal' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 8px;">← Zpět na portál</a>
+        <h1 style="font-size: 26px; color: #fff; margin: 0;">📅 Můj měsíční kalendář směn</h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">Rozpis všech plánovaných i odsloužených směn.</p>
+    </div>
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-secondary">← Předchozí</a>
+        <span style="font-size: 18px; font-weight: 800; color: var(--panther-yellow); min-width: 130px; text-align: center;">
+            {{ month }}/{{ year }}
+        </span>
+        <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-secondary">Následující →</a>
+    </div>
+</div>
+
+<div class="card" style="padding: 16px;">
+    <!-- DNY V TÝDNU -->
+    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; text-align: center; font-weight: 700; color: var(--text-muted); font-size: 12px; margin-bottom: 10px;">
+        <div>PO</div><div>ÚT</div><div>ST</div><div>ČT</div><div>PÁ</div><div>SO</div><div>NE</div>
+    </div>
+
+    <!-- MŘÍŽKA KALENDÁŘE -->
+    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px;">
+        {% for week in calendar_weeks %}
+            {% for day in week %}
+            <div style="min-height: 110px; padding: 8px; border-radius: 8px; border: 1px solid {% if day.is_today %}var(--panther-yellow){% else %}var(--border-color){% endif %}; background: {% if not day.is_current_month %}rgba(255,255,255,0.01){% elif day.is_today %}rgba(245,158,11,0.06){% else %}var(--bg-card){% endif %}; opacity: {% if day.is_current_month %}1{% else %}0.35{% endif %};">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                    <span style="font-size: 12px; font-weight: 700; color: {% if day.is_today %}var(--panther-yellow){% else %}#fff{% endif %};">
+                        {{ day.date.day }}.
+                    </span>
+                    {% if day.is_today %}
+                        <span style="font-size: 10px; background: var(--panther-yellow); color: #000; padding: 1px 4px; border-radius: 4px; font-weight: 800;">Dnes</span>
+                    {% endif %}
+                </div>
+
+                {% for s in day.shifts %}
+                    <a href="{% url 'shift_detail' s.id %}" style="display: block; text-decoration: none; padding: 4px 6px; margin-bottom: 4px; border-radius: 4px; font-size: 11px; font-weight: 600;
+                        {% if s.status == 'APPROVED' %}
+                            background: rgba(16,185,129,0.18); color: #34d399; border-left: 3px solid #10b981;
+                        {% elif s.status == 'COMPLETED' %}
+                            background: rgba(245,158,11,0.18); color: #fbbf24; border-left: 3px solid #f59e0b;
+                        {% else %}
+                            background: rgba(59,130,246,0.18); color: #60a5fa; border-left: 3px solid #3b82f6;
+                        {% endif %}">
+                        {{ s.start_time|date:"H:i" }}-{{ s.end_time|date:"H:i" }}<br>
+                        <strong>{{ s.guard_object.name|truncatechars:14 }}</strong>
+                    </a>
+                {% endfor %}
+            </div>
+            {% endfor %}
+        {% endfor %}
+    </div>
+</div>
+
+<div style="display: flex; gap: 20px; align-items: center; margin-top: 16px; font-size: 12px; color: var(--text-muted);">
+    <div style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 12px; height: 12px; background: #3b82f6; border-radius: 2px;"></span> Plánovaná budoucí směna</div>
+    <div style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 12px; height: 12px; background: #f59e0b; border-radius: 2px;"></span> Odslouženo (čeká na schválení)</div>
+    <div style="display: flex; align-items: center; gap: 6px;"><span style="display: inline-block; width: 12px; height: 12px; background: #10b981; border-radius: 2px;"></span> Schváleno do výplaty</div>
+</div>
+{% endblock %}
