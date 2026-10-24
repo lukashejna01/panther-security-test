@@ -66,7 +66,7 @@
                 <tr>
                     <th>Střežený objekt</th>
                     <th>Strážný</th>
-                    <th>Nástup (Check-in)</th>
+                    <th>Začátek směny</th>
                     <th>Plánovaný konec</th>
                     <th>Pohotovostní telefon</th>
                 </tr>
@@ -76,7 +76,7 @@
                 <tr>
                     <td><strong style="color: #fff;">{{ s.guard_object.name }}</strong></td>
                     <td>{{ s.employee.full_name }}</td>
-                    <td><span class="badge-tag green">{{ s.actual_start_time|date:"H:i" }}</span></td>
+                    <td><span class="badge-tag green">{{ s.start_time|date:"H:i" }}</span></td>
                     <td>{{ s.end_time|date:"H:i" }}</td>
                     <td>{{ s.guard_object.emergency_phone|default:"Velín" }}</td>
                 </tr>

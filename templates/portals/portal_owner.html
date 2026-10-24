@@ -13,15 +13,20 @@
         <p style="color: var(--text-muted); font-size: 13px; margin-top: 4px;">Přehled hospodaření, porovnání tržeb, mezd a dodavatelských nákladů.</p>
     </div>
 
-    <!-- PŘEPÍNAČ OBDOBÍ -->
-    <div class="card" style="margin: 0; padding: 10px 16px;">
-        <form method="get" style="display: flex; gap: 12px; align-items: center;">
-            <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase;">Měsíc:</label>
-            <input type="number" name="month" min="1" max="12" value="{{ month }}" class="form-control" style="width: 70px; padding: 6px 10px;" onchange="this.form.submit()">
-            
-            <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase;">Rok:</label>
-            <input type="number" name="year" min="2024" max="2030" value="{{ year }}" class="form-control" style="width: 90px; padding: 6px 10px;" onchange="this.form.submit()">
-        </form>
+    <!-- PŘEPÍNAČ OBDOBÍ A RYCHLÉ ODKAZY -->
+    <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+        <a href="{% url 'shift_planner_calendar' %}" class="btn btn-secondary" style="font-size: 12px; padding: 7px 12px;">
+            📅 Plánovač směn
+        </a>
+        <div class="card" style="margin: 0; padding: 8px 14px;">
+            <form method="get" style="display: flex; gap: 10px; align-items: center;">
+                <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase;">Měsíc:</label>
+                <input type="number" name="month" min="1" max="12" value="{{ month }}" class="form-control" style="width: 65px; padding: 4px 8px;" onchange="this.form.submit()">
+                
+                <label style="color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase;">Rok:</label>
+                <input type="number" name="year" min="2024" max="2030" value="{{ year }}" class="form-control" style="width: 80px; padding: 4px 8px;" onchange="this.form.submit()">
+            </form>
+        </div>
     </div>
 </div>
 
