@@ -1,12 +1,12 @@
 """
 Služba pro automatické vytěžování dat z přijatých dodavatelských faktur pomocí Claude API.
-Používá přímé volání přes urllib pro maximální stabilitu na PythonAnywhere.
+Využívá přímo model claude-sonnet-4-6 a knihovnu requests.
 """
 
 import base64
 import json
 import os
-import urllib.request
+import requests
 from django.conf import settings
 
 
@@ -105,26 +105,21 @@ Vrať VÝHRADNĚ validní JSON bez jakýchkoli formátovacích značek (žádné
         "x-api-key": api_key,
         "anthropic-version": "2023-06-01",
         "content-type": "application/json",
-        "Accept-Encoding": "identity",
     }
     if is_pdf:
         headers["anthropic-beta"] = "pdfs-2024-09-25"
 
-    req = urllib.request.Request(
-        "[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)",
-        data=json.dumps(payload).encode("utf-8"),
-        headers=headers,
-        method="POST"
-    )
+    url = "[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)"
 
     try:
-        with urllib.request.urlopen(req) as resp:
-            resp_data = json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        err_body = e.read().decode("utf-8")
-        raise RuntimeError(f"Chyba Anthropic API ({e.code}): {err_body}")
+        response = requests.post(url, json=payload, headers=headers, timeout=60)
     except Exception as e:
-        raise RuntimeError(f"Chyba spojení s Anthropic API: {e}")
+        raise RuntimeError(f"Chyba síťového spojení s Anthropic API: {e}")
+
+    if response.status_code != 200:
+        raise RuntimeError(f"Chyba Anthropic API ({response.status_code}): {response.text}")
+
+    resp_data = response.json()
 
     result_text = ""
     for block in resp_data.get("content", []):
