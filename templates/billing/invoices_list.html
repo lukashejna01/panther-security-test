@@ -98,7 +98,9 @@
                         </a>
                     </td>
                     <td>
-                        <strong style="color: #fff;">{{ inv.client.name }}</strong>
+                        <strong style="color: #fff;">
+                            {% if inv.client %}{{ inv.client.name }}{% else %}-{% endif %}
+                        </strong>
                     </td>
                     <td>{{ inv.issue_date|date:"d.m.Y" }}</td>
                     <td>
@@ -165,7 +167,20 @@
                 {% for inv in incoming_invoices %}
                 <tr>
                     <td><strong style="color: #fff;">{{ inv.invoice_number }}</strong></td>
-                    <td>{{ inv.supplier_name|default:inv.supplier.name|default:"Dodavatel" }}</td>
+                    <td>
+                        <strong style="color: #fff;">
+                            {% if inv.supplier_name %}
+                                {{ inv.supplier_name }}
+                            {% elif inv.supplier %}
+                                {{ inv.supplier.name }}
+                            {% else %}
+                                Dodavatel
+                            {% endif %}
+                        </strong>
+                        {% if inv.supplier_ico %}
+                            <div style="font-size: 11px; color: var(--text-muted);">IČO: {{ inv.supplier_ico }}</div>
+                        {% endif %}
+                    </td>
                     <td>{{ inv.issue_date|date:"d.m.Y" }}</td>
                     <td>
                         <span style="{% if inv.safe_is_overdue %}color: #ef4444; font-weight: 700;{% endif %}">
