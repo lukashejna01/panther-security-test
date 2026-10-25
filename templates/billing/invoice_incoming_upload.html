@@ -6,9 +6,9 @@
 <div style="max-width: 900px; margin: 0 auto 30px;">
     <div style="margin-bottom: 20px;">
         <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 10px;">← Zpět na přehled faktur</a>
-        <h1 style="font-size: 24px; color: #fff; margin: 6px 0 0;">📥 Vytěžení přijaté faktury pomocí Claude AI</h1>
+        <h1 style="font-size: 24px; color: #fff; margin: 6px 0 0;">📥 Vytěžení přijaté faktury pomocí AI</h1>
         <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">
-            Nahrajte PDF nebo obrázek přijaté faktury. Claude automaticky přečte údaje a předvyplní formulář k zaevidování.
+            Nahrajte PDF nebo obrázek přijaté faktury. Systém automaticky přečte údaje a předvyplní formulář k zaevidování.
         </p>
     </div>
 
@@ -23,8 +23,9 @@
                 <label>Soubor faktury (PDF, JPG, PNG)</label>
                 {{ upload_form.invoice_file }}
             </div>
-            <button type="submit" name="scan_invoice" id="scanBtn" class="btn btn-primary" style="padding: 10px 20px;">
-                🔍 Analyzovat fakturu přes Claude AI
+            <button type="submit" name="scan_invoice" id="scanBtn" class="btn btn-primary" style="padding: 10px 22px; display: inline-flex; align-items: center; gap: 8px;">
+                <span id="scanBtnIcon">🔍</span>
+                <span id="scanBtnText">Spustit analýzu a vytěžit doklad</span>
             </button>
         </form>
     </div>
@@ -120,15 +121,38 @@
     </div>
 </div>
 
+<style>
+    @keyframes pantherSpin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    .panther-spinner {
+        display: inline-block;
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(0, 0, 0, 0.3);
+        border-top: 2px solid #000;
+        border-radius: 50%;
+        animation: pantherSpin 0.7s linear infinite;
+    }
+</style>
+
 <script>
-    // Zabrání dvojitému kliknutí na tlačítko analýzy
     function handleScanSubmit(form) {
         var btn = document.getElementById('scanBtn');
+        var btnText = document.getElementById('scanBtnText');
+        var btnIcon = document.getElementById('scanBtnIcon');
+
         if (btn) {
             btn.disabled = true;
-            btn.innerHTML = '⏳ Vytěžuji doklad přes Claude AI... Čekejte prosím.';
-            btn.style.opacity = '0.7';
+            btn.style.opacity = '0.85';
             btn.style.cursor = 'wait';
+            if (btnIcon) {
+                btnIcon.innerHTML = '<span class="panther-spinner"></span>';
+            }
+            if (btnText) {
+                btnText.innerText = 'Probíhá vytěžování dokladu...';
+            }
         }
     }
 </script>
