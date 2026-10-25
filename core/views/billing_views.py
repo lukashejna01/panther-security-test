@@ -477,12 +477,11 @@ def upload_incoming_invoice_view(request):
 @login_required
 @role_required([SystemRole.OWNER])
 def invoice_delete_view(request, invoice_id):
-    """Trvalé smazání faktury (včetně smazání přiloženého PDF souboru z disku)."""
+    """Trvalé smazání faktury včetně fyzického souboru."""
     invoice = get_object_or_404(Invoice, id=invoice_id)
     inv_num = invoice.invoice_number
 
     if request.method == 'POST':
-        # Smazání fyzického souboru, pokud existuje
         if invoice.document_file:
             try:
                 if os.path.isfile(invoice.document_file.path):
@@ -491,11 +490,14 @@ def invoice_delete_view(request, invoice_id):
                 pass
 
         invoice.delete()
-        messages.success(request, f"Faktura #{inv_num} byla trvale smazána z účetnictví[cite: 2].")
+        messages.success(request, f"Faktura #{inv_num} byla trvale smazána z evidence.")
         return redirect('invoice_list')
 
-    return render(request, 'billing/invoice_confirm_delete.html', {'invoice': invoice})
-
+    # Bezpečné vykreslení šablony
+    try:
+        return render(request, 'billing/invoice_confirm_delete.html', {'invoice': invoice})
+    except Exception:
+        return render(request, 'invoice_confirm_delete.html', {'invoice': invoice})
 
 @login_required
 @role_required([SystemRole.OWNER])
