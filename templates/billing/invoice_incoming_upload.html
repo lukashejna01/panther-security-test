@@ -19,11 +19,14 @@
         </h3>
         <form method="post" enctype="multipart/form-data" id="scanForm" onsubmit="handleScanSubmit(this)">
             {% csrf_token %}
+            <!-- Pojistka pro Python backend -->
+            <input type="hidden" name="scan_invoice" value="1">
+            
             <div class="form-group" style="margin-bottom: 14px;">
                 <label>Soubor faktury (PDF, JPG, PNG)</label>
                 {{ upload_form.invoice_file }}
             </div>
-            <button type="submit" name="scan_invoice" id="scanBtn" class="btn btn-primary" style="padding: 10px 22px; display: inline-flex; align-items: center; gap: 8px;">
+            <button type="submit" id="scanBtn" class="btn btn-primary" style="padding: 10px 22px; display: inline-flex; align-items: center; gap: 8px;">
                 <span id="scanBtnIcon">🔍</span>
                 <span id="scanBtnText">Spustit analýzu a vytěžit doklad</span>
             </button>
@@ -144,7 +147,8 @@
         var btnIcon = document.getElementById('scanBtnIcon');
 
         if (btn) {
-            btn.disabled = true;
+            // Zablokujeme klikání přes CSS, NIKOLIV přes disabled (aby browser poslal POST data)
+            btn.style.pointerEvents = 'none';
             btn.style.opacity = '0.85';
             btn.style.cursor = 'wait';
             if (btnIcon) {
