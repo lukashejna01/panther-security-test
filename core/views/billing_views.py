@@ -356,12 +356,7 @@ def generate_client_invoice_view(request):
 @login_required
 @role_required([SystemRole.OWNER])
 def upload_incoming_invoice_view(request):
-    """
-    Nahrání přijaté faktury:
-    - Soubor z kroku 1 se automaticky uloží do session/tempu.
-    - Claude AI vytěží data do formuláře.
-    - Při uložení se původní doklad automaticky přiřadí do pole document_file.
-    """
+    """Nahrání přijaté faktury a vytěžení přes Claude AI."""
     upload_form = InvoiceUploadForm()
     invoice_form = IncomingInvoiceForm()
     today = timezone.localdate()
@@ -370,7 +365,8 @@ def upload_incoming_invoice_view(request):
     original_filename = request.session.get('uploaded_invoice_orig_name', '')
 
     if request.method == 'POST':
-        if 'scan_invoice' in request.POST:
+        # 1. KROK: ANALÝZA PŘES AI
+        if 'scan_invoice' in request.POST or ('invoice_file' in request.FILES and 'save_invoice' not in request.POST):
             upload_form = InvoiceUploadForm(request.POST, request.FILES)
             if upload_form.is_valid():
                 try:
@@ -378,6 +374,7 @@ def upload_incoming_invoice_view(request):
                     file_content = uploaded_file.read()
                     uploaded_file.seek(0)
 
+                    # Dočasné uložení pro automatické připojení
                     temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_invoices')
                     os.makedirs(temp_dir, exist_ok=True)
                     safe_name = f"{int(timezone.now().timestamp())}_{uploaded_file.name}"
@@ -415,10 +412,11 @@ def upload_incoming_invoice_view(request):
                     invoice_form = IncomingInvoiceForm(initial=initial_data)
                     messages.info(request, "Doklad byl úspěšně vytěžen přes AI. Zkontrolujte prosím údaje a klikněte na Uložit.")
                 except Exception as e:
-                    messages.error(request, f"Chyba analýzy faktury: {e}")
+                    messages.error(request, f"Chyba při vytěžování dokladu: {e}")
             else:
-                messages.error(request, "Vyberte prosím platný soubor faktury (PDF, JPG, PNG).")
+                messages.error(request, f"Neplatný soubor dokladu: {upload_form.errors}")
 
+        # 2. KROK: ULOŽENÍ FAKTURY
         elif 'save_invoice' in request.POST:
             post_data = request.POST.copy()
             if not post_data.get('issue_date'):
@@ -461,9 +459,7 @@ def upload_incoming_invoice_view(request):
                 messages.success(request, f"Přijatá faktura #{inv.invoice_number} byla úspěšně uložena do nákladů i s přiloženým dokumentem.")
                 return redirect('invoice_list')
             else:
-                errors = []
-                for field, errs in invoice_form.errors.items():
-                    errors.append(f"{field}: {', '.join(errs)}")
+                errors = [f"{field}: {', '.join(errs)}" for field, errs in invoice_form.errors.items()]
                 messages.error(request, f"Formulář obsahuje chyby a nelze jej uložit: {'; '.join(errors)}")
 
     context = {
