@@ -137,10 +137,7 @@ document.addEventListener('DOMContentLoaded', function () {
                     </div>
                     <h2 style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px; margin: 0 0 10px; text-shadow: 0 0 20px rgba(250,204,21,0.3);">
                         Claude AI analyzuje dokument...
-                    </h2>
-                    <p style="color: #facc15; font-size: 14px; font-weight: 600; text-align: center; max-width: 440px; line-height: 1.5; margin: 0 20px;">
-                        Probíhá vytěžování údajů, validace a automatické dohledávání PSČ přes OpenStreetMap API.
-                    </p>
+                    </h2>   
                 `;
 
                 // Vložení CSS animací
