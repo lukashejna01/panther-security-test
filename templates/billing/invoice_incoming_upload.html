@@ -17,13 +17,13 @@
         <h3 style="font-size: 16px; color: var(--panther-yellow); margin-top: 0; margin-bottom: 12px;">
             1. Vyberte doklad k analýze
         </h3>
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="scanForm" onsubmit="handleScanSubmit(this)">
             {% csrf_token %}
             <div class="form-group" style="margin-bottom: 14px;">
                 <label>Soubor faktury (PDF, JPG, PNG)</label>
                 {{ upload_form.invoice_file }}
             </div>
-            <button type="submit" name="scan_invoice" class="btn btn-primary" style="padding: 10px 20px;">
+            <button type="submit" name="scan_invoice" id="scanBtn" class="btn btn-primary" style="padding: 10px 20px;">
                 🔍 Analyzovat fakturu přes Claude AI
             </button>
         </form>
@@ -36,6 +36,16 @@
         </h3>
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
+
+            {% if original_filename %}
+            <div style="padding: 12px 16px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; margin-bottom: 18px; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 18px;">📎</span>
+                <div>
+                    <strong style="color: #34d399; font-size: 13px;">Doklad připraven k automatickému uložení:</strong>
+                    <div style="color: #fff; font-size: 12px;">{{ original_filename }}</div>
+                </div>
+            </div>
+            {% endif %}
 
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 14px;">
                 <div class="form-group">
@@ -98,21 +108,28 @@
                 </div>
             </div>
 
-            <div class="form-group" style="margin-bottom: 14px;">
+            <div class="form-group" style="margin-bottom: 20px;">
                 <label>Popis / Poznámka k faktuře</label>
                 {{ invoice_form.notes }}
             </div>
 
-            <div class="form-group" style="margin-bottom: 24px; padding: 14px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); border-radius: 8px;">
-                <label style="color: var(--panther-yellow);">📎 Přiložit originální soubor faktury (PDF / obrázek) k archivaci</label>
-                {{ invoice_form.document_file }}
-                <small style="color: var(--text-muted); display: block; margin-top: 4px;">Soubor bude trvale uložen v systému a dostupný ke stažení přímo z přehledu faktur.</small>
-            </div>
-
-            <button type="submit" name="save_invoice" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px; font-weight: 800;">
+            <button type="submit" name="save_invoice" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px; font-weight: 800; width: 100%;">
                 💾 Zaevidovat přijatou fakturu do nákladů
             </button>
         </form>
     </div>
 </div>
+
+<script>
+    // Zabrání dvojitému kliknutí na tlačítko analýzy
+    function handleScanSubmit(form) {
+        var btn = document.getElementById('scanBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '⏳ Vytěžuji doklad přes Claude AI... Čekejte prosím.';
+            btn.style.opacity = '0.7';
+            btn.style.cursor = 'wait';
+        }
+    }
+</script>
 {% endblock %}

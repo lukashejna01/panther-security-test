@@ -85,7 +85,7 @@
                     <th>Vystaveno</th>
                     <th>Splatnost</th>
                     <th>Částka s DPH</th>
-                    <th>Stav splatnosti &amp; úhrady</th>
+                    <th>Stav</th>
                     <th style="text-align: right;">Akce</th>
                 </tr>
             </thead>
@@ -102,19 +102,23 @@
                     </td>
                     <td>{{ inv.issue_date|date:"d.m.Y" }}</td>
                     <td>
-                        <span style="{% if inv.payment_badge.status_type == 'overdue' %}color: #ef4444; font-weight: 700;{% endif %}">
+                        <span style="{% if inv.safe_is_overdue %}color: #ef4444; font-weight: 700;{% endif %}">
                             {{ inv.due_date|date:"d.m.Y" }}
                         </span>
                     </td>
                     <td style="font-weight: 800; color: #10b981; font-size: 14px;">{{ inv.total_amount }} Kč</td>
                     <td>
-                        <span class="badge-tag {{ inv.payment_badge.css_class }}">
-                            {{ inv.payment_badge.label }}
-                        </span>
+                        {% if inv.status == 'PAID' %}
+                            <span class="badge-tag green">Uhrazeno</span>
+                        {% elif inv.safe_is_overdue %}
+                            <span class="badge-tag red">⚠️ Po splatnosti</span>
+                        {% else %}
+                            <span class="badge-tag yellow">K úhradě</span>
+                        {% endif %}
                     </td>
                     <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px;">
-                            {% if inv.is_paid %}
+                            {% if inv.status == 'PAID' %}
                                 <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #fca5a5;" title="Označit jako neuhrazenou">
                                     ↩ Zrušit úhradu
                                 </a>
@@ -153,7 +157,7 @@
                     <th>Splatnost</th>
                     <th>Částka s DPH</th>
                     <th>Stav</th>
-                    <th>Příloha</th>
+                    <th>Příloha dokladu</th>
                     <th style="text-align: right;">Úhrada</th>
                 </tr>
             </thead>
@@ -161,18 +165,26 @@
                 {% for inv in incoming_invoices %}
                 <tr>
                     <td><strong style="color: #fff;">{{ inv.invoice_number }}</strong></td>
-                    <td>{{ inv.supplier_name|default:inv.supplier.name }}</td>
+                    <td>{{ inv.supplier_name|default:inv.supplier.name|default:"Dodavatel" }}</td>
                     <td>{{ inv.issue_date|date:"d.m.Y" }}</td>
-                    <td>{{ inv.due_date|date:"d.m.Y" }}</td>
+                    <td>
+                        <span style="{% if inv.safe_is_overdue %}color: #ef4444; font-weight: 700;{% endif %}">
+                            {{ inv.due_date|date:"d.m.Y" }}
+                        </span>
+                    </td>
                     <td style="font-weight: 700; color: #ef4444;">{{ inv.total_amount }} Kč</td>
                     <td>
-                        <span class="badge-tag {{ inv.payment_badge.css_class }}">
-                            {{ inv.payment_badge.label }}
-                        </span>
+                        {% if inv.status == 'PAID' %}
+                            <span class="badge-tag green">Zaplaceno</span>
+                        {% elif inv.safe_is_overdue %}
+                            <span class="badge-tag red">⚠️ Po splatnosti</span>
+                        {% else %}
+                            <span class="badge-tag yellow">K úhradě</span>
+                        {% endif %}
                     </td>
                     <td>
                         {% if inv.document_file %}
-                            <a href="{{ inv.document_file.url }}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" title="Zobrazit originální nahraný dokument">
+                            <a href="{{ inv.document_file.url }}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; border-color: rgba(250, 204, 21, 0.4);" title="Zobrazit originální nahraný dokument">
                                 📎 PDF faktury
                             </a>
                         {% else %}
@@ -180,7 +192,7 @@
                         {% endif %}
                     </td>
                     <td style="text-align: right;">
-                        {% if inv.is_paid %}
+                        {% if inv.status == 'PAID' %}
                             <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
                                 ↩ Zrušit
                             </a>

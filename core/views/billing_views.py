@@ -4,8 +4,9 @@ Claude OCR přijatých dodavatelských faktur a správa dodavatelů, klientů a 
 Přístup k financím má výhradně majitel (SystemRole.OWNER).
 """
 
-from datetime import timedelta, date
+from datetime import timedelta, date, datetime
 from decimal import Decimal
+import os
 import urllib.parse
 from django.conf import settings
 from django.contrib import messages
@@ -14,6 +15,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.db import models
 from django.http import Http404
+from django.core.files.base import ContentFile
 
 from core.decorators import role_required
 from core.models import (
@@ -122,11 +124,15 @@ def invoice_list_view(request):
 
     # Výpočet pro šipky předchozí / další měsíc
     if selected_year and selected_month:
-        curr_dt = date(selected_year, selected_month, 1)
-        prev_dt = (curr_dt - timedelta(days=1)).replace(day=1)
-        next_dt = (curr_dt + timedelta(days=32)).replace(day=1)
-        prev_year, prev_month = prev_dt.year, prev_dt.month
-        next_year, next_month = next_dt.year, next_dt.month
+        try:
+            curr_dt = date(selected_year, selected_month, 1)
+            prev_dt = (curr_dt - timedelta(days=1)).replace(day=1)
+            next_dt = (curr_dt + timedelta(days=32)).replace(day=1)
+            prev_year, prev_month = prev_dt.year, prev_dt.month
+            next_year, next_month = next_dt.year, next_dt.month
+        except Exception:
+            prev_year, prev_month = now.year, now.month
+            next_year, next_month = now.year, now.month
     else:
         prev_year, prev_month = now.year, now.month
         next_year, next_month = now.year, now.month
@@ -145,6 +151,15 @@ def invoice_list_view(request):
     else:
         m_name = dict(months_list).get(selected_month, '')
         period_title = f"{m_name} {year_param}"
+
+    # Přidáme bezpečné zjištění stavu po splatnosti
+    today = timezone.localdate()
+    for inv in outgoing + incoming:
+        try:
+            inv_due = inv.due_date.date() if isinstance(inv.due_date, datetime) else inv.due_date
+            inv.safe_is_overdue = bool(inv.status != InvoiceStatus.PAID and inv_due and inv_due < today)
+        except Exception:
+            inv.safe_is_overdue = False
 
     context = {
         'outgoing_invoices': outgoing,
@@ -252,14 +267,14 @@ def toggle_invoice_payment_status_view(request, invoice_id):
 
     if invoice.status == InvoiceStatus.PAID:
         invoice.status = InvoiceStatus.UNPAID
-        invoice.paid_at = None
+        invoice.paid_date = None
         invoice.save()
         messages.info(request, f"Faktura #{invoice.invoice_number} byla označena jako NEUHRAZENÁ.")
     else:
         invoice.status = InvoiceStatus.PAID
-        invoice.paid_at = timezone.localdate()
+        invoice.paid_date = timezone.localdate()
         invoice.save()
-        messages.success(request, f"Faktura #{invoice.invoice_number} byla označena jako UHRAZENÁ ({invoice.paid_at.strftime('%d.%m.%Y')}).")
+        messages.success(request, f"Faktura #{invoice.invoice_number} byla označena jako UHRAZENÁ ({invoice.paid_date.strftime('%d.%m.%Y')}).")
 
     return redirect(next_url)
 
@@ -341,17 +356,42 @@ def generate_client_invoice_view(request):
 @login_required
 @role_required([SystemRole.OWNER])
 def upload_incoming_invoice_view(request):
-    """Nahrání přijaté faktury, vytěžení přes Claude AI a bezpečné uložení do nákladů včetně souboru."""
+    """
+    Nahrání přijaté faktury:
+    - Soubor z kroku 1 se automaticky uloží do session/tempu, takže ho uživatel nemusí nahrávat znovu.
+    - Claude AI vytěží data do formuláře.
+    - Při uložení se původní doklad automaticky přiřadí do pole document_file.
+    """
     upload_form = InvoiceUploadForm()
     invoice_form = IncomingInvoiceForm()
     today = timezone.localdate()
 
+    temp_filename = request.session.get('uploaded_invoice_temp_name', '')
+    original_filename = request.session.get('uploaded_invoice_orig_name', '')
+
     if request.method == 'POST':
+        # 1. KROK: ANALÝZA SOUBORU PŘES AI
         if 'scan_invoice' in request.POST:
             upload_form = InvoiceUploadForm(request.POST, request.FILES)
             if upload_form.is_valid():
                 try:
                     uploaded_file = request.FILES['invoice_file']
+                    file_content = uploaded_file.read()
+                    uploaded_file.seek(0)
+
+                    # Uložíme dočasně soubor do media složky pro automatické připojení
+                    temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_invoices')
+                    os.makedirs(temp_dir, exist_ok=True)
+                    safe_name = f"{int(timezone.now().timestamp())}_{uploaded_file.name}"
+                    temp_path = os.path.join(temp_dir, safe_name)
+                    with open(temp_path, 'wb') as f:
+                        f.write(file_content)
+
+                    request.session['uploaded_invoice_temp_name'] = safe_name
+                    request.session['uploaded_invoice_orig_name'] = uploaded_file.name
+                    temp_filename = safe_name
+                    original_filename = uploaded_file.name
+
                     data = extract_data_from_invoice(uploaded_file)
 
                     issue_val = data.get('issue_date') or str(today)
@@ -381,8 +421,8 @@ def upload_incoming_invoice_view(request):
             else:
                 messages.error(request, "Vyberte prosím platný soubor faktury (PDF, JPG, PNG).")
 
+        # 2. KROK: ULOŽENÍ FAKTURY
         elif 'save_invoice' in request.POST:
-            # Zajistíme, že data obsahují tax_date i issue_date i kdyby přišla prázdná
             post_data = request.POST.copy()
             if not post_data.get('issue_date'):
                 post_data['issue_date'] = str(today)
@@ -406,11 +446,24 @@ def upload_incoming_invoice_view(request):
                     count = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING, issue_date__year=year).count() + 1
                     inv.invoice_number = f"PF-{year}{count:04d}"
 
+                # 1. Priorita: pokud byl soubor nahrán ručně ve 2. kroku
                 if 'document_file' in request.FILES:
                     inv.document_file = request.FILES['document_file']
+                # 2. Automatické připojení souboru z 1. kroku (analýzy)
+                elif temp_filename:
+                    temp_path = os.path.join(settings.MEDIA_ROOT, 'temp_invoices', temp_filename)
+                    if os.path.exists(temp_path):
+                        with open(temp_path, 'rb') as f:
+                            inv.document_file.save(original_filename or temp_filename, ContentFile(f.read()), save=False)
+                        try:
+                            os.remove(temp_path)
+                        except Exception:
+                            pass
+                        request.session.pop('uploaded_invoice_temp_name', None)
+                        request.session.pop('uploaded_invoice_orig_name', None)
 
                 inv.save()
-                messages.success(request, f"Přijatá faktura #{inv.invoice_number} byla úspěšně uložena do nákladů.")
+                messages.success(request, f"Přijatá faktura #{inv.invoice_number} byla úspěšně uložena do nákladů i s přiloženým dokumentem.")
                 return redirect('invoice_list')
             else:
                 errors = []
@@ -421,6 +474,7 @@ def upload_incoming_invoice_view(request):
     context = {
         'upload_form': upload_form,
         'invoice_form': invoice_form,
+        'original_filename': original_filename,
     }
     return render(request, 'billing/invoice_incoming_upload.html', context)
 
