@@ -16,31 +16,33 @@
     </div>
 </div>
 
-<!-- OVLÁDACÍ LIŠTA OBDOBÍ -->
-<div class="card" style="padding: 14px 20px; margin-bottom: 24px;">
+<!-- OVLÁDACÍ LIŠTA OBDOBÍ (PLNĚ RESPONZIVNÍ PRO MOBILY) -->
+<div class="card" style="padding: 16px; margin-bottom: 24px;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
-        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-            <a href="?year={{ now.year }}&month={{ now.month }}" class="btn {% if is_current_month %}btn-primary{% else %}btn-secondary{% endif %}" style="padding: 6px 14px; font-size: 12px;">
+        <!-- Levá část: Tlačítko, šipky a název období -->
+        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap; max-width: 100%;">
+            <a href="?year={{ now.year }}&month={{ now.month }}" class="btn {% if is_current_month %}btn-primary{% else %}btn-secondary{% endif %}" style="padding: 6px 12px; font-size: 12px; white-space: nowrap;">
                 Tento měsíc
             </a>
             
-            <div style="display: flex; gap: 4px;">
-                <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px; font-weight: bold;" title="Předchozí měsíc">‹</a>
-                <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px; font-weight: bold;" title="Další měsíc">›</a>
+            <div style="display: inline-flex; gap: 4px;">
+                <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-secondary" style="padding: 6px 10px; font-size: 13px; font-weight: bold;" title="Předchozí měsíc">‹</a>
+                <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-secondary" style="padding: 6px 10px; font-size: 13px; font-weight: bold;" title="Další měsíc">›</a>
             </div>
 
-            <h2 style="font-size: 19px; font-weight: 800; color: #fff; margin: 0 0 0 4px;">📅 {{ period_title }}</h2>
+            <h2 style="font-size: 18px; font-weight: 800; color: #fff; margin: 0; white-space: nowrap;">📅 {{ period_title }}</h2>
         </div>
 
-        <form method="get" style="display: flex; align-items: center; gap: 8px; margin: 0;">
-            <select name="month" class="form-control" style="width: auto; padding: 6px 12px; font-size: 12px;" onchange="this.form.submit()">
-                <option value="all" {% if month_param == 'all' %}selected{% endif %}>Celý rok (všechny měsíce)</option>
+        <!-- Pravá část: Roletky výběru (na mobilu se složí do bloku) -->
+        <form method="get" style="display: flex; align-items: center; gap: 8px; margin: 0; flex-wrap: wrap; width: auto; max-width: 100%;">
+            <select name="month" class="form-control" style="width: auto; min-width: 130px; max-width: 100%; padding: 6px 10px; font-size: 12px;" onchange="this.form.submit()">
+                <option value="all" {% if month_param == 'all' %}selected{% endif %}>Celý rok (vše)</option>
                 {% for m_num, m_name in months_list %}
                     <option value="{{ m_num }}" {% if month_param == m_num|stringformat:"s" %}selected{% endif %}>{{ m_name }}</option>
                 {% endfor %}
             </select>
 
-            <select name="year" class="form-control" style="width: auto; padding: 6px 12px; font-size: 12px;" onchange="this.form.submit()">
+            <select name="year" class="form-control" style="width: auto; min-width: 100px; max-width: 100%; padding: 6px 10px; font-size: 12px;" onchange="this.form.submit()">
                 <option value="all" {% if year_param == 'all' %}selected{% endif %}>Všechny roky</option>
                 {% for y in available_years %}
                     <option value="{{ y }}" {% if year_param == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
@@ -51,7 +53,7 @@
 </div>
 
 <!-- SOUHRNNÉ KARTY -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 24px;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
     <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #10b981;">
         <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Celkem vydané tržby</div>
         <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 4px;">{{ total_outgoing }} Kč</div>
@@ -122,16 +124,16 @@
                         <div style="display: inline-flex; gap: 6px;">
                             {% if inv.status == 'PAID' %}
                                 <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #fca5a5;" title="Označit jako neuhrazenou">
-                                    ↩ Zrušit úhradu
+                                    ↩ Zrušit
                                 </a>
                             {% else %}
                                 <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #6ee7b7;" title="Označit jako zaplacenou">
-                                    ✓ Označit uhrazeno
+                                    ✓ Uhrazeno
                                 </a>
                             {% endif %}
 
                             <a href="{% url 'invoice_detail' inv.variable_symbol|default:inv.invoice_number %}" target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
-                                🖨️ PDF / Tisk
+                                🖨️ PDF
                             </a>
                             <a href="{% url 'invoice_delete' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Smazat doklad">
                                 🗑️
