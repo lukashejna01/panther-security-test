@@ -205,7 +205,6 @@ def invoice_detail_view(request, variable_symbol):
         'web': 'www.panther-security.cz',
     }
 
-    # Sestavení SPAYD QR platby
     amount_str = f"{invoice.total_amount:.2f}"
     spayd_parts = [
         "SPD*1.0",
@@ -355,7 +354,6 @@ def upload_incoming_invoice_view(request):
                     uploaded_file = request.FILES['invoice_file']
                     data = extract_data_from_invoice(uploaded_file)
 
-                    # Bezpečný parsing dat, aby pole nikdy nebyla prázdná
                     issue_val = data.get('issue_date') or str(today)
                     tax_val = data.get('tax_date') or issue_val
                     due_val = data.get('due_date') or str(today + timedelta(days=14))
@@ -384,12 +382,23 @@ def upload_incoming_invoice_view(request):
                 messages.error(request, "Vyberte prosím platný soubor faktury (PDF, JPG, PNG).")
 
         elif 'save_invoice' in request.POST:
-            invoice_form = IncomingInvoiceForm(request.POST, request.FILES)
+            # Zajistíme, že data obsahují tax_date i issue_date i kdyby přišla prázdná
+            post_data = request.POST.copy()
+            if not post_data.get('issue_date'):
+                post_data['issue_date'] = str(today)
+            if not post_data.get('tax_date'):
+                post_data['tax_date'] = post_data.get('issue_date') or str(today)
+            if not post_data.get('due_date'):
+                post_data['due_date'] = str(today + timedelta(days=14))
+
+            invoice_form = IncomingInvoiceForm(post_data, request.FILES)
             if invoice_form.is_valid():
                 inv = invoice_form.save(commit=False)
                 inv.invoice_type = InvoiceType.INCOMING
                 if not inv.issue_date:
                     inv.issue_date = today
+                if not inv.tax_date:
+                    inv.tax_date = inv.issue_date
                 if not inv.due_date:
                     inv.due_date = today + timedelta(days=14)
                 if not inv.invoice_number:
@@ -397,7 +406,6 @@ def upload_incoming_invoice_view(request):
                     count = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING, issue_date__year=year).count() + 1
                     inv.invoice_number = f"PF-{year}{count:04d}"
 
-                # Pokud byl soubor přiložen, uloží se
                 if 'document_file' in request.FILES:
                     inv.document_file = request.FILES['document_file']
 
@@ -405,7 +413,6 @@ def upload_incoming_invoice_view(request):
                 messages.success(request, f"Přijatá faktura #{inv.invoice_number} byla úspěšně uložena do nákladů.")
                 return redirect('invoice_list')
             else:
-                # Vypsání konkrétních chyb, pokud validace selže
                 errors = []
                 for field, errs in invoice_form.errors.items():
                     errors.append(f"{field}: {', '.join(errs)}")
