@@ -1,9 +1,9 @@
 """
-Pohledy pro plánování směn, dispečerský kalendář (dle objektů i dle zaměstnanců)
-a schvalování odsloužené docházky.
+Pohledy pro plánování směn, dispečerský kalendář ve stylu Google Kalendáře
+(den, týden, měsíc s postranním minikalendářem) a schvalování docházky.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import calendar
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -94,54 +94,143 @@ def employee_calendar_view(request):
 @role_required([SystemRole.MANAGER, SystemRole.OWNER])
 def shift_planner_calendar_view(request):
     """
-    Plánovač a dispečerský kalendář se dvěma pohledy na vybraný den:
-    1. Pohled dle OBJEKTŮ (všechna stanoviště a rozpis na nich)
-    2. Pohled dle ZAMĚSTNANCŮ (všichni pracovníci a jejich naplánované směny)
+    Dispečerský kalendář ve stylu Google Kalendáře:
+    - Postranní lišta: minikalendář + filtry (objekty, pracovníci).
+    - Zobrazení: Den (day), Týden (week), Měsíc (month).
     """
     _auto_complete_expired_shifts()
     now = timezone.now()
     selected_date_str = request.GET.get('date', now.strftime('%Y-%m-%d'))
-    view_mode = request.GET.get('mode', 'objects') # 'objects' nebo 'employees'
+    view_type = request.GET.get('view', 'week')  # 'day', 'week', 'month'
+    filter_obj = request.GET.get('object_id', '')
+    filter_emp = request.GET.get('employee_id', '')
 
     try:
-        selected_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+        current_date = datetime.strptime(selected_date_str, '%Y-%m-%d').date()
     except ValueError:
-        selected_date = now.date()
+        current_date = now.date()
 
-    prev_day = selected_date - timedelta(days=1)
-    next_day = selected_date + timedelta(days=1)
+    # --- 1. MINIKALENDÁŘ PRO POST RANNÍ LIŠTU ---
+    cal = calendar.Calendar(firstweekday=0)
+    mini_weeks = cal.monthdatescalendar(current_date.year, current_date.month)
+    mini_month_weeks = []
+    for week in mini_weeks:
+        week_days = []
+        for d in week:
+            week_days.append({
+                'date': d,
+                'day_num': d.day,
+                'is_current_month': d.month == current_date.month,
+                'is_selected': d == current_date,
+                'is_today': d == now.date(),
+            })
+        mini_month_weeks.append(week_days)
 
-    # Všechny směny na daný den
-    day_shifts = Shift.objects.filter(
-        start_time__date=selected_date
-    ).select_related('guard_object', 'guard_object__client', 'employee', 'required_position').order_by('start_time')
+    czech_months = [
+        '', 'leden', 'únor', 'březen', 'duben', 'květen', 'červen',
+        'červenec', 'srpen', 'září', 'říjen', 'listopad', 'prosinec'
+    ]
+    mini_title = f"{czech_months[current_date.month].capitalize()} {current_date.year}"
 
-    # Režim A: Data seskupená dle OBJEKTŮ
-    objects_data = []
-    active_objects = GuardObject.objects.filter(is_active=True).select_related('client').order_by('name')
-    for obj in active_objects:
-        obj_shifts = [s for s in day_shifts if s.guard_object_id == obj.id]
-        objects_data.append({
-            'object': obj,
-            'shifts': obj_shifts,
-            'has_shifts': len(obj_shifts) > 0,
-        })
+    # Navigace minikalendáře (předchozí a další měsíc)
+    prev_month_date = (current_date.replace(day=1) - timedelta(days=1)).replace(day=1)
+    next_month_date = (current_date.replace(day=28) + timedelta(days=5)).replace(day=1)
 
-    # Režim B: Data seskupená dle ZAMĚSTNANCŮ
-    employees_data = []
-    active_employees = Employee.objects.filter(is_active=True, is_archived=False).order_by('last_name', 'first_name')
-    for emp in active_employees:
-        emp_shifts = [s for s in day_shifts if s.employee_id == emp.id]
-        employees_data.append({
-            'employee': emp,
-            'shifts': emp_shifts,
-            'is_busy': len(emp_shifts) > 0,
-        })
+    # --- 2. VÝPOČET ROZSAHU PODLE ZVOLENÉHO POHLEDU ---
+    if view_type == 'day':
+        start_range = current_date
+        end_range = current_date
+        prev_nav_date = current_date - timedelta(days=1)
+        next_nav_date = current_date + timedelta(days=1)
+        period_title = f"{current_date.day}. {czech_months[current_date.month]} {current_date.year}"
+    elif view_type == 'month':
+        start_range = current_date.replace(day=1)
+        if current_date.month == 12:
+            end_range = current_date.replace(year=current_date.year + 1, month=1, day=1) - timedelta(days=1)
+        else:
+            end_range = current_date.replace(month=current_date.month + 1, day=1) - timedelta(days=1)
+        prev_nav_date = (current_date.replace(day=1) - timedelta(days=1)).replace(day=1)
+        next_nav_date = (current_date.replace(day=28) + timedelta(days=5)).replace(day=1)
+        period_title = f"{czech_months[current_date.month].capitalize()} {current_date.year}"
+    else:  # 'week' je výchozí
+        view_type = 'week'
+        start_range = current_date - timedelta(days=current_date.weekday())  # Pondělí
+        end_range = start_range + timedelta(days=6)  # Neděle
+        prev_nav_date = current_date - timedelta(days=7)
+        next_nav_date = current_date + timedelta(days=7)
+        if start_range.month == end_range.month:
+            period_title = f"{start_range.day}. – {end_range.day}. {czech_months[start_range.month]} {start_range.year}"
+        else:
+            period_title = f"{start_range.day}. {czech_months[start_range.month]} – {end_range.day}. {czech_months[end_range.month]} {end_range.year}"
 
-    # Formulář pro rychlé vytvoření směny
+    # --- 3. NAČTENÍ A FILTROVÁNÍ SMĚN ---
+    start_dt = timezone.make_aware(datetime.combine(start_range, datetime.min.time()))
+    end_dt = timezone.make_aware(datetime.combine(end_range, datetime.max.time()))
+
+    shifts_qs = Shift.objects.filter(
+        start_time__lte=end_dt,
+        end_time__gte=start_dt
+    ).exclude(status=ShiftStatus.CANCELLED).select_related(
+        'guard_object', 'guard_object__client', 'employee'
+    ).order_by('start_time')
+
+    if filter_obj:
+        shifts_qs = shifts_qs.filter(guard_object_id=filter_obj)
+    if filter_emp:
+        shifts_qs = shifts_qs.filter(employee_id=filter_emp)
+
+    shifts_list = list(shifts_qs)
+
+    # --- 4. STRUKTURA PRO JEDNOTLIVÉ POHLEDY ---
+    # A) TÝDENNÍ POHLED: 7 dní
+    week_columns = []
+    czech_day_names = ['PO', 'ÚT', 'ST', 'ČT', 'PÁ', 'SO', 'NE']
+    if view_type == 'week':
+        for i in range(7):
+            d = start_range + timedelta(days=i)
+            day_shifts = [s for s in shifts_list if s.start_time.date() <= d <= s.end_time.date()]
+            week_columns.append({
+                'date': d,
+                'day_name': czech_day_names[d.weekday()],
+                'day_num': d.day,
+                'is_today': d == now.date(),
+                'is_selected': d == current_date,
+                'shifts': day_shifts,
+            })
+
+    # B) DENNÍ POHLED: směny pro vybraný den
+    day_shifts = []
+    if view_type == 'day':
+        day_shifts = [s for s in shifts_list if s.start_time.date() <= current_date <= s.end_time.date()]
+
+    # C) MĚSÍČNÍ POHLED: matice týdnů
+    month_grid = []
+    if view_type == 'month':
+        cal_month_days = cal.monthdatescalendar(current_date.year, current_date.month)
+        for w in cal_month_days:
+            week_row = []
+            for d in w:
+                cell_shifts = [s for s in shifts_list if s.start_time.date() <= d <= s.end_time.date()]
+                week_row.append({
+                    'date': d,
+                    'day_num': d.day,
+                    'is_current_month': d.month == current_date.month,
+                    'is_today': d == now.date(),
+                    'is_selected': d == current_date,
+                    'shifts': cell_shifts,
+                })
+            month_grid.append(week_row)
+
+    # Hodinová časová osa pro denní/týdenní pohled (od 06:00 do 22:00 po 2 hodinách)
+    hours_timeline = [f"{h:02d}:00" for h in range(6, 23, 2)]
+
+    # --- 5. DATA PRO FILTRY A FORMULÁŘ ---
+    active_objects = GuardObject.objects.filter(is_active=True).order_by('name')
+    active_employees = Employee.objects.filter(is_active=True, is_archived=False).order_by('last_name')
+
     form = ShiftCreateForm(initial={
-        'start_time': timezone.make_aware(datetime.combine(selected_date, datetime.min.time().replace(hour=7))),
-        'end_time': timezone.make_aware(datetime.combine(selected_date, datetime.min.time().replace(hour=19))),
+        'start_time': timezone.make_aware(datetime.combine(current_date, datetime.min.time().replace(hour=7))),
+        'end_time': timezone.make_aware(datetime.combine(current_date, datetime.min.time().replace(hour=19))),
     })
 
     if request.method == 'POST' and 'create_shift' in request.POST:
@@ -152,19 +241,35 @@ def shift_planner_calendar_view(request):
                 shift.status = ShiftStatus.ASSIGNED
             else:
                 shift.status = ShiftStatus.OPEN
+            if not shift.hourly_rate:
+                shift.hourly_rate = shift.guard_object.hourly_rate_cost
             shift.save()
             messages.success(request, f"Směna pro {shift.guard_object.name} byla úspěšně vypsána.")
-            return redirect(f"{request.path}?date={selected_date.strftime('%Y-%m-%d')}&mode={view_mode}")
+            return redirect(f"{request.path}?date={current_date.strftime('%Y-%m-%d')}&view={view_type}&object_id={filter_obj}&employee_id={filter_emp}")
 
     context = {
-        'selected_date': selected_date,
-        'prev_day': prev_day,
-        'next_day': next_day,
-        'is_today': selected_date == now.date(),
-        'view_mode': view_mode,
-        'objects_data': objects_data,
-        'employees_data': employees_data,
-        'total_shifts_count': day_shifts.count(),
+        'current_date': current_date,
+        'view_type': view_type,
+        'period_title': period_title,
+        'is_today': current_date == now.date(),
+        'prev_nav_date': prev_nav_date,
+        'next_nav_date': next_nav_date,
+        # Minikalendář
+        'mini_title': mini_title,
+        'mini_month_weeks': mini_month_weeks,
+        'prev_month_date': prev_month_date,
+        'next_month_date': next_month_date,
+        # Pohledy
+        'week_columns': week_columns,
+        'day_shifts': day_shifts,
+        'month_grid': month_grid,
+        'hours_timeline': hours_timeline,
+        # Filtry
+        'active_objects': active_objects,
+        'active_employees': active_employees,
+        'filter_obj': filter_obj,
+        'filter_emp': filter_emp,
+        'total_shifts_count': len(shifts_list),
         'form': form,
     }
     return render(request, 'shifts/shift_planner_calendar.html', context)

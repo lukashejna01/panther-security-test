@@ -3,153 +3,416 @@
 {% block title %}Plánovač směn - Panther Security{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 16px; margin-bottom: 24px;">
-    <div>
-        <span class="badge-tag yellow">DISPEČERSKÝ PLÁNOVAČ</span>
-        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Rozpis služeb na den: {{ selected_date|date:"l d.m.Y" }}</h1>
-        <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">Denní matice obsazenosti střežených stanovišť a vytížení pracovníků.</p>
-    </div>
+<style>
+    /* Google Calendar rozvržení napojené na proměnné z tvého style.css */
+    .gcal-layout {
+        display: grid;
+        grid-template-columns: 270px 1fr;
+        gap: 20px;
+        align-items: start;
+    }
+    @media screen and (max-width: 1024px) {
+        .gcal-layout {
+            grid-template-columns: 1fr;
+        }
+    }
 
-    <!-- PŘEPÍNAČ DNŮ -->
-    <div style="display: flex; align-items: center; gap: 8px;">
-        <a href="?date={{ prev_day|date:'Y-m-d' }}&mode={{ view_mode }}" class="btn btn-secondary">← {{ prev_day|date:"d.m." }}</a>
-        <a href="?mode={{ view_mode }}" class="btn {% if is_today %}btn-primary{% else %}btn-secondary{% endif %}">Dnes</a>
-        <a href="?date={{ next_day|date:'Y-m-d' }}&mode={{ view_mode }}" class="btn btn-secondary">{{ next_day|date:"d.m." }} →</a>
+    /* Postranní minikalendář */
+    .mini-cal {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+        text-align: center;
+        margin-top: 10px;
+    }
+    .mini-cal th {
+        color: var(--text-muted);
+        padding: 4px 0;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+    .mini-cal td {
+        padding: 4px 0;
+    }
+    .mini-cal-btn {
+        display: inline-flex;
+        width: 28px;
+        height: 28px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        color: var(--text-primary);
+        text-decoration: none;
+        font-weight: 600;
+        transition: all 0.15s ease;
+    }
+    .mini-cal-btn:hover {
+        background: var(--bg-surface);
+        color: #fff;
+    }
+    .mini-cal-btn.other-month {
+        color: var(--text-muted);
+        opacity: 0.5;
+    }
+    .mini-cal-btn.today {
+        border: 1px solid var(--info);
+        color: #60a5fa;
+    }
+    .mini-cal-btn.selected {
+        background: var(--panther-yellow) !important;
+        color: var(--panther-dark) !important;
+        font-weight: 800;
+    }
+
+    /* Karty a odznaky směn ve stylu událostí */
+    .shift-chip {
+        display: block;
+        padding: 6px 10px;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        font-size: 11px;
+        text-decoration: none;
+        border-left: 3px solid;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        background: rgba(255, 255, 255, 0.03);
+    }
+    .shift-chip:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    }
+    .shift-chip.status-APPROVED {
+        border-color: var(--success);
+        background: var(--success-bg);
+        color: #34d399;
+    }
+    .shift-chip.status-COMPLETED {
+        border-color: var(--panther-yellow);
+        background: var(--panther-yellow-glow);
+        color: var(--panther-yellow);
+    }
+    .shift-chip.status-ASSIGNED {
+        border-color: var(--info);
+        background: var(--info-bg);
+        color: #60a5fa;
+    }
+    .shift-chip.status-OPEN {
+        border-color: var(--danger);
+        background: var(--danger-bg);
+        color: #f87171;
+    }
+
+    /* Týdenní mřížka (7 sloupců) */
+    .week-columns-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        min-height: 520px;
+    }
+    @media screen and (max-width: 900px) {
+        .week-columns-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .week-col {
+        background: rgba(255, 255, 255, 0.015);
+        border: 1px solid var(--border-color);
+        border-radius: 8px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+    }
+    .week-col.is-today {
+        border-color: var(--panther-yellow);
+        background: rgba(250, 204, 21, 0.03);
+    }
+
+    /* Měsíční mřížka */
+    .month-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .month-table th {
+        color: var(--text-secondary);
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        padding: 10px;
+        text-align: center;
+        background: #0f172a;
+        border: 1px solid var(--border-color);
+    }
+    .month-table td {
+        border: 1px solid var(--border-color);
+        vertical-align: top;
+        height: 115px;
+        padding: 6px;
+        width: 14.28%;
+        background: var(--bg-card);
+    }
+    .month-table td.outside-month {
+        opacity: 0.35;
+        background: rgba(0, 0, 0, 0.2);
+    }
+    .month-table td.is-today {
+        background: rgba(250, 204, 21, 0.03);
+    }
+</style>
+
+<!-- HORNÍ LIŠTA VE STYLU GOOGLE KALENDÁŘE -->
+<div class="card" style="padding: 14px 20px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <span class="brand-badge" style="font-size: 10px; padding: 3px 8px;">DISPEČINK</span>
+            
+            <a href="?view={{ view_type }}&object_id={{ filter_obj }}&employee_id={{ filter_emp }}" class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;">Dnes</a>
+            
+            <div style="display: flex; gap: 4px;">
+                <a href="?date={{ prev_nav_date|date:'Y-m-d' }}&view={{ view_type }}&object_id={{ filter_obj }}&employee_id={{ filter_emp }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;">‹</a>
+                <a href="?date={{ next_nav_date|date:'Y-m-d' }}&view={{ view_type }}&object_id={{ filter_obj }}&employee_id={{ filter_emp }}" class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;">›</a>
+            </div>
+
+            <h2 style="font-size: 19px; font-weight: 800; color: #fff; margin: 0;">{{ period_title }}</h2>
+        </div>
+
+        <!-- PŘEPÍNAČ: DEN / TÝDEN / MĚSÍC -->
+        <div style="display: flex; gap: 4px; background: rgba(0, 0, 0, 0.35); padding: 4px; border-radius: 8px; border: 1px solid var(--border-color);">
+            <a href="?date={{ current_date|date:'Y-m-d' }}&view=day&object_id={{ filter_obj }}&employee_id={{ filter_emp }}"
+               class="btn {% if view_type == 'day' %}btn-primary{% else %}btn-secondary{% endif %}"
+               style="padding: 6px 14px; font-size: 12px; border: none;">Den</a>
+            <a href="?date={{ current_date|date:'Y-m-d' }}&view=week&object_id={{ filter_obj }}&employee_id={{ filter_emp }}"
+               class="btn {% if view_type == 'week' %}btn-primary{% else %}btn-secondary{% endif %}"
+               style="padding: 6px 14px; font-size: 12px; border: none;">Týden</a>
+            <a href="?date={{ current_date|date:'Y-m-d' }}&view=month&object_id={{ filter_obj }}&employee_id={{ filter_emp }}"
+               class="btn {% if view_type == 'month' %}btn-primary{% else %}btn-secondary{% endif %}"
+               style="padding: 6px 14px; font-size: 12px; border: none;">Měsíc</a>
+        </div>
     </div>
 </div>
 
-<!-- VOLBA REŽIMU ZOBRAZENÍ (PŘEPÍNAČ) -->
-<div style="display: flex; gap: 10px; margin-bottom: 20px;">
-    <a href="?date={{ selected_date|date:'Y-m-d' }}&mode=objects" class="btn {% if view_mode == 'objects' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px; padding: 10px 18px;">
-        🏢 Pohled dle střežených OBJEKTŮ
-    </a>
-    <a href="?date={{ selected_date|date:'Y-m-d' }}&mode=employees" class="btn {% if view_mode == 'employees' %}btn-primary{% else %}btn-secondary{% endif %}" style="font-size: 13px; padding: 10px 18px;">
-        👥 Pohled dle ZAMĚSTNANCŮ
-    </a>
-</div>
+<div class="gcal-layout">
+    
+    <!-- LEVÝ POSTRANNÍ PANEL (SIDEBAR) -->
+    <div class="card" style="margin-bottom: 20px; padding: 18px;">
+        <a href="#nova-smena" class="btn btn-primary" style="width: 100%; margin-bottom: 18px; font-weight: 800;">
+            ➕ Vypsat novou směnu
+        </a>
 
-{% if view_mode == 'objects' %}
-<!-- REŽIM A: POHLED PODLE OBJEKTŮ -->
-<div class="card">
-    <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">Přehled stanovišť a směn na den {{ selected_date|date:"d.m.Y" }}</h3>
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th style="width: 280px;">Střežený objekt (Klient)</th>
-                    <th>Rozpis směn na objektu (Čas, strážný, stav)</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in objects_data %}
-                <tr>
-                    <td>
-                        <strong style="color: #fff; font-size: 15px;">{{ item.object.name }}</strong>
-                        <div style="color: var(--text-muted); font-size: 12px;">Klient: {{ item.object.client.name }}</div>
-                        <div style="color: var(--text-muted); font-size: 11px;">📍 {{ item.object.city }}</div>
-                    </td>
-                    <td>
-                        {% if item.shifts %}
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                {% for s in item.shifts %}
-                                <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color);">
-                                    <div>
-                                        <span style="font-weight: 700; color: var(--panther-yellow); font-size: 13px;">
-                                            {{ s.start_time|date:"H:i" }} – {{ s.end_time|date:"H:i" }}
-                                        </span>
-                                        <span style="color: var(--text-muted); font-size: 12px; margin-left: 8px;">({{ s.planned_hours }}h)</span>
-                                        
-                                        {% if s.employee %}
-                                            <span style="margin-left: 12px; color: #fff; font-weight: 600;">👤 {{ s.employee.full_name }}</span>
-                                        {% else %}
-                                            <span class="badge-tag red" style="margin-left: 12px;">⚠️ VOLNÁ / NEPOKRYTÁ</span>
-                                        {% endif %}
-                                    </div>
-                                    <div>
-                                        {% if s.status == 'APPROVED' %}
-                                            <span class="badge-tag green">Schváleno</span>
-                                        {% elif s.status == 'COMPLETED' %}
-                                            <span class="badge-tag yellow">Čeká na schválení</span>
-                                        {% else %}
-                                            <span class="badge-tag blue">{{ s.get_status_display }}</span>
-                                        {% endif %}
-                                    </div>
-                                </div>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <span style="color: var(--text-muted); font-size: 12px; font-style: italic;">Na tento den není vypsána žádná směna.</span>
-                        {% endif %}
-                    </td>
-                </tr>
+        <!-- MINIKALENDÁŘ -->
+        <div style="margin-bottom: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <strong style="color: #fff; font-size: 13px;">{{ mini_title }}</strong>
+                <div style="display: flex; gap: 2px;">
+                    <a href="?date={{ prev_month_date|date:'Y-m-d' }}&view={{ view_type }}&object_id={{ filter_obj }}&employee_id={{ filter_emp }}" style="color: var(--text-secondary); text-decoration: none; padding: 2px 6px;">‹</a>
+                    <a href="?date={{ next_month_date|date:'Y-m-d' }}&view={{ view_type }}&object_id={{ filter_obj }}&employee_id={{ filter_emp }}" style="color: var(--text-secondary); text-decoration: none; padding: 2px 6px;">›</a>
+                </div>
+            </div>
+
+            <table class="mini-cal">
+                <thead>
+                    <tr>
+                        <th>P</th><th>Ú</th><th>S</th><th>Č</th><th>P</th><th>S</th><th>N</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in mini_month_weeks %}
+                    <tr>
+                        {% for day in week %}
+                        <td>
+                            <a href="?date={{ day.date|date:'Y-m-d' }}&view={{ view_type }}&object_id={{ filter_obj }}&employee_id={{ filter_emp }}"
+                               class="mini-cal-btn {% if not day.is_current_month %}other-month{% endif %} {% if day.is_today %}today{% endif %} {% if day.is_selected %}selected{% endif %}">
+                                {{ day.day_num }}
+                            </a>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 16px 0;">
+
+        <!-- FILTRY -->
+        <form method="get">
+            <input type="hidden" name="date" value="{{ current_date|date:'Y-m-d' }}">
+            <input type="hidden" name="view" value="{{ view_type }}">
+
+            <div class="form-group">
+                <label>🏢 Filtrovat dle objektu:</label>
+                <select name="object_id" class="form-control" onchange="this.form.submit()">
+                    <option value="">-- Všechny objekty --</option>
+                    {% for obj in active_objects %}
+                        <option value="{{ obj.id }}" {% if filter_obj == obj.id|stringformat:"s" %}selected{% endif %}>{{ obj.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>👥 Filtrovat dle pracovníka:</label>
+                <select name="employee_id" class="form-control" onchange="this.form.submit()">
+                    <option value="">-- Všichni pracovníci --</option>
+                    {% for emp in active_employees %}
+                        <option value="{{ emp.id }}" {% if filter_emp == emp.id|stringformat:"s" %}selected{% endif %}>{{ emp.full_name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            {% if filter_obj or filter_emp %}
+                <a href="?date={{ current_date|date:'Y-m-d' }}&view={{ view_type }}" style="font-size: 11px; color: var(--panther-yellow); text-decoration: underline;">Zrušit filtry</a>
+            {% endif %}
+        </form>
+
+        <div style="margin-top: 24px; font-size: 11px; color: var(--text-muted); line-height: 1.8;">
+            <div style="font-weight: 700; color: #fff; margin-bottom: 4px;">Barevné stavy:</div>
+            <div><span class="badge-tag green" style="padding: 2px 6px; font-size: 9px;">Schváleno</span> Hotovo v mzdách</div>
+            <div style="margin-top: 3px;"><span class="badge-tag yellow" style="padding: 2px 6px; font-size: 9px;">Ke schválení</span> Skončená služba</div>
+            <div style="margin-top: 3px;"><span class="badge-tag blue" style="padding: 2px 6px; font-size: 9px;">Obsazeno</span> Naplánováno</div>
+            <div style="margin-top: 3px;"><span class="badge-tag red" style="padding: 2px 6px; font-size: 9px;">Burza</span> Volná směna</div>
+        </div>
+    </div>
+
+    <!-- PRAVÝ HLAVNÍ OBSAH -->
+    <div class="card" style="padding: 18px;">
+        
+        <!-- 1. TÝDENNÍ POHLED -->
+        {% if view_type == 'week' %}
+        <div class="week-columns-grid">
+            {% for col in week_columns %}
+            <div class="week-col {% if col.is_today %}is-today{% endif %}">
+                <div style="text-align: center; padding-bottom: 8px; border-bottom: 1px solid var(--border-color); margin-bottom: 8px;">
+                    <div style="font-size: 11px; color: var(--text-muted); font-weight: 700;">{{ col.day_name }}</div>
+                    <a href="?date={{ col.date|date:'Y-m-d' }}&view=day&object_id={{ filter_obj }}&employee_id={{ filter_emp }}"
+                       style="display: inline-flex; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 50%; font-size: 14px; font-weight: 800; text-decoration: none; margin-top: 2px;
+                              {% if col.is_today %}background: var(--panther-yellow); color: var(--panther-dark);{% else %}color: #fff;{% endif %}">
+                        {{ col.day_num }}
+                    </a>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 4px; flex-grow: 1;">
+                    {% for s in col.shifts %}
+                    <a href="{% url 'shift_detail' s.id %}" class="shift-chip status-{{ s.status }}">
+                        <div style="font-weight: 800; font-size: 11px;">{{ s.start_time|date:"H:i" }}–{{ s.end_time|date:"H:i" }}</div>
+                        <div style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; color: #fff;">{{ s.guard_object.name }}</div>
+                        <div style="font-size: 10px; color: var(--text-secondary);">
+                            {% if s.employee %}👤 {{ s.employee.last_name }}{% else %}⚠️ Volná{% endif %}
+                        </div>
+                    </a>
+                    {% empty %}
+                    <div style="font-size: 11px; color: var(--text-muted); text-align: center; margin-top: 20px;">—</div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 2. DENNÍ POHLED -->
+        {% elif view_type == 'day' %}
+        <div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                <h3 style="font-size: 17px; color: #fff; margin: 0;">Směny na den {{ current_date|date:"l d.m.Y" }}</h3>
+                <span class="badge-tag yellow">{{ day_shifts|length }} směn</span>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                {% for s in day_shifts %}
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-radius: 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-left: 4px solid {% if s.status == 'APPROVED' %}var(--success){% elif s.status == 'COMPLETED' %}var(--panther-yellow){% elif s.status == 'OPEN' %}var(--danger){% else %}var(--info){% endif %};">
+                    <div>
+                        <span style="font-size: 15px; font-weight: 800; color: var(--panther-yellow);">{{ s.start_time|date:"H:i" }} – {{ s.end_time|date:"H:i" }}</span>
+                        <span style="color: var(--text-muted); font-size: 13px; margin-left: 8px;">({{ s.planned_hours }} hod)</span>
+                        <div style="font-size: 16px; font-weight: 700; color: #fff; margin-top: 4px;">{{ s.guard_object.name }}</div>
+                        <div style="font-size: 12px; color: var(--text-muted);">Klient: {{ s.guard_object.client.name }} | 📍 {{ s.guard_object.city }}</div>
+                    </div>
+
+                    <div style="text-align: right;">
+                        <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px;">
+                            {% if s.employee %}👤 {{ s.employee.full_name }}{% else %}<span class="badge-tag red">VOLNÁ NA BURZE</span>{% endif %}
+                        </div>
+                        <div>
+                            {% if s.status == 'APPROVED' %}
+                                <span class="badge-tag green">Schváleno ({{ s.total_cost }} Kč)</span>
+                            {% elif s.status == 'COMPLETED' %}
+                                <a href="{% url 'approve_shift' s.id %}" class="btn btn-primary" style="padding: 5px 12px; font-size: 11px;">✅ Schválit</a>
+                            {% else %}
+                                <span class="badge-tag blue">{{ s.get_status_display }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div style="text-align: center; color: var(--text-muted); padding: 40px;">
+                    Na tento den není pro vybrané filtry naplánována žádná služba.
+                </div>
                 {% endfor %}
-            </tbody>
-        </table>
-    </div>
-</div>
+            </div>
+        </div>
 
-{% else %}
-<!-- REŽIM B: POHLED PODLE ZAMĚSTNANCŮ -->
-<div class="card">
-    <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">Vytížení zaměstnanců na den {{ selected_date|date:"d.m.Y" }}</h3>
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th style="width: 250px;">Zaměstnanec</th>
-                    <th>Stav a přiřazené směny</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for item in employees_data %}
-                <tr>
-                    <td>
-                        <strong style="color: #fff; font-size: 14px;">{{ item.employee.full_name }}</strong>
-                        <div style="color: var(--text-muted); font-size: 12px;">{{ item.employee.phone|default:"Bez tel." }}</div>
-                    </td>
-                    <td>
-                        {% if item.shifts %}
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                {% for s in item.shifts %}
-                                <div style="display: inline-flex; align-items: center; gap: 10px; padding: 6px 12px; border-radius: 6px; background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25);">
-                                    <span style="color: #60a5fa; font-weight: 700;">{{ s.start_time|date:"H:i" }} – {{ s.end_time|date:"H:i" }}</span>
-                                    <span style="color: #fff;">🏢 <strong>{{ s.guard_object.name }}</strong></span>
-                                    <span style="font-size: 11px; color: var(--text-muted);">({{ s.planned_hours }}h)</span>
-                                </div>
-                                {% endfor %}
+        <!-- 3. MĚSÍČNÍ POHLED -->
+        {% elif view_type == 'month' %}
+        <div class="table-responsive">
+            <table class="month-table">
+                <thead>
+                    <tr>
+                        <th>Pondělí</th><th>Úterý</th><th>Středa</th><th>Čtvrtek</th><th>Pátek</th><th>Sobota</th><th>Neděle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for week in month_grid %}
+                    <tr>
+                        {% for cell in week %}
+                        <td class="{% if not cell.is_current_month %}outside-month{% endif %} {% if cell.is_today %}is-today{% endif %}">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                                <a href="?date={{ cell.date|date:'Y-m-d' }}&view=day&object_id={{ filter_obj }}&employee_id={{ filter_emp }}"
+                                   style="font-size: 11px; font-weight: 800; text-decoration: none;
+                                          {% if cell.is_today %}background: var(--panther-yellow); color: var(--panther-dark); padding: 1px 5px; border-radius: 4px;{% else %}color: var(--text-secondary);{% endif %}">
+                                    {{ cell.day_num }}
+                                </a>
+                                {% if cell.shifts %}
+                                    <span style="font-size: 10px; color: var(--text-muted);">{{ cell.shifts|length }} sm.</span>
+                                {% endif %}
                             </div>
-                        {% else %}
-                            <span class="badge-tag green" style="font-size: 11px;">VOLNO / MŮŽE SLOUŽIT</span>
-                        {% endif %}
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+
+                            <div style="display: flex; flex-direction: column; gap: 2px;">
+                                {% for s in cell.shifts|slice:":3" %}
+                                <a href="{% url 'shift_detail' s.id %}" class="shift-chip status-{{ s.status }}" style="padding: 2px 4px; margin-bottom: 2px; font-size: 10px;">
+                                    <strong>{{ s.start_time|date:"H:i" }}</strong> {{ s.guard_object.name|truncatechars:10 }}
+                                </a>
+                                {% endfor %}
+                                {% if cell.shifts|length > 3 %}
+                                    <div style="font-size: 9px; color: var(--text-muted); text-align: center;">+{{ cell.shifts|length|add:"-3" }} další</div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
     </div>
 </div>
-{% endif %}
 
 <!-- FORMULÁŘ PRO VYPSÁNÍ SMĚNY -->
-<div class="card" style="margin-top: 24px;">
-    <h3 style="font-size: 16px; color: var(--panther-yellow); margin-top: 0; margin-bottom: 14px;">➕ Vypsat novou směnu na den {{ selected_date|date:"d.m.Y" }}</h3>
+<div class="card" id="nova-smena" style="margin-top: 24px;">
+    <h3 style="font-size: 16px; color: var(--panther-yellow); margin-top: 0; margin-bottom: 14px;">➕ Rychlé vypsání směny</h3>
     <form method="post">
         {% csrf_token %}
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; align-items: flex-end;">
-            <div>
-                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Střežený objekt</label>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Střežený objekt</label>
                 {{ form.guard_object }}
             </div>
-            <div>
-                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Přiřadit strážného (volitelné)</label>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Přiřadit strážného (volitelné)</label>
                 {{ form.employee }}
             </div>
-            <div>
-                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Začátek směny</label>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Začátek směny</label>
                 {{ form.start_time }}
             </div>
-            <div>
-                <label style="font-size: 12px; color: var(--text-muted); display: block; margin-bottom: 4px;">Konec směny</label>
+            <div class="form-group" style="margin-bottom: 0;">
+                <label>Konec směny</label>
                 {{ form.end_time }}
             </div>
             <div>
