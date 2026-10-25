@@ -3,60 +3,68 @@
 {% block title %}Kokpit majitele - Panther Security{% endblock %}
 
 {% block content %}
-<div class="owner-header" style="margin-bottom: 24px;">
+<div class="owner-header" style="margin-bottom: 20px;">
     <span class="badge-tag yellow">EKONOMICKÝ KOKPIT MAJITELE</span>
-    <h1 style="font-size: 26px; color: #fff; margin: 8px 0 4px;">Finanční bilance &amp; Statistiky</h1>
+    <h1 style="font-size: 24px; color: #fff; margin: 6px 0 4px;">Finanční bilance &amp; Statistiky</h1>
     <p style="color: var(--text-muted); font-size: 13px; margin: 0;">Přehled hospodaření, porovnání tržeb, mezd a dodavatelských nákladů.</p>
 </div>
 
 <!-- OVLÁDACÍ LIŠTA -->
-<div class="card" style="padding: 14px 20px; margin-bottom: 24px;">
-    <div class="dashboard-controls" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px;">
-        <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-            <a href="{% url 'shift_planner_calendar' %}" class="btn btn-secondary">
+<div class="card" style="padding: 14px 16px; margin-bottom: 20px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+        <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; max-width: 100%;">
+            <a href="{% url 'shift_planner_calendar' %}" class="btn btn-secondary" style="font-size: 12px; padding: 8px 12px; flex: 1; min-width: 130px;">
                 📅 Plánovač směn
             </a>
-            <a href="{% url 'invoice_list' %}" class="btn btn-secondary">
+            <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="font-size: 12px; padding: 8px 12px; flex: 1; min-width: 130px;">
                 📑 Faktury &amp; Doklady
             </a>
         </div>
 
-        <form method="get" style="display: flex; align-items: center; gap: 10px; margin: 0;">
-            <span style="color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase;">Měsíc:</span>
-            <input type="number" name="month" min="1" max="12" value="{{ month }}" class="form-control" style="width: 70px; text-align: center; padding: 6px 10px;">
-            <span style="color: var(--text-muted); font-size: 12px; font-weight: 700; text-transform: uppercase;">Rok:</span>
-            <input type="number" name="year" min="2020" max="2035" value="{{ year }}" class="form-control" style="width: 90px; text-align: center; padding: 6px 10px;">
-            <button type="submit" class="btn btn-primary" style="padding: 6px 14px; font-size: 12px;">Zobrazit</button>
+        <form method="get" style="display: flex; align-items: center; gap: 8px; margin: 0; flex-wrap: wrap; width: 100%; justify-content: flex-start;">
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase;">Měsíc:</span>
+                <input type="number" name="month" min="1" max="12" value="{{ month }}" class="form-control" style="width: 65px; text-align: center; padding: 6px 4px; font-size: 13px;">
+            </div>
+            
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <span style="color: var(--text-muted); font-size: 11px; font-weight: 700; text-transform: uppercase;">Rok:</span>
+                <input type="number" name="year" min="2020" max="2035" value="{{ year }}" class="form-control" style="width: 80px; text-align: center; padding: 6px 4px; font-size: 13px;">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="padding: 6px 14px; font-size: 12px; margin-left: auto;">
+                Zobrazit
+            </button>
         </form>
     </div>
 </div>
 
 <!-- KARTY UKAZATELŮ -->
-<div class="stats-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
-    <div class="card" style="margin: 0; padding: 20px; border-left: 4px solid #10b981;">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 24px;">
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #10b981;">
         <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Vydané tržby (Klienti)</div>
-        <div style="font-size: 26px; font-weight: 800; color: #10b981; margin-top: 6px;">
+        <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 4px;">
             + {{ total_revenue }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
         </div>
     </div>
 
-    <div class="card" style="margin: 0; padding: 20px; border-left: 4px solid #ef4444;">
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #ef4444;">
         <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Náklady (Dodavatelé)</div>
-        <div style="font-size: 26px; font-weight: 800; color: #ef4444; margin-top: 6px;">
+        <div style="font-size: 24px; font-weight: 800; color: #ef4444; margin-top: 4px;">
             - {{ total_supplier_costs|default:total_costs|default:"0" }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
         </div>
     </div>
 
-    <div class="card" style="margin: 0; padding: 20px; border-left: 4px solid var(--panther-yellow);">
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid var(--panther-yellow);">
         <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Schválené mzdy strážných</div>
-        <div style="font-size: 26px; font-weight: 800; color: var(--panther-yellow); margin-top: 6px;">
+        <div style="font-size: 24px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
             - {{ total_payroll }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
         </div>
     </div>
 
-    <div class="card" style="margin: 0; padding: 20px; border-left: 4px solid #3b82f6;">
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #3b82f6;">
         <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Čistý hospodářský zisk</div>
-        <div style="font-size: 26px; font-weight: 800; color: {% if net_profit >= 0 %}#60a5fa{% else %}#ef4444{% endif %}; margin-top: 6px;">
+        <div style="font-size: 24px; font-weight: 800; color: {% if net_profit >= 0 %}#60a5fa{% else %}#ef4444{% endif %}; margin-top: 4px;">
             {{ net_profit }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
         </div>
         {% if margin_percent %}
@@ -66,38 +74,38 @@
 </div>
 
 <!-- SOUHRNNÉ POROVNÁNÍ FINANCÍ -->
-<div class="card" style="padding: 20px;">
-    <h3 style="font-size: 16px; color: #fff; margin: 0 0 16px; display: flex; align-items: center; gap: 8px;">
+<div class="card" style="padding: 18px;">
+    <h3 style="font-size: 15px; color: #fff; margin: 0 0 14px; display: flex; align-items: center; gap: 8px;">
         📊 Porovnání toku financí za období {{ month }}/{{ year }}
     </h3>
 
-    <div style="display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; flex-direction: column; gap: 12px;">
         <div>
-            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
                 <span style="color: #10b981; font-weight: 600;">Tržby od klientů</span>
                 <strong style="color: #fff;">{{ total_revenue }} Kč</strong>
             </div>
-            <div style="background: rgba(255,255,255,0.06); height: 10px; border-radius: 5px; overflow: hidden;">
+            <div style="background: rgba(255,255,255,0.06); height: 8px; border-radius: 4px; overflow: hidden;">
                 <div style="background: #10b981; height: 100%; width: 100%;"></div>
             </div>
         </div>
 
         <div>
-            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
                 <span style="color: #ef4444; font-weight: 600;">Náklady na dodavatele</span>
                 <strong style="color: #fff;">{{ total_supplier_costs|default:total_costs|default:"0" }} Kč</strong>
             </div>
-            <div style="background: rgba(255,255,255,0.06); height: 10px; border-radius: 5px; overflow: hidden;">
+            <div style="background: rgba(255,255,255,0.06); height: 8px; border-radius: 4px; overflow: hidden;">
                 <div style="background: #ef4444; height: 100%; width: {% if total_revenue > 0 %}{% widthratio total_supplier_costs|default:total_costs|default:0 total_revenue 100 %}{% else %}0{% endif %}%;"></div>
             </div>
         </div>
 
         <div>
-            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
                 <span style="color: var(--panther-yellow); font-weight: 600;">Mzdy strážných</span>
                 <strong style="color: #fff;">{{ total_payroll }} Kč</strong>
             </div>
-            <div style="background: rgba(255,255,255,0.06); height: 10px; border-radius: 5px; overflow: hidden;">
+            <div style="background: rgba(255,255,255,0.06); height: 8px; border-radius: 4px; overflow: hidden;">
                 <div style="background: var(--panther-yellow); height: 100%; width: {% if total_revenue > 0 %}{% widthratio total_payroll total_revenue 100 %}{% else %}0{% endif %}%;"></div>
             </div>
         </div>

@@ -298,7 +298,7 @@ body {
     background: rgba(255, 255, 255, 0.03);
 }
 
-/* Formuláře */
+/* Formuláře & Ošetření iOS Safari datumů */
 .form-group {
     margin-bottom: 14px;
 }
@@ -313,16 +313,29 @@ body {
     letter-spacing: 0.5px;
 }
 
-.form-control, select, textarea, input[type="text"], input[type="email"], input[type="password"], input[type="date"], input[type="datetime-local"], input[type="number"], input[type="file"] {
+.form-control, select, textarea, 
+input[type="text"], input[type="email"], input[type="password"], 
+input[type="number"], input[type="file"], input[type="date"], input[type="datetime-local"] {
     width: 100%;
     padding: 10px 12px;
     font-size: 14px;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    background: #090d16;
+    background-color: #090d16;
     color: #ffffff;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
+    color-scheme: dark; /* Donutí iOS Safari zobrazit bílý text v datepickerech! */
+}
+
+/* Speciální reset pro iOS Safari pro input[type="date"] */
+input[type="date"], input[type="datetime-local"] {
+    min-height: 42px;
+    min-width: 0;
+    -webkit-appearance: none;
+    appearance: none;
+    background-color: #0f172a;
+    color: #ffffff !important;
 }
 
 .form-control:focus, select:focus, textarea:focus, input:focus {
@@ -355,7 +368,7 @@ footer {
 }
 
 /* ==========================================================================
-   RESPONZIVITA PRO MOBILY & TABLETY (ČISTÁ A BEZPEČNÁ)
+   MOBILNÍ RESPONZIVITA (SMARTPHONES)
    ========================================================================== */
 
 @media (max-width: 992px) {
@@ -428,32 +441,18 @@ footer {
         line-height: 1.25;
     }
 
-    /* Zalamování ovládacích flex lišt na mobilu */
-    .dashboard-controls,
-    .page-header {
+    /* Rozebrání třísloupcových gridů na mobilu pod sebe (např. Vystavení, DUZP, Splatnost) */
+    div[style*="grid-template-columns: repeat(3, 1fr)"],
+    div[style*="grid-template-columns: 1fr 1fr 1fr"] {
+        display: flex !important;
         flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 12px !important;
+        gap: 10px !important;
     }
 
-    .dashboard-controls form {
+    /* Datumové pickery na plnou šířku a s čitelným písmem */
+    input[type="date"], input[type="datetime-local"] {
         width: 100% !important;
-        justify-content: space-between !important;
-        flex-wrap: wrap !important;
-    }
-
-    .dashboard-controls .btn {
-        width: 100% !important;
-    }
-
-    /* Karty ukazatelů se na mobilu poskládají pod sebe */
-    .stats-grid {
-        grid-template-columns: 1fr !important;
-        gap: 12px !important;
-    }
-
-    /* Zajištění responzivity tabulek */
-    .table-responsive {
-        margin-bottom: 10px;
+        min-height: 44px !important;
+        font-size: 15px !important;
     }
 }
