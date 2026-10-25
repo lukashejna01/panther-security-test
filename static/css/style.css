@@ -574,3 +574,23 @@ footer {
         word-break: break-word !important;
     }
 }
+
+@media (max-width: 768px) {
+    /* Zajištění, že žádný input ani výběr nepřeteče kartu */
+    .card form,
+    .card input,
+    .card select {
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Ovládací lišta měsíce se zalomí pod sebe */
+    .card div[style*="justify-content: space-between"] {
+        flex-direction: column !important;
+        align-items: stretch !important;
+    }
+
+    .card div[style*="justify-content: space-between"] > * {
+        width: 100% !important;
+    }
+}
