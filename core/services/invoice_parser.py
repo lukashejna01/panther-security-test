@@ -109,7 +109,7 @@ Vrať VÝHRADNĚ validní JSON bez jakýchkoli formátovacích značek (žádné
     if is_pdf:
         headers["anthropic-beta"] = "pdfs-2024-09-25"
 
-    url = "[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)"
+    url = "https://api.anthropic.com/v1/messages"
 
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=60)
