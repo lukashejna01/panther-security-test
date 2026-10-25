@@ -1,10 +1,23 @@
 """
 Služba pro automatické vytěžování dat z přijatých dodavatelských faktur pomocí Claude API.
+Používá přímé volání přes urllib pro maximální stabilitu na PythonAnywhere.
 """
 
 import base64
 import json
-from .claude_ocr import get_anthropic_client
+import os
+import urllib.request
+from django.conf import settings
+
+
+def _get_api_key():
+    key = getattr(settings, 'ANTHROPIC_API_KEY', None) or os.getenv('ANTHROPIC_API_KEY')
+    if not key and os.path.exists('.env'):
+        for line in open('.env'):
+            if line.startswith('ANTHROPIC_API_KEY='):
+                key = line.strip().split('=', 1)[1].strip('\"\' ')
+                break
+    return key
 
 
 def extract_data_from_invoice(file_obj) -> dict:
@@ -70,56 +83,54 @@ Vrať VÝHRADNĚ validní JSON bez jakýchkoli formátovacích značek (žádné
             }
         }
 
-    client = get_anthropic_client()
+    api_key = _get_api_key()
+    if not api_key:
+        raise RuntimeError("Nenalezen ANTHROPIC_API_KEY v konfiguraci ani v .env.")
 
-    # Seznam dostupných modelů (včetně standardního Sonnet 3.5 i novějších)
-    models_to_try = [
-        "claude-3-5-sonnet-20241022",
-        "claude-3-5-sonnet-latest",
-        "claude-3-haiku-20240307",
-    ]
-
-    response = None
-    last_error = None
-
-    for model_name in models_to_try:
-        try:
-            # Odstraněn parametr temperature, který způsoboval chybu
-            kwargs = {
-                "model": model_name,
-                "max_tokens": 1500,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            content_item,
-                            {"type": "text", "text": prompt}
-                        ]
-                    }
+    payload = {
+        "model": "claude-sonnet-4-6",
+        "max_tokens": 2000,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    content_item,
+                    {"type": "text", "text": prompt}
                 ]
             }
-            if is_pdf:
-                kwargs["betas"] = ["pdfs-2024-09-25"]
-                response = client.beta.messages.create(**kwargs)
-            else:
-                response = client.messages.create(**kwargs)
+        ]
+    }
 
-            if response:
-                break
-        except Exception as e:
-            last_error = e
-            continue
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json",
+        "Accept-Encoding": "identity",
+    }
+    if is_pdf:
+        headers["anthropic-beta"] = "pdfs-2024-09-25"
 
-    if not response:
-        raise RuntimeError(f"Chyba při vytěžování faktury: {last_error}")
+    req = urllib.request.Request(
+        "[https://api.anthropic.com/v1/messages](https://api.anthropic.com/v1/messages)",
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST"
+    )
+
+    try:
+        with urllib.request.urlopen(req) as resp:
+            resp_data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8")
+        raise RuntimeError(f"Chyba Anthropic API ({e.code}): {err_body}")
+    except Exception as e:
+        raise RuntimeError(f"Chyba spojení s Anthropic API: {e}")
 
     result_text = ""
-    for block in response.content:
-        if getattr(block, "type", None) == "text":
-            result_text = block.text
+    for block in resp_data.get("content", []):
+        if block.get("type") == "text":
+            result_text = block.get("text", "")
             break
-    if not result_text:
-        result_text = response.content[0].text
 
     result_text = result_text.strip()
     if result_text.startswith("```"):
