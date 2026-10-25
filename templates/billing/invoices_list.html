@@ -73,7 +73,7 @@
     </div>
 </div>
 
-<!-- VYDANÉ FAKTURY KLIENTŮM -->
+<!-- TABULKA 1: VYDANÉ FAKTURY KLIENTŮM -->
 <div class="card" style="margin-bottom: 24px;">
     <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">📄 Vydané faktury klientům ({{ outgoing_invoices|length }})</h3>
     <div class="table-responsive">
@@ -140,7 +140,7 @@
     </div>
 </div>
 
-<!-- PŘIJATÉ FAKTURY OD DODAVATELŮ -->
+<!-- TABULKA 2: PŘIJATÉ FAKTURY OD DODAVATELŮ -->
 <div class="card">
     <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 14px;">📥 Přijaté faktury od dodavatelů ({{ incoming_invoices|length }})</h3>
     <div class="table-responsive">
@@ -153,6 +153,7 @@
                     <th>Splatnost</th>
                     <th>Částka s DPH</th>
                     <th>Stav</th>
+                    <th>Příloha</th>
                     <th style="text-align: right;">Úhrada</th>
                 </tr>
             </thead>
@@ -169,6 +170,15 @@
                             {{ inv.payment_badge.label }}
                         </span>
                     </td>
+                    <td>
+                        {% if inv.document_file %}
+                            <a href="{{ inv.document_file.url }}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" title="Zobrazit originální nahraný dokument">
+                                📎 PDF faktury
+                            </a>
+                        {% else %}
+                            <span style="color: var(--text-muted); font-size: 11px;">Bez přílohy</span>
+                        {% endif %}
+                    </td>
                     <td style="text-align: right;">
                         {% if inv.is_paid %}
                             <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
@@ -183,7 +193,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Za vybrané období nebyly nalezeny žádné přijaté faktury.</td>
+                    <td colspan="8" style="text-align: center; color: var(--text-muted); padding: 24px;">Za vybrané období nebyly nalezeny žádné přijaté faktury.</td>
                 </tr>
                 {% endfor %}
             </tbody>

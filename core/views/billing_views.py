@@ -219,7 +219,6 @@ def invoice_detail_view(request, variable_symbol):
     encoded_spayd = urllib.parse.quote(spayd_string)
     qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={encoded_spayd}&margin=0"
 
-    # Formátování položek a celkových částek s mezerami
     formatted_items = []
     for it in invoice.items.all():
         formatted_items.append({
@@ -343,16 +342,24 @@ def generate_client_invoice_view(request):
 @login_required
 @role_required([SystemRole.OWNER])
 def upload_incoming_invoice_view(request):
-    """Nahrání přijaté faktury a její vytěžení přes Claude AI."""
+    """Nahrání přijaté faktury, vytěžení přes Claude AI a bezpečné uložení do nákladů včetně souboru."""
     upload_form = InvoiceUploadForm()
     invoice_form = IncomingInvoiceForm()
+    today = timezone.localdate()
 
     if request.method == 'POST':
         if 'scan_invoice' in request.POST:
             upload_form = InvoiceUploadForm(request.POST, request.FILES)
             if upload_form.is_valid():
                 try:
-                    data = extract_data_from_invoice(request.FILES['invoice_file'])
+                    uploaded_file = request.FILES['invoice_file']
+                    data = extract_data_from_invoice(uploaded_file)
+
+                    # Bezpečný parsing dat, aby pole nikdy nebyla prázdná
+                    issue_val = data.get('issue_date') or str(today)
+                    tax_val = data.get('tax_date') or issue_val
+                    due_val = data.get('due_date') or str(today + timedelta(days=14))
+
                     initial_data = {
                         'supplier_name': data.get('supplier_name', ''),
                         'supplier_ico': data.get('supplier_ico', ''),
@@ -360,6 +367,9 @@ def upload_incoming_invoice_view(request):
                         'supplier_bank_account': data.get('supplier_bank_account', ''),
                         'invoice_number': data.get('invoice_number', ''),
                         'variable_symbol': data.get('variable_symbol', ''),
+                        'issue_date': issue_val,
+                        'tax_date': tax_val,
+                        'due_date': due_val,
                         'amount_without_vat': data.get('amount_without_vat', 0.0),
                         'vat_rate': data.get('vat_rate', 21),
                         'vat_amount': data.get('vat_amount', 0.0),
@@ -367,24 +377,44 @@ def upload_incoming_invoice_view(request):
                         'notes': data.get('notes', ''),
                     }
                     invoice_form = IncomingInvoiceForm(initial=initial_data)
-                    messages.info(request, "Doklad byl vytěžen. Zkontrolujte údaje a uložte.")
+                    messages.info(request, "Doklad byl úspěšně vytěžen přes Claude AI. Zkontrolujte prosím údaje a klikněte na Uložit.")
                 except Exception as e:
                     messages.error(request, f"Chyba analýzy faktury: {e}")
+            else:
+                messages.error(request, "Vyberte prosím platný soubor faktury (PDF, JPG, PNG).")
 
         elif 'save_invoice' in request.POST:
             invoice_form = IncomingInvoiceForm(request.POST, request.FILES)
             if invoice_form.is_valid():
                 inv = invoice_form.save(commit=False)
                 inv.invoice_type = InvoiceType.INCOMING
+                if not inv.issue_date:
+                    inv.issue_date = today
+                if not inv.due_date:
+                    inv.due_date = today + timedelta(days=14)
                 if not inv.invoice_number:
                     year = inv.issue_date.year
                     count = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING, issue_date__year=year).count() + 1
-                    inv.invoice_number = f"{year}{count:04d}"
-                inv.save()
-                messages.success(request, f"Přijatá faktura #{inv.invoice_number} byla uložena do nákladů.")
-                return redirect('invoice_list')
+                    inv.invoice_number = f"PF-{year}{count:04d}"
 
-    context = {'upload_form': upload_form, 'invoice_form': invoice_form}
+                # Pokud byl soubor přiložen, uloží se
+                if 'document_file' in request.FILES:
+                    inv.document_file = request.FILES['document_file']
+
+                inv.save()
+                messages.success(request, f"Přijatá faktura #{inv.invoice_number} byla úspěšně uložena do nákladů.")
+                return redirect('invoice_list')
+            else:
+                # Vypsání konkrétních chyb, pokud validace selže
+                errors = []
+                for field, errs in invoice_form.errors.items():
+                    errors.append(f"{field}: {', '.join(errs)}")
+                messages.error(request, f"Formulář obsahuje chyby a nelze jej uložit: {'; '.join(errors)}")
+
+    context = {
+        'upload_form': upload_form,
+        'invoice_form': invoice_form,
+    }
     return render(request, 'billing/invoice_incoming_upload.html', context)
 
 
