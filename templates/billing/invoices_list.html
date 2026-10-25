@@ -133,6 +133,9 @@
                             <a href="{% url 'invoice_detail' inv.variable_symbol|default:inv.invoice_number %}" target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
                                 🖨️ PDF / Tisk
                             </a>
+                            <a href="{% url 'invoice_delete' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Smazat doklad">
+                                🗑️
+                            </a>
                         </div>
                     </td>
                 </tr>
@@ -160,7 +163,7 @@
                     <th>Částka s DPH</th>
                     <th>Stav</th>
                     <th>Příloha dokladu</th>
-                    <th style="text-align: right;">Úhrada</th>
+                    <th style="text-align: right;">Úhrada &amp; Akce</th>
                 </tr>
             </thead>
             <tbody>
@@ -207,15 +210,21 @@
                         {% endif %}
                     </td>
                     <td style="text-align: right;">
-                        {% if inv.status == 'PAID' %}
-                            <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
-                                ↩ Zrušit
+                        <div style="display: inline-flex; gap: 6px;">
+                            {% if inv.status == 'PAID' %}
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
+                                    ↩ Zrušit
+                                </a>
+                            {% else %}
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #6ee7b7;">
+                                    ✓ Zaplaceno
+                                </a>
+                            {% endif %}
+                            
+                            <a href="{% url 'invoice_delete' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Smazat fakturu z evidence">
+                                🗑️
                             </a>
-                        {% else %}
-                            <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #6ee7b7;">
-                                ✓ Zaplaceno
-                            </a>
-                        {% endif %}
+                        </div>
                     </td>
                 </tr>
                 {% empty %}

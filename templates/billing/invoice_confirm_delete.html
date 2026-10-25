@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+
+{% block title %}Smazat fakturu {{ invoice.invoice_number }} - Panther Security{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 520px; margin: 40px auto; border-color: rgba(239, 68, 68, 0.4); text-align: center; padding: 32px 24px;">
+    <div style="font-size: 42px; margin-bottom: 12px;">🗑️</div>
+    <h2 style="margin: 0 0 10px; color: #fff; font-size: 22px;">Opravdu smazat tuto fakturu?</h2>
+    
+    <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">
+        Chystáte se trvale odstranit fakturu č. <strong style="color: #fff;">{{ invoice.invoice_number }}</strong> 
+        od dodavatele <strong style="color: #fff;">{{ invoice.supplier_name|default:invoice.supplier.name|default:"Dodavatel" }}</strong> 
+        v celkové částce <strong style="color: #ef4444;">{{ invoice.total_amount }} Kč</strong>.
+        <br><br>
+        Tato akce je nevratná a odstraní také archivovaný PDF soubor.
+    </p>
+
+    <form method="post" style="display: flex; justify-content: center; gap: 14px;">
+        {% csrf_token %}
+        <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="padding: 10px 20px;">
+            Zrušit
+        </a>
+        <button type="submit" class="btn btn-primary" style="background: #ef4444; border-color: #ef4444; color: #fff; padding: 10px 20px; font-weight: 700;">
+            Ano, trvale smazat fakturu
+        </button>
+    </form>
+</div>
+{% endblock %}

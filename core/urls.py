@@ -45,6 +45,7 @@ urlpatterns = [
     path('fakturace/vydat/nova/', views.generate_client_invoice_view, name='invoice_generate'),
     path('fakturace/<str:variable_symbol>/', views.invoice_detail_view, name='invoice_detail'),
     path('fakturace/<int:invoice_id>/zaplaceno/', views.toggle_invoice_payment_status_view, name='invoice_toggle_payment'),
+    path('fakturace/<int:invoice_id>/smazat/', views.invoice_delete_view, name='invoice_delete'),
 
     # Správa odběratelů (klientů) a střežených objektů
     path('klienti/', views.client_list_view, name='client_list'),

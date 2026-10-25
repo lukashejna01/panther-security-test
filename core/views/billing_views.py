@@ -358,7 +358,7 @@ def generate_client_invoice_view(request):
 def upload_incoming_invoice_view(request):
     """
     Nahrání přijaté faktury:
-    - Soubor z kroku 1 se automaticky uloží do session/tempu, takže ho uživatel nemusí nahrávat znovu.
+    - Soubor z kroku 1 se automaticky uloží do session/tempu.
     - Claude AI vytěží data do formuláře.
     - Při uložení se původní doklad automaticky přiřadí do pole document_file.
     """
@@ -370,7 +370,6 @@ def upload_incoming_invoice_view(request):
     original_filename = request.session.get('uploaded_invoice_orig_name', '')
 
     if request.method == 'POST':
-        # 1. KROK: ANALÝZA SOUBORU PŘES AI
         if 'scan_invoice' in request.POST:
             upload_form = InvoiceUploadForm(request.POST, request.FILES)
             if upload_form.is_valid():
@@ -379,7 +378,6 @@ def upload_incoming_invoice_view(request):
                     file_content = uploaded_file.read()
                     uploaded_file.seek(0)
 
-                    # Uložíme dočasně soubor do media složky pro automatické připojení
                     temp_dir = os.path.join(settings.MEDIA_ROOT, 'temp_invoices')
                     os.makedirs(temp_dir, exist_ok=True)
                     safe_name = f"{int(timezone.now().timestamp())}_{uploaded_file.name}"
@@ -415,13 +413,12 @@ def upload_incoming_invoice_view(request):
                         'notes': data.get('notes', ''),
                     }
                     invoice_form = IncomingInvoiceForm(initial=initial_data)
-                    messages.info(request, "Doklad byl úspěšně vytěžen přes Claude AI. Zkontrolujte prosím údaje a klikněte na Uložit.")
+                    messages.info(request, "Doklad byl úspěšně vytěžen přes AI. Zkontrolujte prosím údaje a klikněte na Uložit.")
                 except Exception as e:
                     messages.error(request, f"Chyba analýzy faktury: {e}")
             else:
                 messages.error(request, "Vyberte prosím platný soubor faktury (PDF, JPG, PNG).")
 
-        # 2. KROK: ULOŽENÍ FAKTURY
         elif 'save_invoice' in request.POST:
             post_data = request.POST.copy()
             if not post_data.get('issue_date'):
@@ -446,10 +443,8 @@ def upload_incoming_invoice_view(request):
                     count = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING, issue_date__year=year).count() + 1
                     inv.invoice_number = f"PF-{year}{count:04d}"
 
-                # 1. Priorita: pokud byl soubor nahrán ručně ve 2. kroku
                 if 'document_file' in request.FILES:
                     inv.document_file = request.FILES['document_file']
-                # 2. Automatické připojení souboru z 1. kroku (analýzy)
                 elif temp_filename:
                     temp_path = os.path.join(settings.MEDIA_ROOT, 'temp_invoices', temp_filename)
                     if os.path.exists(temp_path):
@@ -477,6 +472,29 @@ def upload_incoming_invoice_view(request):
         'original_filename': original_filename,
     }
     return render(request, 'billing/invoice_incoming_upload.html', context)
+
+
+@login_required
+@role_required([SystemRole.OWNER])
+def invoice_delete_view(request, invoice_id):
+    """Trvalé smazání faktury (včetně smazání přiloženého PDF souboru z disku)."""
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+    inv_num = invoice.invoice_number
+
+    if request.method == 'POST':
+        # Smazání fyzického souboru, pokud existuje
+        if invoice.document_file:
+            try:
+                if os.path.isfile(invoice.document_file.path):
+                    os.remove(invoice.document_file.path)
+            except Exception:
+                pass
+
+        invoice.delete()
+        messages.success(request, f"Faktura #{inv_num} byla trvale smazána z účetnictví[cite: 2].")
+        return redirect('invoice_list')
+
+    return render(request, 'billing/invoice_confirm_delete.html', {'invoice': invoice})
 
 
 @login_required
