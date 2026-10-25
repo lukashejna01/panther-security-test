@@ -1,9 +1,10 @@
 """
 Fakturační agenda Panther Security: Vystavování vydaných faktur klientům,
 Claude OCR přijatých dodavatelských faktur a správa dodavatelů, klientů a objektů.
+Přístup k financím má výhradně majitel (SystemRole.OWNER).
 """
 
-from datetime import timedelta
+from datetime import timedelta, date
 from decimal import Decimal
 import urllib.parse
 from django.conf import settings
@@ -77,23 +78,98 @@ def _format_price(val):
 
 
 @login_required
-@role_required([SystemRole.OWNER, SystemRole.MANAGER])
+@role_required([SystemRole.OWNER])
 def invoice_list_view(request):
-    """Přehled fakturace s inteligentními barevnými stavy splatnosti."""
-    outgoing = Invoice.objects.filter(invoice_type=InvoiceType.OUTGOING).select_related('client').order_by('-issue_date')
-    incoming = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING).select_related('supplier').order_by('-issue_date')
+    """
+    Přehled fakturace pouze pro majitele s volbou období (měsíc / celý rok / vše)
+    a přepočtem celkových tržeb, nákladů a bilance.
+    """
+    now = timezone.now()
+    year_param = request.GET.get('year', str(now.year))
+    month_param = request.GET.get('month', str(now.month))
+
+    outgoing_qs = Invoice.objects.filter(invoice_type=InvoiceType.OUTGOING).select_related('client')
+    incoming_qs = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING).select_related('supplier')
+
+    # Filtrování podle roku
+    selected_year = None
+    if year_param != 'all':
+        try:
+            selected_year = int(year_param)
+            outgoing_qs = outgoing_qs.filter(issue_date__year=selected_year)
+            incoming_qs = incoming_qs.filter(issue_date__year=selected_year)
+        except ValueError:
+            selected_year = now.year
+            year_param = str(selected_year)
+
+    # Filtrování podle měsíce
+    selected_month = None
+    if month_param != 'all':
+        try:
+            selected_month = int(month_param)
+            outgoing_qs = outgoing_qs.filter(issue_date__month=selected_month)
+            incoming_qs = incoming_qs.filter(issue_date__month=selected_month)
+        except ValueError:
+            selected_month = now.month
+            month_param = str(selected_month)
+
+    outgoing = list(outgoing_qs.order_by('-issue_date', '-id'))
+    incoming = list(incoming_qs.order_by('-issue_date', '-id'))
+
+    sum_outgoing = sum(i.total_amount for i in outgoing)
+    sum_incoming = sum(i.total_amount for i in incoming)
+    sum_profit = sum_outgoing - sum_incoming
+
+    # Výpočet pro šipky předchozí / další měsíc
+    if selected_year and selected_month:
+        curr_dt = date(selected_year, selected_month, 1)
+        prev_dt = (curr_dt - timedelta(days=1)).replace(day=1)
+        next_dt = (curr_dt + timedelta(days=32)).replace(day=1)
+        prev_year, prev_month = prev_dt.year, prev_dt.month
+        next_year, next_month = next_dt.year, next_dt.month
+    else:
+        prev_year, prev_month = now.year, now.month
+        next_year, next_month = now.year, now.month
+
+    months_list = [
+        (1, 'Leden'), (2, 'Únor'), (3, 'Březen'), (4, 'Duben'),
+        (5, 'Květen'), (6, 'Červen'), (7, 'Červenec'), (8, 'Srpen'),
+        (9, 'Září'), (10, 'Říjen'), (11, 'Listopad'), (12, 'Prosinec')
+    ]
+    available_years = list(range(now.year - 2, now.year + 2))
+
+    if year_param == 'all' and month_param == 'all':
+        period_title = "Všechna období"
+    elif month_param == 'all':
+        period_title = f"Celý rok {year_param}"
+    else:
+        m_name = dict(months_list).get(selected_month, '')
+        period_title = f"{m_name} {year_param}"
 
     context = {
         'outgoing_invoices': outgoing,
         'incoming_invoices': incoming,
-        'total_outgoing': sum(i.total_amount for i in outgoing),
-        'total_incoming': sum(i.total_amount for i in incoming),
+        'total_outgoing': _format_price(sum_outgoing),
+        'total_incoming': _format_price(sum_incoming),
+        'net_profit': _format_price(sum_profit),
+        'is_profit_positive': sum_profit >= 0,
+        'year_param': year_param,
+        'month_param': month_param,
+        'period_title': period_title,
+        'months_list': months_list,
+        'available_years': available_years,
+        'prev_year': prev_year,
+        'prev_month': prev_month,
+        'next_year': next_year,
+        'next_month': next_month,
+        'is_current_month': (year_param == str(now.year) and month_param == str(now.month)),
+        'now': now,
     }
     return render(request, 'billing/invoices_list.html', context)
 
 
 @login_required
-@role_required([SystemRole.OWNER, SystemRole.MANAGER])
+@role_required([SystemRole.OWNER])
 def invoice_detail_view(request, variable_symbol):
     """Tiskový a PDF náhled vystaveného daňového dokladu pro klienta (podle VS, čísla i ID)."""
     lookup_filter = models.Q(variable_symbol=variable_symbol) | models.Q(invoice_number=variable_symbol)
@@ -170,7 +246,7 @@ def invoice_detail_view(request, variable_symbol):
 
 
 @login_required
-@role_required([SystemRole.OWNER, SystemRole.MANAGER])
+@role_required([SystemRole.OWNER])
 def toggle_invoice_payment_status_view(request, invoice_id):
     """Rychlá změna stavu faktury na Uhrazeno / Neuhrazeno."""
     invoice = get_object_or_404(Invoice, id=invoice_id)
@@ -191,7 +267,7 @@ def toggle_invoice_payment_status_view(request, invoice_id):
 
 
 @login_required
-@role_required([SystemRole.OWNER, SystemRole.MANAGER])
+@role_required([SystemRole.OWNER])
 def generate_client_invoice_view(request):
     """Vystavení nové faktury klientovi."""
     form = GenerateClientInvoiceForm(request.POST or None)
@@ -265,7 +341,7 @@ def generate_client_invoice_view(request):
 
 
 @login_required
-@role_required([SystemRole.OWNER, SystemRole.MANAGER])
+@role_required([SystemRole.OWNER])
 def upload_incoming_invoice_view(request):
     """Nahrání přijaté faktury a její vytěžení přes Claude AI."""
     upload_form = InvoiceUploadForm()
@@ -313,7 +389,7 @@ def upload_incoming_invoice_view(request):
 
 
 @login_required
-@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@role_required([SystemRole.OWNER])
 def client_list_view(request):
     """Přehled všech evidovaných odběratelů (klientů)."""
     clients = Client.objects.filter(is_active=True).prefetch_related('guard_objects', 'invoices').order_by('name')
@@ -321,7 +397,7 @@ def client_list_view(request):
 
 
 @login_required
-@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@role_required([SystemRole.OWNER])
 def client_create_view(request):
     """Samostatná stránka se zadáním nového odběratele."""
     form = ClientCreateForm(request.POST or None)
@@ -338,7 +414,7 @@ def client_create_view(request):
 
 
 @login_required
-@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@role_required([SystemRole.OWNER])
 def client_update_view(request, client_id):
     """Úprava údajů klienta."""
     client = get_object_or_404(Client, id=client_id)
@@ -353,7 +429,7 @@ def client_update_view(request, client_id):
 
 
 @login_required
-@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@role_required([SystemRole.OWNER])
 def client_detail_view(request, client_id):
     """Karta odběratele s kontaktními osobami, objekty a fakturami."""
     client = get_object_or_404(
@@ -400,7 +476,7 @@ def client_detail_view(request, client_id):
 
 
 @login_required
-@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@role_required([SystemRole.OWNER])
 def guard_object_update_view(request, object_id):
     """Úprava údajů střeženého stanoviště (objektu)."""
     guard_object = get_object_or_404(GuardObject.objects.select_related('client'), id=object_id)
