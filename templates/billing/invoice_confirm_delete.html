@@ -17,7 +17,8 @@
 
     <form method="post" style="display: flex; justify-content: center; gap: 14px;">
         {% csrf_token %}
-        <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="padding: 10px 20px;">
+        <input type="hidden" name="return_url" value="{{ return_url }}">
+        <a href="{{ return_url }}" class="btn btn-secondary" style="padding: 10px 20px;">
             Zrušit
         </a>
         <button type="submit" class="btn btn-primary" style="background: #ef4444; border-color: #ef4444; color: #fff; padding: 10px 20px; font-weight: 700;">

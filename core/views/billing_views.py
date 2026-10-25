@@ -477,9 +477,18 @@ def upload_incoming_invoice_view(request):
 @login_required
 @role_required([SystemRole.OWNER])
 def invoice_delete_view(request, invoice_id):
-    """Trvalé smazání faktury včetně fyzického souboru s bezpečným partner_name."""
+    """Trvalé smazání faktury včetně fyzického souboru s návratem na původně vybrané období."""
     invoice = get_object_or_404(Invoice, id=invoice_id)
     inv_num = invoice.invoice_number
+
+    # Zjištění kam se vrátit po smazání nebo zrušení
+    default_redirect = f"/fakturace/?year={invoice.issue_date.year}&month={invoice.issue_date.month}"
+    return_url = (
+        request.POST.get('return_url') 
+        or request.GET.get('next') 
+        or request.META.get('HTTP_REFERER') 
+        or default_redirect
+    )
 
     if request.method == 'POST':
         if invoice.document_file:
@@ -491,9 +500,9 @@ def invoice_delete_view(request, invoice_id):
 
         invoice.delete()
         messages.success(request, f"Faktura #{inv_num} byla trvale smazána z evidence.")
-        return redirect('invoice_list')
+        return redirect(return_url)
 
-    # Bezpečné zjištění názvu partnera přímo v Pythonu (žádné lookupy na None v šabloně)
+    # Bezpečné zjištění názvu partnera
     partner_name = "Nespecifikováno"
     if invoice.invoice_type == InvoiceType.OUTGOING and invoice.client:
         partner_name = invoice.client.name
@@ -505,8 +514,10 @@ def invoice_delete_view(request, invoice_id):
     context = {
         'invoice': invoice,
         'partner_name': partner_name,
+        'return_url': return_url,
     }
     return render(request, 'billing/invoice_confirm_delete.html', context)
+ 
 
 
 @login_required

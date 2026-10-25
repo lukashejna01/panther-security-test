@@ -121,11 +121,11 @@
                     <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px;">
                             {% if inv.status == 'PAID' %}
-                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #fca5a5;" title="Označit jako neuhrazenou">
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #fca5a5;" title="Označit jako neuhrazenou">
                                     ↩ Zrušit úhradu
                                 </a>
                             {% else %}
-                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #6ee7b7;" title="Označit jako zaplacenou">
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #6ee7b7;" title="Označit jako zaplacenou">
                                     ✓ Označit uhrazeno
                                 </a>
                             {% endif %}
@@ -133,7 +133,7 @@
                             <a href="{% url 'invoice_detail' inv.variable_symbol|default:inv.invoice_number %}" target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
                                 🖨️ PDF / Tisk
                             </a>
-                            <a href="{% url 'invoice_delete' inv.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Smazat doklad">
+                            <a href="{% url 'invoice_delete' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Smazat doklad">
                                 🗑️
                             </a>
                         </div>
@@ -212,16 +212,16 @@
                     <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px;">
                             {% if inv.status == 'PAID' %}
-                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
                                     ↩ Zrušit
                                 </a>
                             {% else %}
-                                <a href="{% url 'invoice_toggle_payment' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #6ee7b7;">
+                                <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #6ee7b7;">
                                     ✓ Zaplaceno
                                 </a>
                             {% endif %}
                             
-                            <a href="{% url 'invoice_delete' inv.id %}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Smazat fakturu z evidence">
+                            <a href="{% url 'invoice_delete' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5; border-color: rgba(239,68,68,0.3);" title="Smazat fakturu z evidence">
                                 🗑️
                             </a>
                         </div>
