@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from core.views import billing_views
 
 urlpatterns = [
     # Veřejné stránky a autentizace
@@ -38,19 +39,19 @@ urlpatterns = [
     path('portal/vyplatni-paska/<int:employee_id>/<int:year>/<int:month>/', views.payslip_detail_view, name='payslip_detail'),
     path('dispecink/mzdy/', views.payroll_summary_view, name='payroll_summary'),
 
-    # Fakturace a správa dokladů
-    path('fakturace/', views.invoice_list_view, name='invoice_list'),
-    path('faktury/', views.invoice_list_view),
-    path('fakturace/prijata/nahrat/', views.upload_incoming_invoice_view, name='invoice_incoming_upload'),
-    path('fakturace/vydat/nova/', views.generate_client_invoice_view, name='invoice_generate'),
-    path('fakturace/<str:variable_symbol>/', views.invoice_detail_view, name='invoice_detail'),
-    path('fakturace/<int:invoice_id>/zaplaceno/', views.toggle_invoice_payment_status_view, name='invoice_toggle_payment'),
-    path('fakturace/<int:invoice_id>/smazat/', views.invoice_delete_view, name='invoice_delete'),
+    # Fakturace a správa dokladů (směřováno přímo na billing_views)
+    path('fakturace/', billing_views.invoice_list_view, name='invoice_list'),
+    path('faktury/', billing_views.invoice_list_view),
+    path('fakturace/prijata/nahrat/', billing_views.upload_incoming_invoice_view, name='invoice_incoming_upload'),
+    path('fakturace/vydat/nova/', billing_views.generate_client_invoice_view, name='invoice_generate'),
+    path('fakturace/<str:variable_symbol>/', billing_views.invoice_detail_view, name='invoice_detail'),
+    path('fakturace/<int:invoice_id>/zaplaceno/', billing_views.toggle_invoice_payment_status_view, name='invoice_toggle_payment'),
+    path('fakturace/<int:invoice_id>/smazat/', billing_views.invoice_delete_view, name='invoice_delete'),
 
     # Správa odběratelů (klientů) a střežených objektů
-    path('klienti/', views.client_list_view, name='client_list'),
-    path('klienti/novy/', views.client_create_view, name='client_create'),
-    path('klienti/<int:client_id>/', views.client_detail_view, name='client_detail'),
-    path('klienti/<int:client_id>/upravit/', views.client_update_view, name='client_update'),
-    path('objekty/<int:object_id>/upravit/', views.guard_object_update_view, name='guard_object_update'),
+    path('klienti/', billing_views.client_list_view, name='client_list'),
+    path('klienti/novy/', billing_views.client_create_view, name='client_create'),
+    path('klienti/<int:client_id>/', billing_views.client_detail_view, name='client_detail'),
+    path('klienti/<int:client_id>/upravit/', billing_views.client_update_view, name='client_update'),
+    path('objekty/<int:object_id>/upravit/', billing_views.guard_object_update_view, name='guard_object_update'),
 ]
