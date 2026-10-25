@@ -9,10 +9,10 @@
     
     <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px; line-height: 1.5;">
         Chystáte se trvale odstranit fakturu č. <strong style="color: #fff;">{{ invoice.invoice_number }}</strong> 
-        od dodavatele <strong style="color: #fff;">{{ invoice.supplier_name|default:invoice.supplier.name|default:"Dodavatel" }}</strong> 
+        subjektu <strong style="color: #fff;">{{ partner_name }}</strong> 
         v celkové částce <strong style="color: #ef4444;">{{ invoice.total_amount }} Kč</strong>.
         <br><br>
-        Tato akce je nevratná a odstraní také archivovaný PDF soubor.
+        Tato akce je nevratná a odstraní také archivovaný originál dokladu.
     </p>
 
     <form method="post" style="display: flex; justify-content: center; gap: 14px;">
