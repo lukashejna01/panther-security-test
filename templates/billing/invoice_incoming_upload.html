@@ -35,7 +35,7 @@
         <h3 style="font-size: 16px; color: #fff; margin-top: 0; margin-bottom: 16px;">
             2. Kontrola údajů a uložení do nákladů
         </h3>
-        <form method="post" enctype="multipart/form-data">
+        <form method="post" enctype="multipart/form-data" id="saveInvoiceForm">
             {% csrf_token %}
 
             {% if original_filename %}
@@ -114,7 +114,7 @@
                 {{ invoice_form.notes }}
             </div>
 
-            <button type="submit" name="save_invoice" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px; font-weight: 800; width: 100%;">
+            <button type="submit" name="save_invoice" id="saveInvoiceBtn" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px; font-weight: 800; width: 100%;">
                 💾 Zaevidovat přijatou fakturu do nákladů
             </button>
         </form>
@@ -139,9 +139,10 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        var form = document.getElementById('scanInvoiceForm');
-        if (form) {
-            form.addEventListener('submit', function() {
+        // Indikátor pro vytěžování (Krok 1)
+        var scanForm = document.getElementById('scanInvoiceForm');
+        if (scanForm) {
+            scanForm.addEventListener('submit', function() {
                 var btn = document.getElementById('scanBtn');
                 var btnText = document.getElementById('scanBtnText');
                 var btnIcon = document.getElementById('scanBtnIcon');
@@ -153,7 +154,20 @@
                     btnIcon.innerHTML = '<span class="panther-spinner"></span>';
                 }
                 if (btnText) {
-                    btnText.innerText = 'Probíhá vytěžování dokladu přes AI...';
+                    btnText.innerText = 'Probíhá vytěžování dokladu...';
+                }
+            });
+        }
+
+        // Indikátor pro uložení (Krok 2)
+        var saveForm = document.getElementById('saveInvoiceForm');
+        if (saveForm) {
+            saveForm.addEventListener('submit', function() {
+                var btn = document.getElementById('saveInvoiceBtn');
+                if (btn) {
+                    btn.style.pointerEvents = 'none';
+                    btn.style.opacity = '0.75';
+                    btn.innerText = '💾 Ukládám fakturu do evidence...';
                 }
             });
         }

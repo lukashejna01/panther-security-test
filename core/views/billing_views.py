@@ -7,6 +7,7 @@ Přístup k financím má výhradně majitel (SystemRole.OWNER).
 from datetime import timedelta, date, datetime
 from decimal import Decimal
 import os
+import shutil
 import urllib.parse
 from django.conf import settings
 from django.contrib import messages
@@ -356,7 +357,12 @@ def generate_client_invoice_view(request):
 @login_required
 @role_required([SystemRole.OWNER])
 def upload_incoming_invoice_view(request):
-    """Nahrání přijaté faktury a vytěžení přes Claude AI."""
+    """
+    Nahrání přijaté faktury a vytěžení přes Claude AI:
+    1. Uživatel nahraje doklad -> dočasně se uloží na disk a Claude AI vyplní formulář.
+    2. Uživatel zkontroluje/upraví údaje a klikne na Uložit.
+    3. Soubor se bleskově přesune do stálé složky invoices/ a faktura se zaeviduje.
+    """
     upload_form = InvoiceUploadForm()
     invoice_form = IncomingInvoiceForm()
     today = timezone.localdate()
@@ -365,7 +371,7 @@ def upload_incoming_invoice_view(request):
     original_filename = request.session.get('uploaded_invoice_orig_name', '')
 
     if request.method == 'POST':
-        # 1. KROK: ANALÝZA PŘES AI
+        # 1. KROK: ANALÝZA PŘES CLAUDE AI
         if 'scan_invoice' in request.POST or ('invoice_file' in request.FILES and 'save_invoice' not in request.POST):
             upload_form = InvoiceUploadForm(request.POST, request.FILES)
             if upload_form.is_valid():
@@ -416,7 +422,7 @@ def upload_incoming_invoice_view(request):
             else:
                 messages.error(request, f"Neplatný soubor dokladu: {upload_form.errors}")
 
-        # 2. KROK: ULOŽENÍ FAKTURY
+        # 2. KROK: ULOŽENÍ FAKTURY DO NÁKLADŮ
         elif 'save_invoice' in request.POST:
             post_data = request.POST.copy()
             if not post_data.get('issue_date'):
@@ -436,27 +442,40 @@ def upload_incoming_invoice_view(request):
                     inv.tax_date = inv.issue_date
                 if not inv.due_date:
                     inv.due_date = today + timedelta(days=14)
+
+                # Bezpečné generování čísla faktury (zabraňuje kolizím a zasekávání)
                 if not inv.invoice_number:
                     year = inv.issue_date.year
-                    count = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING, issue_date__year=year).count() + 1
-                    inv.invoice_number = f"PF-{year}{count:04d}"
+                    base_count = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING, issue_date__year=year).count() + 1
+                    candidate_num = f"PF-{year}{base_count:04d}"
+                    while Invoice.objects.filter(invoice_number=candidate_num).exists():
+                        base_count += 1
+                        candidate_num = f"PF-{year}{base_count:04d}"
+                    inv.invoice_number = candidate_num
 
+                # 1. Priorita: Uživatel nahrál soubor ručně ve formuláři 2
                 if 'document_file' in request.FILES:
                     inv.document_file = request.FILES['document_file']
+                # 2. Priorita: Bleskový přesun souboru z 1. kroku bez blokace paměti
                 elif temp_filename:
                     temp_path = os.path.join(settings.MEDIA_ROOT, 'temp_invoices', temp_filename)
+                    target_dir = os.path.join(settings.MEDIA_ROOT, 'invoices')
+                    os.makedirs(target_dir, exist_ok=True)
+                    target_filename = f"{int(timezone.now().timestamp())}_{original_filename or temp_filename}"
+                    target_path = os.path.join(target_dir, target_filename)
+
                     if os.path.exists(temp_path):
-                        with open(temp_path, 'rb') as f:
-                            inv.document_file.save(original_filename or temp_filename, ContentFile(f.read()), save=False)
                         try:
-                            os.remove(temp_path)
+                            shutil.move(temp_path, target_path)
+                            inv.document_file.name = f"invoices/{target_filename}"
                         except Exception:
                             pass
-                        request.session.pop('uploaded_invoice_temp_name', None)
-                        request.session.pop('uploaded_invoice_orig_name', None)
+                    
+                    request.session.pop('uploaded_invoice_temp_name', None)
+                    request.session.pop('uploaded_invoice_orig_name', None)
 
                 inv.save()
-                messages.success(request, f"Přijatá faktura #{inv.invoice_number} byla úspěšně uložena do nákladů i s přiloženým dokumentem.")
+                messages.success(request, f"Přijatá faktura #{inv.invoice_number} byla úspěšně uložena do nákladů.")
                 return redirect('invoice_list')
             else:
                 errors = [f"{field}: {', '.join(errs)}" for field, errs in invoice_form.errors.items()]
@@ -468,6 +487,8 @@ def upload_incoming_invoice_view(request):
         'original_filename': original_filename,
     }
     return render(request, 'billing/invoice_incoming_upload.html', context)
+
+
 
 
 @login_required
