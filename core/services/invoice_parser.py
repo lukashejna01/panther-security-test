@@ -10,6 +10,7 @@ from .claude_ocr import get_anthropic_client
 def extract_data_from_invoice(file_obj) -> dict:
     """
     Vytěží strukturovaná data z faktury (PDF, PNG, JPG) pomocí Claude API.
+    Vrací slovník připravený pro předvyplnění formuláře Invoice.
     """
     file_obj.seek(0)
     file_bytes = file_obj.read()
@@ -71,10 +72,11 @@ Vrať VÝHRADNĚ validní JSON bez jakýchkoli formátovacích značek (žádné
 
     client = get_anthropic_client()
 
+    # Seznam dostupných modelů (včetně standardního Sonnet 3.5 i novějších)
     models_to_try = [
-        "claude-sonnet-5",
-        "claude-sonnet-4-6",
-        "claude-haiku-4-5-20251001"
+        "claude-3-5-sonnet-20241022",
+        "claude-3-5-sonnet-latest",
+        "claude-3-haiku-20240307",
     ]
 
     response = None
@@ -82,10 +84,10 @@ Vrať VÝHRADNĚ validní JSON bez jakýchkoli formátovacích značek (žádné
 
     for model_name in models_to_try:
         try:
+            # Odstraněn parametr temperature, který způsoboval chybu
             kwargs = {
                 "model": model_name,
                 "max_tokens": 1500,
-                "temperature": 0.0,
                 "messages": [
                     {
                         "role": "user",
@@ -98,8 +100,10 @@ Vrať VÝHRADNĚ validní JSON bez jakýchkoli formátovacích značek (žádné
             }
             if is_pdf:
                 kwargs["betas"] = ["pdfs-2024-09-25"]
+                response = client.beta.messages.create(**kwargs)
+            else:
+                response = client.messages.create(**kwargs)
 
-            response = client.beta.messages.create(**kwargs) if is_pdf else client.messages.create(**kwargs)
             if response:
                 break
         except Exception as e:
