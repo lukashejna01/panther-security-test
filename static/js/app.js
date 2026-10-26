@@ -3,86 +3,39 @@
  */
 
 document.addEventListener('DOMContentLoaded', function () {
-    // ==========================================
-    // 1. CHYTRÁ SPRÁVA FLASH ZPRÁV (ALERTS)
-    // ==========================================
+    // 1. Správa flash zpráv: Důležité zprávy s heslem NIKDY nemizí automaticky!
     var alerts = document.querySelectorAll('.alert');
     alerts.forEach(function (alert) {
         var text = alert.textContent || "";
 
-        // Pokud zpráva obsahuje vygenerované heslo nebo přihlašovací údaje:
         if (text.includes('Dočasné heslo') || text.includes('Přihlašovací jméno')) {
-            // Zvýrazněný prémiový styl Panther Security
             alert.style.border = '2px solid #facc15';
-            alert.style.background = 'rgba(20, 26, 38, 0.98)';
-            alert.style.boxShadow = '0 12px 36px rgba(0, 0, 0, 0.6)';
+            alert.style.background = 'rgba(26, 32, 44, 0.95)';
+            alert.style.boxShadow = '0 10px 30px rgba(0,0,0,0.5)';
             alert.style.position = 'relative';
-            alert.style.paddingRight = '190px';
-            alert.style.color = '#ffffff';
+            alert.style.paddingRight = '80px';
 
-            // Kontejner na ovládací tlačítka vpravo
-            var actionsContainer = document.createElement('div');
-            actionsContainer.style.position = 'absolute';
-            actionsContainer.style.right = '14px';
-            actionsContainer.style.top = '50%';
-            actionsContainer.style.transform = 'translateY(-50%)';
-            actionsContainer.style.display = 'flex';
-            actionsContainer.style.gap = '8px';
-
-            // Tlačítko 1: Kopírovat údaje do schránky
-            var copyBtn = document.createElement('button');
-            copyBtn.type = 'button';
-            copyBtn.innerHTML = '📋 Kopírovat';
-            copyBtn.style.background = '#facc15';
-            copyBtn.style.color = '#000000';
-            copyBtn.style.border = 'none';
-            copyBtn.style.padding = '6px 12px';
-            copyBtn.style.borderRadius = '4px';
-            copyBtn.style.cursor = 'pointer';
-            copyBtn.style.fontSize = '12px';
-            copyBtn.style.fontWeight = '700';
-
-            copyBtn.onclick = function () {
-                var cleanText = text.replace('✕ Zavřít', '').replace('📋 Kopírovat', '').trim();
-                navigator.clipboard.writeText(cleanText).then(function () {
-                    copyBtn.innerHTML = '✅ Zkopírováno!';
-                    setTimeout(function () {
-                        copyBtn.innerHTML = '📋 Kopírovat';
-                    }, 2500);
-                }).catch(function () {
-                    copyBtn.innerHTML = 'Chyba kopírování';
-                });
-            };
-
-            // Tlačítko 2: Zavřít křížkem
             var closeBtn = document.createElement('button');
-            closeBtn.type = 'button';
             closeBtn.innerHTML = '✕ Zavřít';
-            closeBtn.style.background = 'rgba(255, 255, 255, 0.12)';
-            closeBtn.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-            closeBtn.style.color = '#ffffff';
-            closeBtn.style.padding = '6px 12px';
+            closeBtn.style.position = 'absolute';
+            closeBtn.style.right = '12px';
+            closeBtn.style.top = '50%';
+            closeBtn.style.transform = 'translateY(-50%)';
+            closeBtn.style.background = 'rgba(255,255,255,0.1)';
+            closeBtn.style.border = '1px solid rgba(255,255,255,0.2)';
+            closeBtn.style.color = '#fff';
+            closeBtn.style.padding = '5px 10px';
             closeBtn.style.borderRadius = '4px';
             closeBtn.style.cursor = 'pointer';
             closeBtn.style.fontSize = '12px';
-            closeBtn.style.fontWeight = '600';
+            closeBtn.style.fontWeight = 'bold';
 
             closeBtn.onclick = function () {
-                alert.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
-                alert.style.opacity = '0';
-                alert.style.transform = 'translateY(-10px)';
-                setTimeout(function () {
-                    alert.remove();
-                }, 400);
+                alert.remove();
             };
 
-            actionsContainer.appendChild(copyBtn);
-            actionsContainer.appendChild(closeBtn);
-            alert.appendChild(actionsContainer);
-
-            // Není zde setTimeout -> zpráva zůstává trvale zobrazena, dokud ji nezavřeš!
+            alert.appendChild(closeBtn);
         } else {
-            // Obyčejné informační zprávy ponecháme 15 sekund
             setTimeout(function () {
                 alert.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
                 alert.style.opacity = '0';
@@ -90,73 +43,91 @@ document.addEventListener('DOMContentLoaded', function () {
                 setTimeout(function () {
                     alert.remove();
                 }, 600);
-            }, 15000);
+            }, 10000);
         }
     });
 
-    // ==========================================
-    // 2. INTERAKTIVNÍ ANIMOVANÝ AI SCANNER MODAL
-    // ==========================================
+    // 2. Interaktivní celoobrazovkový AI Scanner pro Claude OCR
     var forms = document.querySelectorAll('form[enctype="multipart/form-data"]');
     forms.forEach(function (form) {
         form.addEventListener('submit', function () {
-            // Detekce, zda se jedná o OCR požadavek (OP nebo faktura)
             var hasScanInput = form.querySelector('input[name="scan_id"]') ||
                                form.querySelector('button[name="scan_id"]') ||
                                form.querySelector('button[name="scan_invoice"]') ||
                                form.querySelector('input[type="file"]');
 
             if (hasScanInput) {
-                // Vytvoření celoobrazovkového překryvu (overlay)
+                // Pokud už overlay náhodou existuje, smažeme ho
+                var oldOverlay = document.getElementById('ai-scanner-overlay');
+                if (oldOverlay) oldOverlay.remove();
+
+                // Vytvoření celoobrazovkového překryvu
                 var overlay = document.createElement('div');
                 overlay.id = 'ai-scanner-overlay';
-                overlay.style.position = 'fixed';
-                overlay.style.top = '0';
-                overlay.style.left = '0';
-                overlay.style.width = '100vw';
-                overlay.style.height = '100vh';
-                overlay.style.background = 'rgba(10, 13, 20, 0.92)';
-                overlay.style.backdropFilter = 'blur(14px)';
-                overlay.style.webkitBackdropFilter = 'blur(14px)';
-                overlay.style.display = 'flex';
-                overlay.style.flexDirection = 'column';
-                overlay.style.alignItems = 'center';
-                overlay.style.justifyContent = 'center';
-                overlay.style.zIndex = '99999';
+                overlay.style.cssText = `
+                    position: fixed !important;
+                    top: 0 !important;
+                    left: 0 !important;
+                    right: 0 !important;
+                    bottom: 0 !important;
+                    width: 100vw !important;
+                    height: 100vh !important;
+                    background: rgba(8, 10, 16, 0.94) !important;
+                    backdrop-filter: blur(16px) !important;
+                    -webkit-backdrop-filter: blur(16px) !important;
+                    display: flex !important;
+                    flex-direction: column !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    z-index: 9999999 !important;
+                    overflow: hidden !important;
+                    touch-action: none !important;
+                `;
 
                 overlay.innerHTML = `
-                    <div style="position: relative; width: 130px; height: 130px; margin-bottom: 24px;">
-                        <!-- Pulzující vnější radarový kruh -->
-                        <div style="position: absolute; width: 100%; height: 100%; border: 3px solid rgba(250, 204, 21, 0.25); border-radius: 50%; animation: pulseWave 1.8s ease-out infinite;"></div>
-                        <!-- Rotující vnější skener v Panther žluté -->
-                        <div style="position: absolute; width: 100%; height: 100%; border: 3px solid transparent; border-top: 3px solid #facc15; border-right: 3px solid #facc15; border-radius: 50%; animation: spinRadar 1s linear infinite;"></div>
-                        <!-- Ikona AI ve středu -->
-                        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 42px; animation: pulseCore 1.5s ease-in-out infinite alternate;">
+                    <div style="position: relative; width: 140px; height: 140px; margin-bottom: 28px; display: flex; align-items: center; justify-content: center;">
+                        <!-- Pulzující radarové vlny -->
+                        <div style="position: absolute; inset: 0; border: 3px solid rgba(250, 204, 21, 0.25); border-radius: 50%; animation: pantherPulseWave 2s ease-out infinite;"></div>
+                        <div style="position: absolute; inset: -15px; border: 2px dashed rgba(250, 204, 21, 0.15); border-radius: 50%; animation: pantherPulseWave 2.5s ease-out infinite 0.5s;"></div>
+                        
+                        <!-- Rotující žlutý neonový prstenec -->
+                        <div style="position: absolute; inset: 0; border: 3px solid transparent; border-top: 3px solid #facc15; border-right: 3px solid #facc15; border-radius: 50%; animation: pantherSpinRadar 1s linear infinite; filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.6));"></div>
+                        
+                        <!-- Ikona robota ve středu s pulzem -->
+                        <div style="font-size: 48px; filter: drop-shadow(0 0 16px rgba(250, 204, 21, 0.7)); animation: pantherCorePulse 1.4s ease-in-out infinite alternate;">
                             🤖
                         </div>
                     </div>
-                    <h2 style="font-size: 22px; font-weight: 800; color: #ffffff; letter-spacing: 0.5px; margin: 0 0 10px; text-shadow: 0 0 20px rgba(250,204,21,0.3);">
+
+                    <h2 style="font-size: 24px; font-weight: 800; color: #ffffff; letter-spacing: -0.3px; margin: 0 0 10px; text-align: center; text-shadow: 0 0 25px rgba(250, 204, 21, 0.4); padding: 0 16px;">
                         Claude AI analyzuje dokument...
-                    </h2>   
+                    </h2>
+                    <p style="color: #facc15; font-size: 14px; font-weight: 600; text-align: center; max-width: 440px; line-height: 1.5; margin: 0 20px; text-shadow: 0 2px 8px rgba(0,0,0,0.8);">
+                        Probíhá bezpečné vytěžování a kontrola dat z dokladu...
+                    </p>
                 `;
 
-                // Vložení CSS animací
-                var style = document.createElement('style');
-                style.textContent = `
-                    @keyframes spinRadar {
-                        0% { transform: rotate(0deg); }
-                        100% { transform: rotate(360deg); }
-                    }
-                    @keyframes pulseWave {
-                        0% { transform: scale(0.9); opacity: 0.9; }
-                        100% { transform: scale(1.4); opacity: 0; }
-                    }
-                    @keyframes pulseCore {
-                        0% { transform: translate(-50%, -50%) scale(0.92); opacity: 0.8; }
-                        100% { transform: translate(-50%, -50%) scale(1.08); opacity: 1; }
-                    }
-                `;
-                document.head.appendChild(style);
+                // Vložení globálních CSS animací
+                if (!document.getElementById('ai-scanner-animations')) {
+                    var style = document.createElement('style');
+                    style.id = 'ai-scanner-animations';
+                    style.textContent = `
+                        @keyframes pantherSpinRadar {
+                            0% { transform: rotate(0deg); }
+                            100% { transform: rotate(360deg); }
+                        }
+                        @keyframes pantherPulseWave {
+                            0% { transform: scale(0.85); opacity: 0.9; }
+                            100% { transform: scale(1.5); opacity: 0; }
+                        }
+                        @keyframes pantherCorePulse {
+                            0% { transform: scale(0.92); opacity: 0.85; }
+                            100% { transform: scale(1.08); opacity: 1; }
+                        }
+                    `;
+                    document.head.appendChild(style);
+                }
+
                 document.body.appendChild(overlay);
             }
         });
