@@ -1,67 +1,176 @@
 {% extends 'base.html' %}
 
-{% block title %}Měsíční sumář mezd - Panther Security{% endblock %}
+{% block title %}Mzdový přehled & Odvody 2026 - Panther Security{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
-    <div>
-        <span class="badge-tag yellow">EKONOMIKA &amp; MZDY</span>
-        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Měsíční mzdový sumář ({{ month }}/{{ year }})</h1>
-        <p style="color: var(--text-muted); font-size: 13px;">Mzdy generované výhradně ze schválených odsloužených směn.</p>
-    </div>
-</div>
+<div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px; width: 100%; box-sizing: border-box;">
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px;">
-    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid var(--panther-yellow);">
-        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Celkové mzdové náklady</div>
-        <div style="font-size: 24px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
-            {{ grand_pay }} <span style="font-size: 14px; font-weight: 400; color: var(--text-muted);">Kč</span>
+    <!-- HLAVIČKA -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; gap: 14px;">
+        <div>
+            <div style="margin-bottom: 6px;">
+                <span class="badge-tag yellow">EKONOMIKA &amp; MZDOVÉ ÚČETNICTVÍ 2026</span>
+            </div>
+            <h1 style="font-size: 26px; color: #fff; margin: 0; font-weight: 800;">
+                Měsíční sumář mezd a odvodů
+            </h1>
+            <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">
+                Odvody dle legislativy 2026: DPP (limit 12 000 Kč) &bull; DPČ (limit 4 500 Kč) &bull; HPP &bull; IČO.
+            </p>
         </div>
     </div>
-    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #3b82f6;">
-        <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Celkem schválených hodin</div>
-        <div style="font-size: 24px; font-weight: 800; color: #60a5fa; margin-top: 4px;">
-            {{ grand_hours }} <span style="font-size: 14px; font-weight: 400; color: var(--text-muted);">hod</span>
+
+    <!-- VÝBĚR MĚSÍCE A ROKU -->
+    <div class="card" style="padding: 16px; margin-bottom: 20px;">
+        <form method="get" id="payrollPeriodForm" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin: 0;">
+            <div style="font-size: 13px; font-weight: 800; color: var(--panther-yellow); text-transform: uppercase; letter-spacing: 0.5px;">
+                📅 Zvolené mzdové období:
+            </div>
+
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; flex: 1 1 280px; justify-content: flex-end;">
+                <!-- Měsíc -->
+                <div style="flex: 1 1 140px; min-width: 120px;">
+                    <select name="month" class="form-control" style="padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;" onchange="document.getElementById('payrollPeriodForm').submit();">
+                        {% for m_num, m_name in months_list %}
+                            <option value="{{ m_num }}" {% if month == m_num %}selected{% endif %}>
+                                {{ m_name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Rok -->
+                <div style="flex: 1 1 90px; min-width: 90px;">
+                    <select name="year" class="form-control" style="padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;" onchange="document.getElementById('payrollPeriodForm').submit();">
+                        {% for y in available_years %}
+                            <option value="{{ y }}" {% if year == y %}selected{% endif %}>
+                                {{ y }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- SUMÁRNÍ KARTY -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 24px;">
+        <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #3b82f6;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Celkem schváleno</div>
+            <div style="font-size: 24px; font-weight: 800; color: #60a5fa; margin-top: 4px;">
+                {{ grand_hours }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">hod</span>
+            </div>
+        </div>
+
+        <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid var(--panther-yellow);">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Hrubé mzdy celkem</div>
+            <div style="font-size: 24px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
+                {{ grand_gross }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+            </div>
+        </div>
+
+        <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #10b981;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Čistá výplata lidem</div>
+            <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 4px;">
+                {{ grand_net }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+            </div>
+        </div>
+
+        <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #ef4444;">
+            <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Celkový náklad firmy</div>
+            <div style="font-size: 24px; font-weight: 800; color: #ef4444; margin-top: 4px;">
+                {{ grand_comp_costs }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+            </div>
         </div>
     </div>
-</div>
 
-<div class="card">
-    <div class="table-responsive">
-        <table class="table">
-            <thead>
-                <tr>
-                    <th>Zaměstnanec</th>
-                    <th>Typ smlouvy</th>
-                    <th>Schválených směn</th>
-                    <th>Odpracováno</th>
-                    <th>Celková odměna</th>
-                    <th>Číslo účtu</th>
-                    <th style="text-align: right;">Výplatní páska</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for row in payroll_data %}
-                <tr>
-                    <td><strong style="color: #fff; font-size: 14px;">{{ row.employee.full_name }}</strong></td>
-                    <td><span class="badge-tag yellow">{{ row.employee.contract_type }}</span></td>
-                    <td>{{ row.shifts_count }}</td>
-                    <td>{{ row.hours }} hod</td>
-                    <td style="font-weight: 800; color: var(--panther-yellow); font-size: 15px;">{{ row.total_pay }} Kč</td>
-                    <td style="color: var(--text-muted);">{{ row.employee.bank_account|default:"Neuveden" }}</td>
-                    <td style="text-align: right;">
-                        <a href="{% url 'payslip_detail' row.employee.id year month %}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">
-                            📄 Páska
-                        </a>
-                    </td>
-                </tr>
-                {% empty %}
-                <tr>
-                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 24px;">Pro vybraný měsíc nejsou žádné schválené směny pro mzdy.</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <!-- TABULKA MEZD ZAMĚSTNANCŮ -->
+    <div class="card" style="padding: 18px 16px;">
+        <div style="margin-bottom: 14px;">
+            <h3 style="font-size: 16px; color: #fff; margin: 0; font-weight: 800;">
+                👥 Rozpis mezd a odvodů za období {{ month }}/{{ year }}
+            </h3>
+        </div>
+
+        <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
+            <table class="table" style="min-width: 900px; font-size: 13px;">
+                <thead>
+                    <tr>
+                        <th>Zaměstnanec / Strážný</th>
+                        <th>Smlouva</th>
+                        <th style="text-align: center;">Odpracováno</th>
+                        <th style="text-align: right;">Hrubá mzda</th>
+                        <th style="text-align: right;">Srážky (SP/ZP/Daň)</th>
+                        <th style="text-align: right;">K výplatě</th>
+                        <th style="text-align: right;">Náklad firmy</th>
+                        <th>Účet pro výplatu</th>
+                        <th style="text-align: right;">Páska</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in payroll_data %}
+                    <tr>
+                        <td>
+                            <strong style="color: #fff; font-size: 14px;">{{ row.employee.full_name }}</strong>
+                            <div style="font-size: 11px; color: var(--text-muted);">Sazba: {{ row.employee.hourly_rate }} Kč/h</div>
+                        </td>
+                        <td>
+                            <span class="badge-tag yellow" style="font-size: 10px; font-weight: 800;">
+                                {{ row.contract_type }}
+                            </span>
+                            <div style="font-size: 10px; color: var(--text-muted); margin-top: 3px;">
+                                {{ row.calc.limit_text }}
+                            </div>
+                        </td>
+                        <td style="text-align: center;">
+                            <strong>{{ row.hours }} hod</strong>
+                            <div style="font-size: 11px; color: var(--text-muted);">({{ row.shifts_count }} směn)</div>
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #fff;">
+                            {{ row.calc.gross }} Kč
+                        </td>
+                        <td style="text-align: right; font-size: 12px;">
+                            {% if row.calc.is_exempt %}
+                                {% if row.calc.emp_tax > 0 %}
+                                    <span style="color: #f87171;">- {{ row.calc.emp_tax }} Kč</span>
+                                    <div style="font-size: 10px; color: var(--text-muted);">(Daň 15 %)</div>
+                                {% else %}
+                                    <span style="color: #10b981;">0 Kč</span>
+                                {% endif %}
+                            {% else %}
+                                <span style="color: #f87171; font-weight: 600;">
+                                    - {{ row.calc.emp_sp|add:row.calc.emp_zp|add:row.calc.emp_tax }} Kč
+                                </span>
+                                <div style="font-size: 10px; color: var(--text-muted);">
+                                    SP: {{ row.calc.emp_sp }} | ZP: {{ row.calc.emp_zp }} | Daň: {{ row.calc.emp_tax }}
+                                </div>
+                            {% endif %}
+                        </td>
+                        <td style="text-align: right; font-weight: 800; color: #10b981; font-size: 15px;">
+                            {{ row.calc.net }} Kč
+                        </td>
+                        <td style="text-align: right; font-weight: 700; color: #e2e8f0;">
+                            {{ row.calc.total_cost }} Kč
+                        </td>
+                        <td style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">
+                            {{ row.employee.bank_account|default:"Hotovost" }}
+                        </td>
+                        <td style="text-align: right; white-space: nowrap;">
+                            <a href="{% url 'payslip_detail' row.employee.id year month %}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">
+                                📄 Páska
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                            Za období {{ month }}/{{ year }} nebyly nalezeny žádné schválené směny pro výpočet mezd.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 {% endblock %}
