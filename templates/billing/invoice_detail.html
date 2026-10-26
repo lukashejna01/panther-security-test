@@ -129,20 +129,12 @@
 <div class="invoice-screen-container">
 
     <!-- OVLÁDACÍ LIŠTA NAHOŘE (Tisk, Zpět, Označit jako uhrazeno) -->
+
     <div class="invoice-top-actions" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+        <div>
             <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="font-size: 13px;">
-                ← Zpět na seznam
+                ← Zpět na přehled faktur
             </a>
-            {% if invoice.status != 'PAID' %}
-                <a href="{% url 'invoice_mark_paid' invoice.id %}?next={{ request.path }}" class="btn btn-secondary" style="background: rgba(16, 185, 129, 0.15); border-color: #10b981; color: #34d399; font-size: 13px;">
-                    ✓ Označit jako UHRAZENO
-                </a>
-            {% else %}
-                <span class="badge-tag green" style="padding: 8px 14px; font-size: 12px;">
-                    ✓ UHRAZENO
-                </span>
-            {% endif %}
         </div>
         <div>
             <button onclick="window.print()" class="btn btn-primary" style="font-size: 13px;">
@@ -150,7 +142,7 @@
             </button>
         </div>
     </div>
-
+    
     <!-- BÍLÝ LIST FAKTURY -->
     <div class="invoice-paper">
         
