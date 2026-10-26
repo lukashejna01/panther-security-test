@@ -4,7 +4,6 @@
 
 {% block content %}
 <style>
-    /* Obal pro mobilní zobrazení, který zamezí přetékání doprava */
     .invoice-screen-container {
         width: 100%;
         max-width: 860px;
@@ -13,21 +12,31 @@
         box-sizing: border-box;
     }
 
+    /* Standardní list A4 (210 x 297 mm) s roztažením na celou výšku */
     .invoice-paper {
         background: #ffffff;
         color: #0f172a;
-        padding: 40px;
-        border-radius: 6px;
+        padding: 35px 40px;
+        border-radius: 4px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
         box-sizing: border-box;
         width: 100%;
-        overflow-x: hidden;
+        min-height: 297mm;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
     }
 
-    /* Na mobilních zařízeních zmenšíme padding a přizpůsobíme mřížky */
+    /* Úprava mezer a tabulky */
+    .invoice-table th, .invoice-table td {
+        padding: 10px 12px;
+    }
+
+    /* Na mobilním displeji umožníme přirozený tok a scroll */
     @media screen and (max-width: 768px) {
         .invoice-paper {
             padding: 20px 16px;
+            min-height: auto;
         }
 
         .invoice-parties-grid {
@@ -81,11 +90,17 @@
         }
     }
 
-    /* Tiskový styl pro přesnou čistou A4 bez prvků webu */
+    /* Tiskový styl: 100% čistá výška i šířka listu A4 */
     @media print {
+        @page {
+            size: A4 portrait;
+            margin: 0;
+        }
         body {
             background: #ffffff !important;
             color: #000000 !important;
+            margin: 0 !important;
+            padding: 0 !important;
         }
         .top-navbar, footer, .invoice-top-actions {
             display: none !important;
@@ -103,9 +118,12 @@
         .invoice-paper {
             box-shadow: none !important;
             border-radius: 0 !important;
-            padding: 20mm !important;
+            padding: 18mm 18mm 20mm 18mm !important;
             width: 210mm !important;
+            height: 297mm !important;
             min-height: 297mm !important;
+            page-break-after: always !important;
+            box-sizing: border-box !important;
         }
         .invoice-parties-grid {
             display: grid !important;
@@ -114,8 +132,16 @@
         }
         .invoice-dates-grid {
             display: grid !important;
-            grid-template-columns: repeat(3, 1fr) !important;
-            gap: 12px !important;
+            grid-template-columns: repeat(4, 1fr) !important;
+            gap: 10px !important;
+        }
+        .invoice-header-flex {
+            display: flex !important;
+            flex-direction: row !important;
+            justify-content: space-between !important;
+        }
+        .invoice-header-right {
+            text-align: right !important;
         }
         .invoice-summary-flex {
             display: flex !important;
@@ -128,8 +154,7 @@
 
 <div class="invoice-screen-container">
 
-    <!-- OVLÁDACÍ LIŠTA NAHOŘE (Tisk, Zpět, Označit jako uhrazeno) -->
-
+    <!-- OVLÁDACÍ LIŠTA NAHOŘE -->
     <div class="invoice-top-actions" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <div>
             <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="font-size: 13px;">
@@ -142,161 +167,180 @@
             </button>
         </div>
     </div>
-    
-    <!-- BÍLÝ LIST FAKTURY -->
+
+    <!-- BÍLÝ LIST FAKTURY ROZTAŽENÝ NA CELOU A4 -->
     <div class="invoice-paper">
         
-        <!-- HLAVIČKA -->
-        <div class="invoice-header-flex" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 18px; margin-bottom: 24px;">
-            <div>
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
-                    <span style="font-size: 20px; font-weight: 900; letter-spacing: 0.5px; color: #0f172a;">PANTHER</span>
-                    <span style="background: #0f172a; color: #facc15; font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 1px;">SECURITY</span>
+        <!-- HORNÍ ČÁST (Hlavička, Strany, Termíny, Položky) -->
+        <div>
+            <!-- HLAVIČKA -->
+            <div class="invoice-header-flex" style="display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 16px; margin-bottom: 20px;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                        <span style="font-size: 22px; font-weight: 900; letter-spacing: 0.5px; color: #0f172a;">PANTHER</span>
+                        <span style="background: #0f172a; color: #facc15; font-size: 11px; font-weight: 800; padding: 2px 6px; border-radius: 4px; letter-spacing: 1px;">SECURITY</span>
+                    </div>
+                    <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                        Operační bezpečnostní agentura &bull; Ostraha objektů a majetku
+                    </div>
                 </div>
-                <div style="font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
-                    Operační bezpečnostní agentura &bull; Ostraha objektů a majetku
+
+                <div class="invoice-header-right" style="text-align: right;">
+                    <h1 style="font-size: 22px; margin: 0; color: #0f172a; font-weight: 900; letter-spacing: -0.3px;">
+                        FAKTURA – DAŇOVÝ DOKLAD
+                    </h1>
+                    <div style="font-size: 14px; font-weight: 800; color: #334155; margin-top: 4px;">
+                        Číslo dokladu: {{ invoice.invoice_number }}
+                    </div>
                 </div>
             </div>
 
-            <div class="invoice-header-right" style="text-align: right;">
-                <h1 style="font-size: 22px; margin: 0; color: #0f172a; font-weight: 900; letter-spacing: -0.3px;">
-                    FAKTURA – DAŇOVÝ DOKLAD
-                </h1>
-                <div style="font-size: 14px; font-weight: 800; color: #334155; margin-top: 4px;">
-                    Číslo dokladu: {{ invoice.invoice_number }}
+            <!-- DODAVATEL & ODBĚRATEL -->
+            <div class="invoice-parties-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px; font-size: 13px; line-height: 1.5;">
+                
+                <!-- Dodavatel -->
+                <div style="background: #f8fafc; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="font-weight: 800; color: #64748b; margin-bottom: 6px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">
+                        DODAVATEL:
+                    </div>
+                    <strong style="font-size: 15px; color: #0f172a; display: block; margin-bottom: 2px;">{{ company.name|default:"Panther Security s.r.o." }}</strong>
+                    {{ company.street|default:"Varšavská 715/36" }}<br>
+                    {{ company.zip|default:"120 00" }} {{ company.city|default:"Praha 2" }}<br>
+                    <div style="margin-top: 6px;">
+                        <strong>IČO:</strong> {{ company.ico|default:"22525882" }} &nbsp;|&nbsp; <strong>DIČ:</strong> {{ company.dic|default:"CZ22525882" }}
+                    </div>
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1; font-size: 12px; color: #475569;">
+                        Jednatel: <strong>Lukáš Hejna</strong><br>
+                        Tel.: +420 608 255 197<br>
+                        E-mail: ucto@panther-security.cz
+                    </div>
                 </div>
+
+                <!-- Odběratel -->
+                <div style="background: #f8fafc; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="font-weight: 800; color: #64748b; margin-bottom: 6px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">
+                        ODBĚRATEL:
+                    </div>
+                    <strong style="font-size: 15px; color: #0f172a; display: block; margin-bottom: 2px;">{{ invoice.client.name }}</strong>
+                    {{ invoice.client.billing_address|default:"Adresa sídla neuvedena"|linebreaksbr }}<br>
+                    <div style="margin-top: 6px;">
+                        <strong>IČO:</strong> {{ invoice.client.ico|default:"—" }} &nbsp;|&nbsp; <strong>DIČ:</strong> {{ invoice.client.dic|default:"Neplátce DPH" }}
+                    </div>
+                    {% if invoice.client.contact_person %}
+                    <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1; font-size: 12px; color: #475569;">
+                        Kontakt: {{ invoice.client.contact_person }}<br>
+                        {% if invoice.client.contact_phone %}Tel.: {{ invoice.client.contact_phone }}<br>{% endif %}
+                        {% if invoice.client.contact_email %}E-mail: {{ invoice.client.contact_email }}{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+            <!-- DŮLEŽITÁ DATA -->
+            <div class="invoice-dates-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 20px; background: #0f172a; color: #ffffff; padding: 12px 16px; border-radius: 6px; font-size: 12px;">
+                <div>
+                    <span style="color: #94a3b8; display: block; font-size: 10px; text-transform: uppercase;">Variabilní symbol:</span>
+                    <strong style="font-size: 13px; color: #fff;">{{ invoice.variable_symbol }}</strong>
+                </div>
+                <div>
+                    <span style="color: #94a3b8; display: block; font-size: 10px; text-transform: uppercase;">Datum vystavení:</span>
+                    <strong style="font-size: 13px; color: #fff;">{{ invoice.issue_date|date:"d.m.Y" }}</strong>
+                </div>
+                <div>
+                    <span style="color: #94a3b8; display: block; font-size: 10px; text-transform: uppercase;">DUZP:</span>
+                    <strong style="font-size: 13px; color: #fff;">{{ invoice.tax_date|date:"d.m.Y" }}</strong>
+                </div>
+                <div>
+                    <span style="color: #facc15; display: block; font-size: 10px; text-transform: uppercase;">Datum splatnosti:</span>
+                    <strong style="font-size: 14px; color: #facc15;">{{ invoice.due_date|date:"d.m.Y" }}</strong>
+                </div>
+            </div>
+
+            <!-- TEXT PŘED POLOŽKAMI -->
+            <p style="font-size: 13px; color: #334155; margin-bottom: 14px; line-height: 1.4;">
+                {{ invoice.notes|default:"Fakturujeme Vám za poskytnuté bezpečnostní služby a fyzickou ostrahu dle platné smlouvy:" }}
+            </p>
+
+            <!-- ROZPIS POLOŽEK FAKTURY S ODDĚLENÝMI TISÍCI A STOVKAMI -->
+            <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; margin-bottom: 24px;">
+                <table class="invoice-table" style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px;">
+                    <thead>
+                        <tr style="background: #0f172a; color: #ffffff; text-align: left;">
+                            <th style="font-size: 11px; text-transform: uppercase;">Popis plnění</th>
+                            <th style="text-align: center; font-size: 11px; text-transform: uppercase;">Počet MJ</th>
+                            <th style="text-align: right; font-size: 11px; text-transform: uppercase;">Cena bez DPH</th>
+                            <th style="text-align: right; font-size: 11px; text-transform: uppercase;">Celkem bez DPH</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if formatted_items %}
+                            {% for item in formatted_items %}
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="font-weight: 600; color: #0f172a;">{{ item.description }}</td>
+                                <td style="text-align: center; color: #475569;">{{ item.quantity }}</td>
+                                <td style="text-align: right; color: #475569;">{{ item.unit_price }} Kč</td>
+                                <td style="text-align: right; font-weight: 800; color: #0f172a;">{{ item.total_price }} Kč</td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            {% for item in invoice.items.all %}
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="font-weight: 600; color: #0f172a;">{{ item.description }}</td>
+                                <td style="text-align: center; color: #475569;">{{ item.quantity }}</td>
+                                <td style="text-align: right; color: #475569;">{{ item.unit_price }} Kč</td>
+                                <td style="text-align: right; font-weight: 800; color: #0f172a;">{{ item.total_price }} Kč</td>
+                            </tr>
+                            {% empty %}
+                            <tr style="border-bottom: 1px solid #e2e8f0;">
+                                <td style="font-weight: 600; color: #0f172a;">Fyzická ostraha a bezpečnostní dohled</td>
+                                <td style="text-align: center; color: #475569;">1</td>
+                                <td style="text-align: right; color: #475569;">{{ invoice.amount_without_vat }} Kč</td>
+                                <td style="text-align: right; font-weight: 800; color: #0f172a;">{{ invoice.amount_without_vat }} Kč</td>
+                            </tr>
+                            {% endfor %}
+                        {% endif %}
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- DODAVATEL & ODBĚRATEL -->
-        <div class="invoice-parties-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; font-size: 13px; line-height: 1.5;">
-            
-            <!-- Dodavatel -->
-            <div style="background: #f8fafc; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                <div style="font-weight: 800; color: #64748b; margin-bottom: 6px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">
-                    DODAVATEL:
-                </div>
-                <strong style="font-size: 15px; color: #0f172a; display: block; margin-bottom: 2px;">{{ company.name|default:"Panther Security s.r.o." }}</strong>
-                {{ company.street|default:"Varšavská 715/36" }}<br>
-                {{ company.zip|default:"120 00" }} {{ company.city|default:"Praha 2" }}<br>
-                <div style="margin-top: 6px;">
-                    <strong>IČO:</strong> {{ company.ico|default:"22525882" }} &nbsp;|&nbsp; <strong>DIČ:</strong> {{ company.dic|default:"CZ22525882" }}
-                </div>
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1; font-size: 12px; color: #475569;">
-                    Jednatel: <strong>Lukáš Hejna</strong><br>
-                    Tel.: +420 608 255 197<br>
-                    E-mail: ucto@panther-security.cz
-                </div>
-            </div>
-
-            <!-- Odběratel -->
-            <div style="background: #f8fafc; padding: 14px; border-radius: 6px; border: 1px solid #e2e8f0;">
-                <div style="font-weight: 800; color: #64748b; margin-bottom: 6px; text-transform: uppercase; font-size: 10px; letter-spacing: 0.5px;">
-                    ODBĚRATEL:
-                </div>
-                <strong style="font-size: 15px; color: #0f172a; display: block; margin-bottom: 2px;">{{ invoice.client.name }}</strong>
-                {{ invoice.client.billing_address|default:"Adresa sídla neuvedena"|linebreaksbr }}<br>
-                <div style="margin-top: 6px;">
-                    <strong>IČO:</strong> {{ invoice.client.ico|default:"—" }} &nbsp;|&nbsp; <strong>DIČ:</strong> {{ invoice.client.dic|default:"Neplátce DPH" }}
-                </div>
-                {% if invoice.client.contact_person %}
-                <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #cbd5e1; font-size: 12px; color: #475569;">
-                    Kontakt: {{ invoice.client.contact_person }}<br>
-                    {% if invoice.client.contact_phone %}Tel.: {{ invoice.client.contact_phone }}<br>{% endif %}
-                    {% if invoice.client.contact_email %}E-mail: {{ invoice.client.contact_email }}{% endif %}
-                </div>
-                {% endif %}
-            </div>
-
-        </div>
-
-        <!-- DŮLEŽITÁ DATA -->
-        <div class="invoice-dates-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 24px; background: #0f172a; color: #ffffff; padding: 12px 16px; border-radius: 6px; font-size: 12px;">
-            <div>
-                <span style="color: #94a3b8; display: block; font-size: 10px; text-transform: uppercase;">Variabilní symbol:</span>
-                <strong style="font-size: 13px; color: #fff;">{{ invoice.variable_symbol }}</strong>
-            </div>
-            <div>
-                <span style="color: #94a3b8; display: block; font-size: 10px; text-transform: uppercase;">Datum vystavení:</span>
-                <strong style="font-size: 13px; color: #fff;">{{ invoice.issue_date|date:"d.m.Y" }}</strong>
-            </div>
-            <div>
-                <span style="color: #94a3b8; display: block; font-size: 10px; text-transform: uppercase;">DUZP:</span>
-                <strong style="font-size: 13px; color: #fff;">{{ invoice.tax_date|date:"d.m.Y" }}</strong>
-            </div>
-            <div>
-                <span style="color: #facc15; display: block; font-size: 10px; text-transform: uppercase;">Datum splatnosti:</span>
-                <strong style="font-size: 14px; color: #facc15;">{{ invoice.due_date|date:"d.m.Y" }}</strong>
-            </div>
-        </div>
-
-        <!-- POZNÁMKA / TEXT -->
-        <p style="font-size: 13px; color: #334155; margin-bottom: 16px; line-height: 1.4;">
-            {{ invoice.notes|default:"Fakturujeme Vám za poskytnuté bezpečnostní služby a fyzickou ostrahu dle platné smlouvy:" }}
-        </p>
-
-        <!-- ROZPIS POLOŽEK FAKTURY (V responzivním obalu pro mobily) -->
-        <div style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; margin-bottom: 24px;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px;">
-                <thead>
-                    <tr style="background: #0f172a; color: #ffffff; text-align: left;">
-                        <th style="padding: 10px 12px; font-size: 11px; text-transform: uppercase;">Popis plnění</th>
-                        <th style="padding: 10px 12px; text-align: center; font-size: 11px; text-transform: uppercase;">Počet MJ</th>
-                        <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase;">Cena bez DPH</th>
-                        <th style="padding: 10px 12px; text-align: right; font-size: 11px; text-transform: uppercase;">Celkem bez DPH</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in invoice.items.all %}
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 12px; font-weight: 600; color: #0f172a;">{{ item.description }}</td>
-                        <td style="padding: 12px; text-align: center; color: #475569;">{{ item.quantity }}</td>
-                        <td style="padding: 12px; text-align: right; color: #475569;">{{ item.unit_price }} Kč</td>
-                        <td style="padding: 12px; text-align: right; font-weight: 800; color: #0f172a;">{{ item.total_price }} Kč</td>
-                    </tr>
-                    {% empty %}
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 12px; font-weight: 600; color: #0f172a;">Fyzická ostraha a bezpečnostní dohled</td>
-                        <td style="padding: 12px; text-align: center; color: #475569;">1</td>
-                        <td style="padding: 12px; text-align: right; color: #475569;">{{ invoice.amount_without_vat }} Kč</td>
-                        <td style="padding: 12px; text-align: right; font-weight: 800; color: #0f172a;">{{ invoice.amount_without_vat }} Kč</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-
-        <!-- SPAYD QR PLATBA + SOUHRN DPH -->
-        <div class="invoice-summary-flex" style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #0f172a; padding-top: 20px;">
+        <!-- SPODNÍ ČÁST NA PEVNO U PATIČKY A4: SPAYD QR KÓD + SOUHRN DPH -->
+        <div class="invoice-summary-flex" style="display: flex; justify-content: space-between; align-items: flex-end; border-top: 2px solid #0f172a; padding-top: 18px; margin-top: auto;">
             
             <!-- Platební údaje s QR kódem -->
-            <div style="display: flex; align-items: center; gap: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px;">
-                {% if company.bank_account and company.bank_code %}
-                    <img src="https://api.paylibo.com/paylibo/generator/image?accountNumber={{ company.bank_account }}&bankCode={{ company.bank_code }}&amount={{ invoice.total_amount }}&currency=CZK&vs={{ invoice.variable_symbol }}&message=Faktura_{{ invoice.invoice_number }}" 
+            <div style="display: flex; align-items: center; gap: 14px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; min-width: 290px;">
+                {% if qr_code_url %}
+                    <img src="{{ qr_code_url }}" 
                          alt="QR Platba SPAYD" 
-                         style="width: 100px; height: 100px; display: block; border: 1px solid #cbd5e1; border-radius: 4px; padding: 2px; background: #fff;">
+                         style="width: 105px; height: 105px; display: block; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px; background: #ffffff;">
+                {% else %}
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=SPD*1.0*ACC:{{ company.iban|default:'CZ780300000000352412682' }}*AM:{{ invoice.total_amount }}*CC:CZK*X-VS:{{ invoice.variable_symbol|default:invoice.invoice_number }}*MSG:Faktura_{{ invoice.invoice_number }}" 
+                         alt="QR Platba SPAYD" 
+                         style="width: 105px; height: 105px; display: block; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px; background: #ffffff;">
                 {% endif %}
+
                 <div style="font-size: 12px; line-height: 1.5; color: #334155;">
                     <strong style="display: block; color: #0f172a; margin-bottom: 2px;">Platební údaje:</strong>
-                    Účet: <strong>{{ company.bank_account }}/{{ company.bank_code }}</strong><br>
-                    {% if company.iban %}IBAN: <strong>{{ company.iban }}</strong><br>{% endif %}
-                    VS: <strong>{{ invoice.variable_symbol }}</strong>
+                    Účet: <strong>{{ company.bank_account|default:"352412682" }}{% if company.bank_code %}/{{ company.bank_code }}{% endif %}</strong><br>
+                    IBAN: <strong>{{ company.iban|default:"CZ780300000000352412682" }}</strong><br>
+                    VS: <strong>{{ invoice.variable_symbol|default:invoice.invoice_number }}</strong>
                 </div>
             </div>
 
-            <!-- Rekapitulace DPH a Celkem k úhradě -->
-            <div class="invoice-summary-box" style="text-align: right; min-width: 260px; font-size: 13px;">
+            <!-- Rekapitulace DPH a Celkem k úhradě s mezerami mezi tisíci -->
+            <div class="invoice-summary-box" style="text-align: right; min-width: 270px; font-size: 13px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #64748b;">
                     <span>Základ daně (0 % / bez DPH):</span>
-                    <strong style="color: #0f172a;">{{ invoice.amount_without_vat }} Kč</strong>
+                    <strong style="color: #0f172a;">{% if formatted_totals %}{{ formatted_totals.amount_without_vat }}{% else %}{{ invoice.amount_without_vat }}{% endif %} Kč</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #64748b;">
                     <span>DPH ({{ invoice.vat_rate|default:"21" }} %):</span>
-                    <strong style="color: #0f172a;">{{ invoice.vat_amount }} Kč</strong>
+                    <strong style="color: #0f172a;">{% if formatted_totals %}{{ formatted_totals.vat_amount }}{% else %}{{ invoice.vat_amount }}{% endif %} Kč</strong>
                 </div>
-                <div style="display: flex; justify-content: space-between; border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 8px; font-size: 18px; font-weight: 900; color: #0f172a;">
+                <div style="display: flex; justify-content: space-between; border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 8px; font-size: 19px; font-weight: 900; color: #0f172a;">
                     <span>CELKEM K ÚHRADĚ:</span>
-                    <span>{{ invoice.total_amount }} Kč</span>
+                    <span>{% if formatted_totals %}{{ formatted_totals.total_amount }}{% else %}{{ invoice.total_amount }}{% endif %} Kč</span>
                 </div>
             </div>
 
