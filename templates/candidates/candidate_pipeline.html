@@ -3,72 +3,111 @@
 {% block title %}Nábor zájemců - Panther Security{% endblock %}
 
 {% block content %}
-<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+<!-- HLAVIČKA STRÁNKY -->
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 14px;">
     <div>
-        <span class="badge-tag yellow">PERSONÁLNÍ AGENTURA</span>
-        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Náborová pipeline &amp; Zájemci</h1>
-        <p style="color: var(--text-muted); font-size: 13px;">Evidence uchazečů o práci, plánování pohovorů a nástup do služby.</p>
+        <div style="margin-bottom: 6px;">
+            <span class="badge-tag yellow">PERSONÁLNÍ AGENTURA</span>
+        </div>
+        <h1 style="font-size: 24px; color: #fff; margin: 0 0 6px 0; font-weight: 800;">
+            Náborová pipeline &amp; Zájemci
+        </h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 0; line-height: 1.4;">
+            Evidence uchazečů o práci, plánování pohovorů a nástup do služby.
+        </p>
     </div>
-    <div style="display: flex; gap: 10px;">
-        <a href="{% url 'candidates_archive_list' %}" class="btn btn-secondary">
+    <div>
+        <a href="{% url 'candidates_archive_list' %}" class="btn btn-secondary" style="font-size: 12px; padding: 8px 14px; white-space: nowrap;">
             🗄️ Archiv vyřazených zájemců
         </a>
     </div>
 </div>
 
-<div style="display: grid; grid-template-columns: 360px 1fr; gap: 24px; align-items: flex-start;">
-    <!-- FORMULÁŘ PŘIDÁNÍ ZÁJEMCE S VOLITELNÝM POHOVOREM -->
-    <div class="card">
-        <h2 style="font-size: 17px; color: var(--panther-yellow); margin-bottom: 16px;">➕ Zadat nového zájemce</h2>
+<!-- HLAVNÍ KONTEJNER: NA DESKTOPU 2 SLOUPCE, NA MOBILU POD SEBOU -->
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; width: 100%;">
+
+    <!-- LEVÝ SLOUPEC: FORMULÁŘ ZADÁNÍ ZÁJEMCE (Na mobilu 100 %, na desktopu 360px) -->
+    <div class="card" style="flex: 1 1 340px; max-width: 100%; padding: 20px 16px; margin-bottom: 0;">
+        <h2 style="font-size: 16px; color: var(--panther-yellow); margin: 0 0 16px 0; font-weight: 800;">
+            ➕ Zadat nového zájemce
+        </h2>
+        
         <form method="post">
             {% csrf_token %}
-            <div class="form-group">
-                <label>Jméno *</label>
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                    Jméno *
+                </label>
                 {{ form.first_name }}
             </div>
-            <div class="form-group">
-                <label>Příjmení *</label>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                    Příjmení *
+                </label>
                 {{ form.last_name }}
             </div>
-            <div class="form-group">
-                <label>Telefon *</label>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                    Telefon *
+                </label>
                 {{ form.phone }}
             </div>
-            <div class="form-group">
-                <label>E-mail (volitelné)</label>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                    E-mail (volitelné)
+                </label>
                 {{ form.email }}
             </div>
-            <div class="form-group" style="background: rgba(250, 204, 21, 0.05); padding: 12px; border-radius: 8px; border: 1px dashed var(--border-color);">
-                <label style="color: var(--panther-yellow);">📅 Termín pohovoru (volitelný)</label>
-                {{ form.interview_date }}
-                <div style="margin-top: 8px;">
+
+            <!-- BLOK POHOVORU S OŠETŘENÝM DATUMEM PRO IOS -->
+            <div class="form-group" style="background: rgba(250, 204, 21, 0.05); padding: 14px; border-radius: 8px; border: 1px dashed var(--border-color); margin-bottom: 14px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--panther-yellow); margin-bottom: 6px; text-transform: uppercase;">
+                    📅 Termín pohovoru (volitelný)
+                </label>
+                <div style="color-scheme: dark; margin-bottom: 8px;">
+                    {{ form.interview_date }}
+                </div>
+                <div>
                     {{ form.interview_note }}
                 </div>
-                <small style="color: var(--text-muted); display: block; margin-top: 4px; font-size: 11px;">Můžete nechat prázdné a naplánovat kdykoliv později.</small>
+                <small style="color: var(--text-muted); display: block; margin-top: 6px; font-size: 11px; line-height: 1.3;">
+                    Můžete nechat prázdné a naplánovat kdykoliv později.
+                </small>
             </div>
-            <div class="form-group">
-                <label>Poznámka / Odkud přišel</label>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                    Poznámka / Odkud přišel
+                </label>
                 {{ form.note }}
             </div>
-            <button type="submit" class="btn btn-primary" style="width: 100%;">
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 800;">
                 Zaevidovat do náboru
             </button>
         </form>
     </div>
 
-    <!-- SEZNAM KANDIDÁTŮ -->
-    <div style="display: flex; flex-direction: column; gap: 20px;">
-        <!-- KANDIDÁTI S POHOVOREM -->
-        <div class="card" style="border-left: 4px solid var(--panther-yellow);">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
-                <h3 style="font-size: 16px; color: #fff;">📅 Pozváni na pohovor ({{ interview_candidates|length }})</h3>
+    <!-- PRAVÝ SLOUPEC: TABULKY UCHAZEČŮ (Na mobilu se složí pod formulář) -->
+    <div style="flex: 2 1 450px; min-width: 0; width: 100%; display: flex; flex-direction: column; gap: 20px;">
+        
+        <!-- 1. KANDIDÁTI S NAPLÁNOVANÝM POHOVOREM -->
+        <div class="card" style="border-left: 4px solid var(--panther-yellow); margin-bottom: 0; padding: 18px 16px;">
+            <div style="margin-bottom: 14px;">
+                <h3 style="font-size: 16px; color: #fff; margin: 0; font-weight: 800;">
+                    📅 Pozváni na pohovor ({{ interview_candidates|length }})
+                </h3>
             </div>
-            <div class="table-responsive">
-                <table class="table">
+
+            <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
+                <table class="table" style="min-width: 520px;">
                     <thead>
                         <tr>
                             <th>Jméno uchazeče</th>
-                            <th>Termín pohovoru</th>
+                            <th>Termín</th>
                             <th>Místo / Poznámka</th>
                             <th>Kontakt</th>
                             <th style="text-align: right;">Akce</th>
@@ -77,27 +116,31 @@
                     <tbody>
                         {% for cand in interview_candidates %}
                         <tr>
-                            <td><strong style="color: #fff; font-size: 14px;">{{ cand.full_name }}</strong></td>
+                            <td><strong style="color: #fff; font-size: 13px;">{{ cand.full_name }}</strong></td>
                             <td>
-                                <span class="badge-tag yellow">{{ cand.interview_date|date:"d.m.Y H:i" }}</span>
+                                <span class="badge-tag yellow" style="font-size: 11px;">{{ cand.interview_date|date:"d.m.Y H:i" }}</span>
                             </td>
-                            <td>{{ cand.interview_note|default:"Centrála" }}</td>
-                            <td>{{ cand.phone }}</td>
+                            <td style="font-size: 12px; color: var(--text-secondary);">{{ cand.interview_note|default:"Centrála" }}</td>
+                            <td style="font-size: 12px;">{{ cand.phone }}</td>
                             <td style="text-align: right; white-space: nowrap;">
-                                <a href="{% url 'candidate_onboard' cand.id %}" class="btn btn-primary" style="padding: 5px 10px; font-size: 11px;">
-                                    🚀 Nástup (OP)
-                                </a>
-                                <a href="{% url 'schedule_interview' cand.id %}" class="btn btn-secondary" style="padding: 5px 8px; font-size: 11px;" title="Upravit pohovor">
-                                    ✏️
-                                </a>
-                                <a href="{% url 'archive_candidate' cand.id %}" class="btn btn-danger" style="padding: 5px 8px; font-size: 11px;" title="Vyřadit do archivu">
-                                    🗑️
-                                </a>
+                                <div style="display: inline-flex; gap: 4px;">
+                                    <a href="{% url 'candidate_onboard' cand.id %}" class="btn btn-primary" style="padding: 4px 8px; font-size: 11px;" title="Zahájit nástup a sken OP">
+                                        🚀 Nástup
+                                    </a>
+                                    <a href="{% url 'schedule_interview' cand.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;" title="Upravit pohovor">
+                                        ✏️
+                                    </a>
+                                    <a href="{% url 'archive_candidate' cand.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" title="Vyřadit do archivu">
+                                        🗑️
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 18px;">Žádný zájemce aktuálně nečeká na pohovor.</td>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 13px;">
+                                Žádný zájemce aktuálně nečeká na pohovor.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -105,11 +148,16 @@
             </div>
         </div>
 
-        <!-- NOVÍ ZÁJEMCI -->
-        <div class="card">
-            <h3 style="font-size: 16px; color: #fff; margin-bottom: 14px;">🆕 Noví zájemci (Čekají na kontaktování)</h3>
-            <div class="table-responsive">
-                <table class="table">
+        <!-- 2. NOVÍ ZÁJEMCI (ČEKAJÍ NA KONTAKTOVÁNÍ) -->
+        <div class="card" style="margin-bottom: 0; padding: 18px 16px;">
+            <div style="margin-bottom: 14px;">
+                <h3 style="font-size: 16px; color: #fff; margin: 0; font-weight: 800;">
+                    🆕 Noví zájemci (Čekají na kontaktování)
+                </h3>
+            </div>
+
+            <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
+                <table class="table" style="min-width: 480px;">
                     <thead>
                         <tr>
                             <th>Jméno uchazeče</th>
@@ -122,31 +170,36 @@
                     <tbody>
                         {% for cand in new_candidates %}
                         <tr>
-                            <td><strong style="color: #fff;">{{ cand.full_name }}</strong></td>
-                            <td>{{ cand.phone }}</td>
-                            <td>{{ cand.note|default:"—" }}</td>
-                            <td style="color: var(--text-muted);">{{ cand.created_at|date:"d.m.Y" }}</td>
+                            <td><strong style="color: #fff; font-size: 13px;">{{ cand.full_name }}</strong></td>
+                            <td style="font-size: 12px;">{{ cand.phone }}</td>
+                            <td style="font-size: 12px; color: var(--text-secondary);">{{ cand.note|default:"—" }}</td>
+                            <td style="color: var(--text-muted); font-size: 12px;">{{ cand.created_at|date:"d.m.Y" }}</td>
                             <td style="text-align: right; white-space: nowrap;">
-                                <a href="{% url 'schedule_interview' cand.id %}" class="btn btn-secondary" style="padding: 5px 10px; font-size: 11px;">
-                                    📅 Naplánovat pohovor
-                                </a>
-                                <a href="{% url 'candidate_onboard' cand.id %}" class="btn btn-primary" style="padding: 5px 10px; font-size: 11px;">
-                                    🚀 Nástup (OP)
-                                </a>
-                                <a href="{% url 'archive_candidate' cand.id %}" class="btn btn-danger" style="padding: 5px 8px; font-size: 11px;" title="Vyřadit">
-                                    ✕
-                                </a>
+                                <div style="display: inline-flex; gap: 4px;">
+                                    <a href="{% url 'schedule_interview' cand.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
+                                        📅 Pohovor
+                                    </a>
+                                    <a href="{% url 'candidate_onboard' cand.id %}" class="btn btn-primary" style="padding: 4px 8px; font-size: 11px;">
+                                        🚀 Nástup
+                                    </a>
+                                    <a href="{% url 'archive_candidate' cand.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" title="Vyřadit">
+                                        ✕
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 18px;">Žádní noví nezařazení zájemci.</td>
+                            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 18px; font-size: 13px;">
+                                Žádní noví nezařazení zájemci.
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
         </div>
+
     </div>
 </div>
 {% endblock %}

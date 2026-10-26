@@ -3,79 +3,113 @@
 {% block title %}Vystavit fakturu - Panther Security{% endblock %}
 
 {% block content %}
-<div style="max-width: 760px; margin: 30px auto;">
-    <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 16px;">← Zpět na přehled</a>
+<div style="max-width: 800px; margin: 0 auto; padding-bottom: 40px;">
     
-    <div class="card" style="border-top: 4px solid var(--panther-yellow);">
-        <div style="margin-bottom: 20px;">
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 12px; display: inline-flex;">
+            ← Zpět na přehled
+        </a>
+        <div style="margin-bottom: 6px;">
             <span class="badge-tag yellow">VYSTAVENÍ DOKLADU</span>
-            <h1 style="font-size: 24px; font-weight: 800; color: #fff; margin: 6px 0 0;">Nová vydaná faktura</h1>
-            <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">
-                Zadejte odběratele, termíny a jednotlivé položky plnění. Systém automaticky spočítá DPH 21 % a vygeneruje variabilní symbol i SPAYD QR platbu.
-            </p>
         </div>
+        <h1 style="font-size: 24px; color: #fff; margin: 0 0 6px 0; font-weight: 800;">
+            Nová vydaná faktura
+        </h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 0; line-height: 1.4;">
+            Zadejte odběratele, termíny a jednotlivé položky plnění. Systém automaticky spočítá DPH 21 % a vygeneruje variabilní symbol i SPAYD QR platbu.
+        </p>
+    </div>
 
-        <form method="post" id="invoice-form">
+    <div class="card" style="padding: 20px 16px;">
+        <form method="post" id="invoiceForm">
             {% csrf_token %}
-            
-            <div class="form-group" style="margin-bottom: 16px;">
-                <label style="color: #fff; font-weight: 600;">Klient / Odběratel *</label>
+
+            <!-- ODBĚRATEL -->
+            <div class="form-group" style="margin-bottom: 18px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                    Klient / Odběratel *
+                </label>
                 {{ form.client }}
             </div>
 
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px;">
-                <div class="form-group">
-                    <label style="color: #fff; font-weight: 600; font-size: 13px;">Datum vystavení *</label>
-                    {{ form.issue_date }}
+            <!-- TERMÍNY: Na mobilu flex-column pod sebe, na desktopu vedle sebe -->
+            <div style="display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 18px;">
+                <div style="flex: 1 1 200px; min-width: 0;">
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                        Datum vystavení *
+                    </label>
+                    <div style="color-scheme: dark;">
+                        {{ form.issue_date }}
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label style="color: #fff; font-weight: 600; font-size: 13px;">DUZP *</label>
-                    {{ form.tax_date }}
+
+                <div style="flex: 1 1 200px; min-width: 0;">
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                        DUZP *
+                    </label>
+                    <div style="color-scheme: dark;">
+                        {{ form.tax_date }}
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label style="color: #fff; font-weight: 600; font-size: 13px;">Datum splatnosti *</label>
-                    {{ form.due_date }}
+
+                <div style="flex: 1 1 200px; min-width: 0;">
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--panther-yellow); margin-bottom: 6px; text-transform: uppercase;">
+                        Datum splatnosti *
+                    </label>
+                    <div style="color-scheme: dark;">
+                        {{ form.due_date }}
+                    </div>
                 </div>
             </div>
 
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label style="color: #fff; font-weight: 600; font-size: 13px;">Doplňující poznámka (zobrazí se v patičce faktury)</label>
+            <!-- POZNÁMKA -->
+            <div class="form-group" style="margin-bottom: 22px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase;">
+                    Doplňující poznámka (zobrazí se v patičce faktury)
+                </label>
                 {{ form.notes }}
             </div>
 
-            <!-- KONTEJNER PRO POLOŽKY FAKTURY -->
-            <div style="margin-bottom: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <label style="color: var(--panther-yellow); font-weight: 700; font-size: 14px; margin: 0;">
+            <!-- POLOŽKY FAKTURY -->
+            <div style="margin-bottom: 24px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="font-size: 15px; color: #fff; margin: 0; font-weight: 700;">
                         📋 Položky faktury
-                    </label>
-                    <button type="button" id="add-item-btn" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">
-                        ➕ Přidat další řádek
+                    </h3>
+                    <button type="button" id="addItemBtn" class="btn btn-secondary" style="font-size: 11px; padding: 4px 10px;">
+                        + Přidat další řádek
                     </button>
                 </div>
 
-                <div id="items-wrapper">
-                    <!-- PRVNÍ VÝCHOZÍ POLOŽKA -->
-                    <div class="invoice-item-row" style="background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 14px; border-radius: 6px; margin-bottom: 12px;">
-                        <div class="form-group" style="margin-bottom: 10px;">
-                            <label style="font-size: 12px;">Popis služby / položky *</label>
-                            <input type="text" name="item_description[]" class="form-control" placeholder="Fyzická ostraha a bezpečnostní dohled" required>
+                <div id="itemsContainer" style="display: flex; flex-direction: column; gap: 12px;">
+                    <!-- První položka -->
+                    <div class="item-row" style="background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px;">
+                        <div style="margin-bottom: 10px;">
+                            <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+                                Popis služby / položky *
+                            </label>
+                            <input type="text" name="item_description[]" class="form-control" value="Fyzická ostraha a bezpečnostní dohled" required>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                            <div class="form-group" style="margin: 0;">
-                                <label style="font-size: 12px;">Počet hodin / MJ *</label>
-                                <input type="number" step="0.5" name="item_quantity[]" class="form-control" value="1" required>
+                        <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                            <div style="flex: 1 1 120px; min-width: 0;">
+                                <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+                                    Počet hodin / MJ *
+                                </label>
+                                <input type="number" step="0.5" name="item_quantity[]" class="form-control item-qty" value="1" required>
                             </div>
-                            <div class="form-group" style="margin: 0;">
-                                <label style="font-size: 12px;">Cena bez DPH za MJ (Kč) *</label>
-                                <input type="number" step="0.01" name="item_price[]" class="form-control" placeholder="260.00" required>
+                            <div style="flex: 1 1 120px; min-width: 0;">
+                                <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">
+                                    Cena bez DPH za MJ (Kč) *
+                                </label>
+                                <input type="number" step="0.01" name="item_price[]" class="form-control item-price" value="260.00" required>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 13px; font-size: 15px; font-weight: 700;">
+            <!-- TLAČÍTKO ODESLÁNÍ -->
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 13px; font-size: 14px; font-weight: 800; letter-spacing: 0.3px;">
                 ⚡ Vystavit a zaevidovat fakturu
             </button>
         </form>
@@ -83,30 +117,35 @@
 </div>
 
 <script>
-    // Jednoduché přidání dalšího řádku položky
-    document.getElementById('add-item-btn').addEventListener('click', function() {
-        const wrapper = document.getElementById('items-wrapper');
-        const newRow = document.createElement('div');
-        newRow.className = 'invoice-item-row';
-        newRow.style.cssText = 'background: rgba(0,0,0,0.3); border: 1px solid var(--border-color); padding: 14px; border-radius: 6px; margin-bottom: 12px; position: relative;';
-        newRow.innerHTML = `
-            <button type="button" onclick="this.parentElement.remove()" style="position: absolute; top: 8px; right: 8px; background: none; border: none; color: #ef4444; font-size: 16px; cursor: pointer;" title="Odstranit položku">✕</button>
-            <div class="form-group" style="margin-bottom: 10px; padding-right: 20px;">
-                <label style="font-size: 12px;">Popis služby / položky *</label>
-                <input type="text" name="item_description[]" class="form-control" placeholder="Další položka plnění" required>
-            </div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div class="form-group" style="margin: 0;">
-                    <label style="font-size: 12px;">Počet hodin / MJ *</label>
-                    <input type="number" step="0.5" name="item_quantity[]" class="form-control" value="1" required>
+document.addEventListener('DOMContentLoaded', function () {
+    const addBtn = document.getElementById('addItemBtn');
+    const container = document.getElementById('itemsContainer');
+
+    if (addBtn && container) {
+        addBtn.addEventListener('click', function () {
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            row.style.cssText = 'background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; position: relative;';
+            row.innerHTML = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; margin: 0;">Další položka</label>
+                    <button type="button" onclick="this.closest('.item-row').remove()" style="background: none; border: none; color: #ef4444; font-size: 12px; cursor: pointer; font-weight: bold;">✕ Odebrat</button>
                 </div>
-                <div class="form-group" style="margin: 0;">
-                    <label style="font-size: 12px;">Cena bez DPH za MJ (Kč) *</label>
-                    <input type="number" step="0.01" name="item_price[]" class="form-control" placeholder="260.00" required>
+                <div style="margin-bottom: 10px;">
+                    <input type="text" name="item_description[]" class="form-control" placeholder="Popis položky" required>
                 </div>
-            </div>
-        `;
-        wrapper.appendChild(newRow);
-    });
+                <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <div style="flex: 1 1 120px; min-width: 0;">
+                        <input type="number" step="0.5" name="item_quantity[]" class="form-control" placeholder="Počet" value="1" required>
+                    </div>
+                    <div style="flex: 1 1 120px; min-width: 0;">
+                        <input type="number" step="0.01" name="item_price[]" class="form-control" placeholder="Cena bez DPH" required>
+                    </div>
+                </div>
+            `;
+            container.appendChild(row);
+        });
+    }
+});
 </script>
 {% endblock %}

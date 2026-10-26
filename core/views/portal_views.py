@@ -107,27 +107,60 @@ def manager_dashboard_view(request):
 @login_required
 @role_required([SystemRole.OWNER])
 def owner_dashboard_view(request):
-    """Ekonomický kokpit majitele."""
-    _auto_complete_expired_shifts()
+    """
+    Manažerský a ekonomický kokpit majitele: ziskovost objektů, tržby vs. náklady.
+    """
     now = timezone.now()
     year = int(request.GET.get('year', now.year))
     month = int(request.GET.get('month', now.month))
 
-    outgoing = Invoice.objects.filter(invoice_type=InvoiceType.OUTGOING, issue_date__year=year, issue_date__month=month)
-    incoming = Invoice.objects.filter(invoice_type=InvoiceType.INCOMING, issue_date__year=year, issue_date__month=month)
-    approved_shifts = Shift.objects.filter(status=ShiftStatus.APPROVED, start_time__year=year, start_time__month=month)
+    # 1. Tržby z vydaných faktur
+    outgoing_invoices = Invoice.objects.filter(
+        invoice_type=InvoiceType.OUTGOING,
+        issue_date__year=year,
+        issue_date__month=month
+    )
+    total_revenue = sum(inv.total_amount for inv in outgoing_invoices)
 
-    total_revenue = sum(inv.total_amount for inv in outgoing)
-    total_costs = sum(inv.total_amount for inv in incoming)
-    total_payroll = sum(s.total_cost for s in approved_shifts)
-    net_profit = total_revenue - total_costs - Decimal(str(total_payroll))
+    # 2. Provozní náklady od dodavatelů
+    incoming_invoices = Invoice.objects.filter(
+        invoice_type=InvoiceType.INCOMING,
+        issue_date__year=year,
+        issue_date__month=month
+    )
+    total_supplier_costs = sum(inv.total_amount for inv in incoming_invoices)
+
+    # 3. Mzdové náklady na strážné za schválené směny
+    month_approved_shifts = Shift.objects.filter(
+        status=ShiftStatus.APPROVED,
+        start_time__year=year,
+        start_time__month=month
+    )
+    total_payroll = sum(s.total_cost for s in month_approved_shifts)
+
+    # 4. Celkový zisk a marže
+    total_expenses = total_supplier_costs + Decimal(str(total_payroll))
+    net_profit = total_revenue - total_expenses
+    margin_percent = round((float(net_profit) / float(total_revenue) * 100), 1) if total_revenue > 0 else 0.0
+
+    # 5. Seznamy pro roletky měsíců a let
+    months_list = [
+        (1, 'Leden'), (2, 'Únor'), (3, 'Březen'), (4, 'Duben'),
+        (5, 'Květen'), (6, 'Červen'), (7, 'Červenec'), (8, 'Srpen'),
+        (9, 'Září'), (10, 'Říjen'), (11, 'Listopad'), (12, 'Prosinec')
+    ]
+    available_years = list(range(now.year - 2, now.year + 3))
 
     context = {
         'year': year,
         'month': month,
+        'months_list': months_list,
+        'available_years': available_years,
         'total_revenue': total_revenue,
-        'total_costs': total_costs,
+        'total_supplier_costs': total_supplier_costs,
         'total_payroll': round(total_payroll, 2),
+        'total_expenses': total_expenses,
         'net_profit': round(net_profit, 2),
+        'margin_percent': margin_percent,
     }
-    return render(request, 'portals/portal_owner.html', context)
+    return render(request, 'portal_owner.html', context)
