@@ -163,4 +163,4 @@ def owner_dashboard_view(request):
         'net_profit': round(net_profit, 2),
         'margin_percent': margin_percent,
     }
-    return render(request, 'portal_owner.html', context)
+    return render(request, 'portals/portal_owner.html', context)
