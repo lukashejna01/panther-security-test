@@ -40,6 +40,14 @@ class Employee(models.Model):
         verbose_name="Uživatelský účet"
     )
 
+    personal_number = models.CharField(
+        max_length=20,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="Osobní číslo"
+    )
+
     system_role = models.CharField(
         max_length=20,
         choices=SystemRole.choices,
@@ -134,7 +142,8 @@ class Employee(models.Model):
         ordering = ['last_name', 'first_name']
 
     def __str__(self):
-        return f"{self.last_name} {self.first_name} ({self.get_system_role_display()})"
+        num_str = f" [{self.personal_number}]" if self.personal_number else ""
+        return f"{self.last_name} {self.first_name}{num_str} ({self.get_system_role_display()})"
 
     @property
     def full_name(self):
@@ -154,3 +163,23 @@ class Employee(models.Model):
         city_part = f"{self.zip_code} {self.city}".strip()
         parts = [p for p in [street_part, city_part] if p]
         return ", ".join(parts) or "Adresa neuvedena"
+
+    def save(self, *args, **kwargs):
+        if not self.personal_number:
+            prefix = "PS"
+            existing_numbers = Employee.objects.filter(
+                personal_number__startswith=prefix
+            ).values_list('personal_number', flat=True)
+
+            max_num = 0
+            for num_str in existing_numbers:
+                try:
+                    num_val = int(num_str.replace(prefix, ""))
+                    if num_val > max_num:
+                        max_num = num_val
+                except (ValueError, TypeError):
+                    continue
+
+            self.personal_number = f"{prefix}{max_num + 1:04d}"
+
+        super().save(*args, **kwargs)

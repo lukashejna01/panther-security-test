@@ -1,22 +1,27 @@
 {% extends 'base.html' %}
 
-{% block title %}Mzdový přehled & Odvody 2026 - Panther Security{% endblock %}
+{% block title %}Mzdový přehled & Odvody - Panther Security{% endblock %}
 
 {% block content %}
 <div style="max-width: 1200px; margin: 0 auto; padding-bottom: 40px; width: 100%; box-sizing: border-box;">
 
-    <!-- HLAVIČKA -->
+    <!-- HLAVIČKA S TLAČÍTKEM PRO MANUÁLNÍ PÁSKU -->
     <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; flex-wrap: wrap; gap: 14px;">
         <div>
             <div style="margin-bottom: 6px;">
-                <span class="badge-tag yellow">EKONOMIKA &amp; MZDOVÉ ÚČETNICTVÍ 2026</span>
+                <span class="badge-tag yellow">EKONOMIKA &amp; MZDOVÉ ÚČETNICTVÍ</span>
             </div>
             <h1 style="font-size: 26px; color: #fff; margin: 0; font-weight: 800;">
                 Měsíční sumář mezd a odvodů
             </h1>
             <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">
-                Odvody dle legislativy 2026: DPP (limit 12 000 Kč) &bull; DPČ (limit 4 500 Kč) &bull; HPP &bull; IČO.
+                Mzdové podklady a zákonné odvody ze schválených směn strážných.
             </p>
+        </div>
+        <div>
+            <a href="{% url 'payslip_custom_generate' %}" class="btn btn-primary" style="font-size: 13px;">
+                ➕ Vystavit pásku ručně / pro kohokoli
+            </a>
         </div>
     </div>
 
@@ -28,7 +33,6 @@
             </div>
 
             <div style="display: flex; flex-wrap: wrap; gap: 10px; flex: 1 1 280px; justify-content: flex-end;">
-                <!-- Měsíc -->
                 <div style="flex: 1 1 140px; min-width: 120px;">
                     <select name="month" class="form-control" style="padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;" onchange="document.getElementById('payrollPeriodForm').submit();">
                         {% for m_num, m_name in months_list %}
@@ -39,7 +43,6 @@
                     </select>
                 </div>
 
-                <!-- Rok -->
                 <div style="flex: 1 1 90px; min-width: 90px;">
                     <select name="year" class="form-control" style="padding: 8px 12px; font-size: 13px; font-weight: 600; cursor: pointer;" onchange="document.getElementById('payrollPeriodForm').submit();">
                         {% for y in available_years %}
@@ -93,7 +96,7 @@
         </div>
 
         <div class="table-responsive" style="overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%;">
-            <table class="table" style="min-width: 900px; font-size: 13px;">
+            <table class="table" style="min-width: 880px; font-size: 13px;">
                 <thead>
                     <tr>
                         <th>Zaměstnanec / Strážný</th>
@@ -112,15 +115,17 @@
                     <tr>
                         <td>
                             <strong style="color: #fff; font-size: 14px;">{{ row.employee.full_name }}</strong>
+                            {% if row.employee.personal_number %}
+                                <span style="background: rgba(250, 204, 21, 0.15); color: #facc15; font-size: 11px; font-weight: 800; padding: 2px 5px; border-radius: 4px; margin-left: 4px;">
+                                    {{ row.employee.personal_number }}
+                                </span>
+                            {% endif %}
                             <div style="font-size: 11px; color: var(--text-muted);">Sazba: {{ row.employee.hourly_rate }} Kč/h</div>
                         </td>
                         <td>
-                            <span class="badge-tag yellow" style="font-size: 10px; font-weight: 800;">
+                            <span class="badge-tag yellow" style="font-size: 11px; font-weight: 800;">
                                 {{ row.contract_type }}
                             </span>
-                            <div style="font-size: 10px; color: var(--text-muted); margin-top: 3px;">
-                                {{ row.calc.limit_text }}
-                            </div>
                         </td>
                         <td style="text-align: center;">
                             <strong>{{ row.hours }} hod</strong>

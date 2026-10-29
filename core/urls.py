@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from core.views import billing_views
+from core.views import billing_views, payroll_views
 
 urlpatterns = [
     # Veřejné stránky a autentizace
@@ -15,7 +15,7 @@ urlpatterns = [
     path('dispecink/', views.manager_dashboard_view, name='manager_dashboard'),
     path('dashboard/', views.owner_dashboard_view, name='owner_dashboard'),
 
-    # Plánovač směn a kalendář (dle objektů i dle zaměstnanců)
+    # Plánovač směn a kalendář
     path('dispecink/planovac/', views.shift_planner_calendar_view, name='shift_planner_calendar'),
     path('portal/smena/<int:shift_id>/', views.shift_detail_view, name='shift_detail'),
     path('smena/<int:shift_id>/prevzit/', views.claim_shift_view, name='claim_shift'),
@@ -38,8 +38,9 @@ urlpatterns = [
     # Výplatní pásky a mzdy
     path('portal/vyplatni-paska/<int:employee_id>/<int:year>/<int:month>/', views.payslip_detail_view, name='payslip_detail'),
     path('dispecink/mzdy/', views.payroll_summary_view, name='payroll_summary'),
+    path('dispecink/mzdy/vystavit-pasku/', payroll_views.payslip_custom_generate_view, name='payslip_custom_generate'),
 
-    # Fakturace a správa dokladů (směřováno přímo na billing_views)
+    # Fakturace a správa dokladů
     path('fakturace/', billing_views.invoice_list_view, name='invoice_list'),
     path('faktury/', billing_views.invoice_list_view),
     path('fakturace/prijata/nahrat/', billing_views.upload_incoming_invoice_view, name='invoice_incoming_upload'),

@@ -4,7 +4,6 @@
 
 {% block content %}
 <style>
-    /* Zajištění tisku a PDF v tmavém stylu bez bílého přepisu prohlížečem */
     @media print {
         @page {
             size: A4 portrait;
@@ -53,20 +52,20 @@
 
 <div style="max-width: 680px; margin: 0 auto; padding-bottom: 40px; width: 100%; box-sizing: border-box;">
     
-    <!-- OVLÁDACÍ LIŠTA NA OBRAZOVCE -->
+    <!-- OVLÁDACÍ LIŠTA -->
     <div class="payslip-actions" style="margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <a href="{% url 'payroll_summary' %}?year={{ year }}&month={{ month }}" class="btn btn-secondary" style="font-size: 13px;">
             ← Zpět na přehled mezd
         </a>
         <button onclick="window.print()" class="btn btn-primary" style="font-size: 13px;">
-            🖨️ Vytisknout / PDF (Tmavý styl)
+            🖨️ Vytisknout / PDF (Tmavý režim)
         </button>
     </div>
 
-    <!-- KARTA VÝPLATNÍ PÁSKY V TMAVÉM STYLU -->
+    <!-- KARTA VÝPLATNÍ PÁSKY -->
     <div class="card" style="background: #111927; padding: 32px 26px; border-top: 4px solid var(--panther-yellow, #facc15); border-radius: 8px; width: 100%; box-sizing: border-box; border: 1px solid #1f293d;">
         
-        <!-- HLAVIČKA PÁSKY -->
+        <!-- HLAVIČKA -->
         <div style="border-bottom: 2px solid #1f293d; padding-bottom: 16px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 10px;">
             <div>
                 <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
@@ -91,7 +90,12 @@
         <div class="print-dark-box" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-bottom: 22px; background: #0b111e; border: 1px solid #1f293d; padding: 14px 16px; border-radius: 6px;">
             <div>
                 <span style="color: #94a3b8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;">Zaměstnanec:</span>
-                <strong style="color: #ffffff; font-size: 16px; display: block; margin-top: 2px;">{{ employee.full_name }}</strong>
+                <strong style="color: #ffffff; font-size: 16px; display: block; margin-top: 2px;">
+                    {{ employee.full_name }}
+                    {% if employee.personal_number %}
+                        <span style="color: #facc15; font-size: 13px; font-weight: 700; margin-left: 6px;">({{ employee.personal_number }})</span>
+                    {% endif %}
+                </strong>
                 <div style="font-size: 12px; color: #facc15; margin-top: 2px; font-weight: 600;">
                     Smlouva: {{ employee.contract_type|default:"DPP" }}
                 </div>
@@ -112,23 +116,24 @@
         <!-- REKAPITULACE HODIN, MZDY A ODVODŮ -->
         <div class="print-inner-box" style="background: #162032; border: 1px solid #243044; border-radius: 6px; padding: 20px;">
             
-            <!-- SOUČET HODIN -->
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 14px; margin-bottom: 8px;">
                 <span style="color: #94a3b8;">Celkem odpracováno za měsíc:</span>
                 <strong style="color: #ffffff; font-size: 16px;">{{ total_hours }} hod</strong>
             </div>
 
+            {% if employee.hourly_rate %}
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 12px; color: #94a3b8;">
                 <span>Základní hodinová sazba:</span>
                 <strong style="color: #cbd5e1;">{{ employee.hourly_rate }} Kč/h</strong>
             </div>
+            {% endif %}
 
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 15px; margin-bottom: 14px; border-top: 1px solid #243044; border-bottom: 1px solid #243044; padding: 10px 0;">
                 <span style="color: #ffffff; font-weight: 700;">Hrubá odměna:</span>
                 <strong style="color: #ffffff; font-size: 17px;">{{ gross_pay }} Kč</strong>
             </div>
 
-            <!-- SRÁŽKY ZAMĚSTNANEC -->
+            <!-- ZÁKONNÉ SRÁŽKY ZAMĚSTNANEC -->
             <div style="font-size: 11px; color: #94a3b8; margin-bottom: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">
                 Zákonné srážky ze mzdy (Zaměstnanec):
             </div>

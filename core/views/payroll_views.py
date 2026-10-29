@@ -2,7 +2,7 @@
 Mzdový modul Panther Security:
 - Měsíční sumář mzdových nákladů s roletkami pro manažera a majitele.
 - Automatický výpočet mezd, čisté výplaty a zákonných odvodů (SP, ZP, daň) pro rok 2026.
-- Detailní výplatní páska pro zaměstnance i vedení.
+- Detailní výplatní páska pro zaměstnance i vedení (ze směn i manuální).
 """
 
 from decimal import Decimal
@@ -18,11 +18,11 @@ from core.models import Employee, Shift, ShiftStatus, SystemRole
 def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_tax_declaration: bool = False):
     """
     Kalkulátor odvodů a čisté mzdy podle legislativy pro rok 2026:
-    - DPP: limit účasti na pojištění 12 000 Kč (do 11 999 Kč bez SP a ZP).
-    - DPČ: limit účasti na pojištění 4 500 Kč (do 4 499 Kč bez SP a ZP).
+    - DPP: limit 12 000 Kč.
+    - DPČ: limit 4 500 Kč.
     - HPP: plné odvody (SP 7.1 % + 24.8 %, ZP 4.5 % + 9.0 %).
     - IČO: fakturace bez srážek, čistá = hrubá.
-    - Daň z příjmu: 15 % (při podepsaném prohlášení sleva na poplatníka až 2 570 Kč měsíčně).
+    - Daň z příjmu: 15 %.
     """
     gross = round(float(gross_amount or 0.0), 2)
     contract = (contract_type or '').upper()
@@ -32,7 +32,6 @@ def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_ta
     comp_sp = 0.0
     comp_zp = 0.0
 
-    # 1. Živnostník (IČO / OSVČ)
     if 'ICO' in contract or 'IČO' in contract or 'OSVC' in contract or 'OSVČ' in contract:
         return {
             'gross': gross,
@@ -45,48 +44,37 @@ def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_ta
             'net': gross,
             'total_cost': gross,
             'is_exempt': True,
-            'limit_text': 'IČO (fakturace bez srážek)',
         }
 
-    # 2. DPP (Dohoda o provedení práce) – limit 2026 je 12 000 Kč
     elif 'DPP' in contract:
         if gross < 12000:
             is_exempt = True
-            limit_text = 'Do limitu 12 000 Kč (bez odvodů SP/ZP)'
         else:
             is_exempt = False
-            limit_text = 'Od 12 000 Kč (plné odvody SP/ZP)'
             emp_sp = round(gross * 0.071, 2)
             emp_zp = round(gross * 0.045, 2)
             comp_sp = round(gross * 0.248, 2)
             comp_zp = round(gross * 0.090, 2)
 
-    # 3. DPČ (Dohoda o pracovní činnosti) – limit 2026 je 4 500 Kč
     elif 'DPČ' in contract or 'DPC' in contract:
         if gross < 4500:
             is_exempt = True
-            limit_text = 'Do limitu 4 500 Kč (bez odvodů SP/ZP)'
         else:
             is_exempt = False
-            limit_text = 'Od 4 500 Kč (plné odvody SP/ZP)'
             emp_sp = round(gross * 0.071, 2)
             emp_zp = round(gross * 0.045, 2)
             comp_sp = round(gross * 0.248, 2)
             comp_zp = round(gross * 0.090, 2)
 
-    # 4. HPP (Hlavní pracovní poměr)
     else:
         is_exempt = False
-        limit_text = 'HPP (standardní pracovní poměr)'
         emp_sp = round(gross * 0.071, 2)
         emp_zp = round(gross * 0.045, 2)
         comp_sp = round(gross * 0.248, 2)
         comp_zp = round(gross * 0.090, 2)
 
-    # Daň z příjmu 15 %
     calculated_tax = round(gross * 0.15, 2)
     if has_tax_declaration:
-        # Měsíční sleva na poplatníka v roce 2026: 2 570 Kč (30 840 Kč ročně)
         tax_credit = 2570.00
         emp_tax = max(0.0, round(calculated_tax - tax_credit, 2))
     else:
@@ -106,12 +94,11 @@ def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_ta
         'net': net,
         'total_cost': total_cost,
         'is_exempt': is_exempt,
-        'limit_text': limit_text,
     }
 
 
 @login_required
-@role_required(SystemRole.OWNER)
+@role_required([SystemRole.OWNER, SystemRole.MANAGER])
 def payroll_summary_view(request):
     """Měsíční sumář mzdových nákladů ze schválených směn s roletkami měsíc/rok a odvody 2026."""
     now = timezone.now()
@@ -121,7 +108,6 @@ def payroll_summary_view(request):
     year = int(year_val) if year_val and year_val.isdigit() else now.year
     month = int(month_val) if month_val and month_val.isdigit() else now.month
 
-    # Seznamy pro roletky
     months_list = [
         (1, 'Leden'), (2, 'Únor'), (3, 'Březen'), (4, 'Duben'),
         (5, 'Květen'), (6, 'Červen'), (7, 'Červenec'), (8, 'Srpen'),
@@ -193,7 +179,6 @@ def payslip_detail_view(request, employee_id, year, month):
     profile = getattr(request.user, 'employee_profile', None)
     target_employee = get_object_or_404(Employee, id=employee_id)
 
-    # Bezpečnost: Řadový strážný smí vidět pouze svou pásku
     if profile and profile.system_role == SystemRole.STAFF and profile.id != target_employee.id:
         messages.error(request, "Nemáte oprávnění prohlížet cizí výplatní pásku.")
         return redirect('employee_portal')
@@ -208,7 +193,6 @@ def payslip_detail_view(request, employee_id, year, month):
     total_hours = sum(float(s.planned_hours) for s in approved_shifts)
     gross_pay = sum(float(s.total_cost) for s in approved_shifts)
 
-    # Výpočet odvodů a čisté mzdy podle legislativy 2026
     calc = calculate_czech_payroll_2026(gross_pay, target_employee.contract_type)
 
     context = {
@@ -227,6 +211,88 @@ def payslip_detail_view(request, employee_id, year, month):
         'net_pay': calc['net'],
         'total_company_cost': calc['total_cost'],
         'is_exempt': calc['is_exempt'],
-        'limit_text': calc['limit_text'],
     }
     return render(request, 'payroll/payslip_detail.html', context)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+def payslip_custom_generate_view(request):
+    """Generování jednorázové výplatní pásky pro kohokoli (ze seznamu i ručně zadaného)."""
+    now = timezone.now()
+    employees = Employee.objects.filter(is_active=True).order_by('last_name')
+
+    if request.method == 'POST':
+        employee_id = request.POST.get('employee_id')
+        month = int(request.POST.get('month', now.month))
+        year = int(request.POST.get('year', now.year))
+
+        if employee_id:
+            emp = get_object_or_404(Employee, id=employee_id)
+            full_name = emp.full_name
+            personal_number = emp.personal_number
+            contract_type = request.POST.get('contract_type') or emp.contract_type or 'DPP'
+            bank_account = request.POST.get('bank_account') or emp.bank_account or 'Výplata v hotovosti'
+            health_code = emp.get_health_insurance_code_display() if hasattr(emp, 'get_health_insurance_code_display') else ''
+        else:
+            full_name = request.POST.get('manual_name', '').strip() or 'Externí pracovník'
+            personal_number = request.POST.get('manual_personal_number', '').strip()
+            contract_type = request.POST.get('contract_type', 'DPP')
+            bank_account = request.POST.get('bank_account', '').strip() or 'Výplata v hotovosti'
+            health_code = request.POST.get('health_insurance', '').strip()
+
+        hours = float(request.POST.get('hours', 0.0) or 0.0)
+        hourly_rate = float(request.POST.get('hourly_rate', 0.0) or 0.0)
+        custom_gross = request.POST.get('gross_pay')
+
+        if custom_gross:
+            gross_pay = float(custom_gross)
+            if hours > 0 and hourly_rate == 0:
+                hourly_rate = round(gross_pay / hours, 2)
+        else:
+            gross_pay = round(hours * hourly_rate, 2)
+
+        calc = calculate_czech_payroll_2026(gross_pay, contract_type)
+
+        mock_employee = {
+            'full_name': full_name,
+            'personal_number': personal_number,
+            'contract_type': contract_type,
+            'bank_account': bank_account,
+            'hourly_rate': hourly_rate,
+            'get_health_insurance_code_display': health_code,
+        }
+
+        context = {
+            'employee': mock_employee,
+            'year': year,
+            'month': month,
+            'total_hours': round(hours, 1),
+            'gross_pay': calc['gross'],
+            'emp_sp': calc['emp_sp'],
+            'emp_zp': calc['emp_zp'],
+            'tax': calc['emp_tax'],
+            'comp_sp': calc['comp_sp'],
+            'comp_zp': calc['comp_zp'],
+            'comp_total_insurance': calc['comp_total_insurance'],
+            'net_pay': calc['net'],
+            'total_company_cost': calc['total_cost'],
+            'is_exempt': calc['is_exempt'],
+        }
+        return render(request, 'payroll/payslip_detail.html', context)
+
+    months_list = [
+        (1, 'Leden'), (2, 'Únor'), (3, 'Březen'), (4, 'Duben'),
+        (5, 'Květen'), (6, 'Červen'), (7, 'Červenec'), (8, 'Srpen'),
+        (9, 'Září'), (10, 'Říjen'), (11, 'Listopad'), (12, 'Prosinec')
+    ]
+    available_years = list(range(now.year - 2, now.year + 3))
+
+    context = {
+        'employees': employees,
+        'months_list': months_list,
+        'available_years': available_years,
+        'current_month': now.month,
+        'current_year': now.year,
+    }
+    return render(request, 'payroll/payslip_custom_form.html', context)

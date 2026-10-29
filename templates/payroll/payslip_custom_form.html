@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}Vystavit výplatní pásku - Panther Security{% endblock %}
+
+{% block content %}
+<div style="max-width: 650px; margin: 0 auto; padding-bottom: 40px;">
+    
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'payroll_summary' %}" class="btn btn-secondary" style="font-size: 13px; margin-bottom: 12px; display: inline-flex;">
+            ← Zpět na přehled mezd
+        </a>
+        <span class="badge-tag yellow">MANUÁLNÍ DOKLAD</span>
+        <h1 style="font-size: 24px; color: #fff; margin: 6px 0 4px; font-weight: 800;">
+            Vystavení výplatní pásky
+        </h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 0;">
+            Vyberte zaměstnance ze systému, nebo zadejte libovolné jméno a částku ručně.
+        </p>
+    </div>
+
+    <div class="card" style="padding: 24px 20px;">
+        <form method="post" id="customPayslipForm">
+            {% csrf_token %}
+
+            <!-- OBDOBÍ -->
+            <div style="display: flex; gap: 12px; margin-bottom: 18px; flex-wrap: wrap;">
+                <div style="flex: 1 1 140px;">
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Měsíc *</label>
+                    <select name="month" class="form-control" style="cursor: pointer;">
+                        {% for m_num, m_name in months_list %}
+                            <option value="{{ m_num }}" {% if current_month == m_num %}selected{% endif %}>{{ m_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div style="flex: 1 1 100px;">
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Rok *</label>
+                    <select name="year" class="form-control" style="cursor: pointer;">
+                        {% for y in available_years %}
+                            <option value="{{ y }}" {% if current_year == y %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- VÝBĚR ZE SYSTÉMU -->
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--panther-yellow); text-transform: uppercase; margin-bottom: 6px;">
+                    1. Výběr ze zaměstnanců (volitelné):
+                </label>
+                <select name="employee_id" id="employeeSelect" class="form-control" style="cursor: pointer;" onchange="toggleManualInputs(this.value)">
+                    <option value="">-- Zadat člověka ručně (mimo evidenci) --</option>
+                    {% for emp in employees %}
+                        <option value="{{ emp.id }}" 
+                                data-contract="{{ emp.contract_type|default:'DPP' }}" 
+                                data-rate="{{ emp.hourly_rate }}" 
+                                data-account="{{ emp.bank_account|default:'' }}"
+                                data-pnumber="{{ emp.personal_number|default:'' }}">
+                            {{ emp.full_name }} {% if emp.personal_number %}({{ emp.personal_number }}){% endif %} - {{ emp.contract_type|default:'DPP' }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- RUČNÍ ZADÁNÍ ÚDAJŮ -->
+            <div id="manualFields" style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; margin-bottom: 18px;">
+                <div class="form-group" style="margin-bottom: 12px;">
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Jméno a příjmení *</label>
+                    <input type="text" name="manual_name" id="manualName" class="form-control" placeholder="např. Jan Novák" required>
+                </div>
+
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                    <div style="flex: 1 1 140px;">
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Osobní číslo (volitelné)</label>
+                        <input type="text" name="manual_personal_number" id="manualPersonalNumber" class="form-control" placeholder="např. PS0099">
+                    </div>
+                    <div style="flex: 1 1 180px;">
+                        <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px;">Číslo účtu / Hotovost</label>
+                        <input type="text" name="bank_account" id="bankAccount" class="form-control" placeholder="např. 123456789/0300">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TYP SMLOUVY -->
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px;">Typ smlouvy / Spolupráce *</label>
+                <select name="contract_type" id="contractType" class="form-control" style="cursor: pointer;">
+                    <option value="DPP">DPP (Dohoda o provedení práce)</option>
+                    <option value="DPČ">DPČ (Dohoda o pracovní činnosti)</option>
+                    <option value="HPP">HPP (Hlavní pracovní poměr)</option>
+                    <option value="IČO">IČO (OSVČ fakturace)</option>
+                </select>
+            </div>
+
+            <!-- HODINY, SAZBA NEBO PŘÍMÁ ČÁSTKA -->
+            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: 6px; padding: 14px; margin-bottom: 22px;">
+                <div style="font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 10px;">
+                    Odměna a odpracovaný čas:
+                </div>
+                
+                <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                    <div style="flex: 1 1 120px;">
+                        <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Odpracováno hodin</label>
+                        <input type="number" step="0.5" name="hours" id="inputHours" class="form-control" value="0" oninput="calcGross()">
+                    </div>
+                    <div style="flex: 1 1 120px;">
+                        <label style="display: block; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">Sazba (Kč/h)</label>
+                        <input type="number" step="1" name="hourly_rate" id="inputRate" class="form-control" value="0" oninput="calcGross()">
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin: 0;">
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: var(--panther-yellow); text-transform: uppercase; margin-bottom: 4px;">
+                        Nebo zadejte přímo celkovou hrubou odměnu (Kč):
+                    </label>
+                    <input type="number" step="0.01" name="gross_pay" id="inputGross" class="form-control" placeholder="např. 15000" style="font-size: 16px; font-weight: 700;" required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; padding: 13px; font-size: 14px; font-weight: 800;">
+                📄 Vygenerovat výplatní pásku
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+function toggleManualInputs(selectedId) {
+    const manualFields = document.getElementById('manualFields');
+    const manualName = document.getElementById('manualName');
+    const select = document.getElementById('employeeSelect');
+    const selectedOption = select.options[select.selectedIndex];
+
+    if (selectedId) {
+        manualName.removeAttribute('required');
+        manualFields.style.display = 'none';
+
+        const contract = selectedOption.getAttribute('data-contract');
+        const rate = selectedOption.getAttribute('data-rate');
+        const account = selectedOption.getAttribute('data-account');
+
+        if (contract) document.getElementById('contractType').value = contract;
+        if (rate && rate !== 'None') {
+            document.getElementById('inputRate').value = parseFloat(rate) || 0;
+            calcGross();
+        }
+        if (account) document.getElementById('bankAccount').value = account;
+    } else {
+        manualName.setAttribute('required', 'required');
+        manualFields.style.display = 'block';
+    }
+}
+
+function calcGross() {
+    const h = parseFloat(document.getElementById('inputHours').value) || 0;
+    const r = parseFloat(document.getElementById('inputRate').value) || 0;
+    if (h > 0 && r > 0) {
+        document.getElementById('inputGross').value = (h * r).toFixed(2);
+    }
+}
+</script>
+{% endblock %}

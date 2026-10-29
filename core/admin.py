@@ -158,10 +158,8 @@ class ShiftAvailabilityAdmin(admin.ModelAdmin):
 # ==========================================
 @admin.register(Supplier)
 class SupplierAdmin(admin.ModelAdmin):
-    list_display = ('name', 'ico', 'city', 'phone', 'bank_account', 'is_active')
-    list_filter = ('is_active',)
+    list_display = ('name', 'ico', 'city', 'phone', 'bank_account')
     search_fields = ('name', 'ico', 'city', 'contact_person', 'phone')
-    list_editable = ('is_active',)
 
 
 class InvoiceItemInline(admin.TabularInline):
