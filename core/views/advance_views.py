@@ -2,7 +2,7 @@
 Pohledy pro modul záloh na mzdu Panther Security:
 - Seznam záloh s filtry a řádkovým přehledem
 - Vytvoření zálohy (hotovost s dotykovým podpisem / banka s potvrzením)
-- Generování a stažení oficiálního výdajového pokladního dokladu (VPD) v PDF s plnou českou diakritikou
+- Generování a stažení oficiálního výdajového pokladního dokladu (VPD) v PDF s plnou českou diakritikou a firemním razítkem
 """
 
 import os
@@ -31,7 +31,6 @@ def _register_czech_font():
     from reportlab.pdfbase.ttfonts import TTFont
     import reportlab
 
-    # Pokud již byl font zaregistrován, rovnou vrátíme jeho název
     registered = pdfmetrics.getRegisteredFontNames()
     if "PantherCzech" in registered:
         return "PantherCzech", "PantherCzech-Bold" if "PantherCzech-Bold" in registered else "PantherCzech"
@@ -78,7 +77,7 @@ def _register_czech_font():
 
 
 def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
-    """Vygeneruje PDF výdajový pokladní doklad přes ReportLab s plnou podporou české diakritiky."""
+    """Vygeneruje PDF výdajový pokladní doklad přes ReportLab s plnou podporou české diakritiky a razítkem."""
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
@@ -186,6 +185,24 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     elements.append(Spacer(1, 25))
 
     # 4. Sekce pro podpisy
+    # Razítko s podpisem majitele (zaměstnavatel)
+    company_stamp = None
+    stamp_paths = [
+        os.path.join(settings.BASE_DIR, 'static', 'images', 'stamp_signature.png'),
+        os.path.join(settings.STATIC_ROOT or '', 'images', 'stamp_signature.png'),
+        os.path.join(settings.BASE_DIR, 'media', 'company', 'stamp_signature.png'),
+        os.path.join(settings.BASE_DIR, 'core', 'static', 'images', 'stamp_signature.png'),
+    ]
+    for sp in stamp_paths:
+        if sp and os.path.exists(sp):
+            try:
+                # Rozměr razítka optimalizovaný pro tiskový doklad
+                company_stamp = RLImage(sp, width=125, height=70)
+                break
+            except Exception:
+                pass
+
+    # Podpis zaměstnance z canvasu
     sig_image = None
     if advance.signature_data and advance.signature_data.startswith('data:image'):
         try:
@@ -196,9 +213,18 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
         except Exception:
             sig_image = None
 
+    employer_cell = [
+        Paragraph("<b>Vyplatil (Za zaměstnavatele):</b>", header_style),
+    ]
+    if company_stamp:
+        employer_cell.append(Spacer(1, 4))
+        employer_cell.append(company_stamp)
+    else:
+        employer_cell.append(Paragraph("<br/><br/><br/>.......................................................<br/>Podpis a razítko", header_style))
+
     sign_data = [
         [
-            Paragraph("<b>Vyplatil (Za zaměstnavatele):</b><br/><br/><br/>.......................................................<br/>Podpis a razítko", header_style),
+            employer_cell,
             [
                 Paragraph("<b>Převzal v hotovosti (Příjemce):</b>", header_style),
                 sig_image if sig_image else Paragraph("<br/><br/>.......................................................<br/>Vlastnoruční podpis", header_style),
@@ -336,7 +362,7 @@ def advance_create_view(request, employee_id=None):
 def advance_download_vpd_view(request, advance_id):
     """
     Přímé zobrazení / stažení PDF dokladu o záloze (VPD).
-    Vždy generuje doklad čerstvě do paměti s plnou podporou české diakritiky.
+    Vždy generuje doklad čerstvě do paměti s plnou podporou české diakritiky a razítkem.
     """
     advance = get_object_or_404(AdvancePayment.objects.select_related('employee', 'issued_by'), id=advance_id)
 
