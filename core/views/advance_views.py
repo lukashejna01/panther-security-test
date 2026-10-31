@@ -197,7 +197,7 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
         if sp and os.path.exists(sp):
             try:
                 # Rozměr razítka optimalizovaný pro tiskový doklad
-                company_stamp = RLImage(sp, width=125, height=70)
+                company_stamp = RLImage(sp, width=110, height=110)
                 break
             except Exception:
                 pass
