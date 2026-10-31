@@ -40,7 +40,7 @@
                 {% for emp in employees %}
                 <tr>
                     <td>
-                        <strong style="color: #fff; font-size: 14px;">{{ emp.full_name }}</strong>
+                        <a href="{% url 'employee_detail' emp.id %}" style="color: #fff; font-size: 14px; font-weight: 700; text-decoration: none;" title="Otevřít kartu zaměstnance">{{ emp.full_name }}</a>
                         <div style="font-size: 11px; color: var(--text-muted);">{{ emp.personal_number|default:"" }}</div>
                     </td>
                     <td>
@@ -79,10 +79,8 @@
                         {% endif %}
                     </td>
                     <td>{{ emp.phone }}</td>
-                    <td style="text-align: right; white-space: nowrap;">
-                        <a href="{% url 'employee_advance_create' emp.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; border-color: #0f766e; color: #2dd4bf;" title="Vydat zálohu">💸 Záloha</a>
-                        <a href="{% url 'employee_detail' emp.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Karta</a>
-                        <a href="{% url 'archive_employee' emp.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" title="Ukončit poměr">Ukončit</a>
+                    <td style="text-align: right;">
+                        <a href="{% url 'employee_detail' emp.id %}" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px; white-space: nowrap;">Karta</a>
                     </td>
                 </tr>
                 {% empty %}
