@@ -22,12 +22,38 @@ from core.models import AdvancePayment, Employee, SystemRole
 
 
 def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
-    """Vygeneruje PDF výdajový pokladní doklad přes ReportLab (bez externích C závislostí)."""
+    """Vygeneruje PDF výdajový pokladní doklad přes ReportLab s plnou podporou české diakritiky."""
+    import base64
     from io import BytesIO
+    import os
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import reportlab
+
+    # Registrace českého TrueType fontu DejaVu
+    font_name = "Helvetica"
+    font_bold = "Helvetica-Bold"
+
+    try:
+        rl_dir = os.path.dirname(reportlab.__file__)
+        dejavu_path = os.path.join(rl_dir, "fonts", "DejaVuSans.ttf")
+        dejavu_bold_path = os.path.join(rl_dir, "fonts", "DejaVuSans-Bold.ttf")
+
+        if os.path.exists(dejavu_path):
+            pdfmetrics.registerFont(TTFont("DejaVuSans", dejavu_path))
+            font_name = "DejaVuSans"
+
+        if os.path.exists(dejavu_bold_path):
+            pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", dejavu_bold_path))
+            font_bold = "DejaVuSans-Bold"
+        else:
+            font_bold = font_name
+    except Exception:
+        pass
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -43,25 +69,27 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
-        fontSize=18,
-        leading=22,
+        fontName=font_bold,
+        fontSize=16,
+        leading=20,
         textColor=colors.HexColor('#0f172a'),
-        alignment=1, # Na střed
+        alignment=1,
         spaceAfter=15
     )
     header_style = ParagraphStyle(
         'HeaderStyle',
         parent=styles['Normal'],
-        fontSize=10,
-        leading=14,
+        fontName=font_name,
+        fontSize=9.5,
+        leading=13.5,
         textColor=colors.HexColor('#334155')
     )
     bold_style = ParagraphStyle(
         'BoldStyle',
         parent=styles['Normal'],
-        fontSize=10,
-        leading=14,
-        fontName='Helvetica-Bold',
+        fontName=font_bold,
+        fontSize=9.5,
+        leading=13.5,
         textColor=colors.HexColor('#0f172a')
     )
 
@@ -72,7 +100,10 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     elements.append(Paragraph(f"VÝDAJOVÝ POKLADNÍ DOKLAD č. {doc_num}", title_style))
     elements.append(Spacer(1, 10))
 
-    # 2. Informace o společnosti a příjemci
+    # 2. Informace o stranách
+    addr = getattr(advance.employee, 'full_address', '') or 'Neuvedeno'
+    birth_info = advance.employee.birth_number or (advance.employee.birth_date.strftime('%d.%m.%Y') if advance.employee.birth_date else 'Neuvedeno')
+
     company_data = [
         [
             Paragraph("<b>Plátce (Zaměstnavatel):</b><br/>"
@@ -82,8 +113,8 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
             Paragraph(f"<b>Příjemce (Zaměstnanec):</b><br/>"
                       f"<b>{advance.employee.full_name}</b><br/>"
                       f"Os. číslo: {advance.employee.personal_number or 'Neuvedeno'}<br/>"
-                      f"RČ / Datum nar.: {advance.employee.birth_number or advance.employee.birth_date or 'Neuvedeno'}<br/>"
-                      f"Bydliště: {advance.employee.full_address}", header_style)
+                      f"RČ / Datum nar.: {birth_info}<br/>"
+                      f"Bydliště: {addr}", header_style)
         ]
     ]
     t_parties = Table(company_data, colWidths=[260, 260])
@@ -99,17 +130,17 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     elements.append(t_parties)
     elements.append(Spacer(1, 15))
 
-    # 3. Podrobnosti o vyplacené záloze
+    # 3. Podrobnosti o vyplacené částce (bez řádku "Vystavil manažer")
     amount_czk = f"{advance.amount:,.2f} Kč".replace(',', ' ')
+
     details_data = [
         [Paragraph("Účel platby:", bold_style), Paragraph(f"Záloha na mzdu – {advance.note or 'Bez doplňující poznámky'}", header_style)],
         [Paragraph("Forma úhrady:", bold_style), Paragraph("Hotovostní výdej z pokladny", header_style)],
         [Paragraph("Datum a čas vystavení:", bold_style), Paragraph(advance.created_at.strftime("%d.%m.%Y v %H:%M"), header_style)],
-        [Paragraph("Vystavil manažer:", bold_style), Paragraph(advance.issued_by.get_full_name() if advance.issued_by else 'Vedení PS', header_style)],
-        [Paragraph("Částka k výplatě:", ParagraphStyle('BigSum', parent=bold_style, fontSize=12, textColor=colors.HexColor('#0f766e'))), 
-         Paragraph(f"<b>{amount_czk}</b>", ParagraphStyle('BigSumVal', parent=bold_style, fontSize=14, textColor=colors.HexColor('#0f766e')))]
+        [Paragraph("Částka k výplatě:", ParagraphStyle('BigSum', parent=bold_style, fontSize=11, textColor=colors.HexColor('#0f766e'))), 
+         Paragraph(f"<b>{amount_czk}</b>", ParagraphStyle('BigSumVal', parent=bold_style, fontName=font_bold, fontSize=13, textColor=colors.HexColor('#0f766e')))]
     ]
-    t_details = Table(details_data, colWidths=[160, 360])
+    t_details = Table(details_data, colWidths=[150, 370])
     t_details.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#f8fafc')),
         ('BOX', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e1')),
@@ -119,7 +150,7 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
         ('LEFTPADDING', (0, 0), (-1, -1), 8),
     ]))
     elements.append(t_details)
-    elements.append(Spacer(1, 30))
+    elements.append(Spacer(1, 25))
 
     # 4. Sekce pro podpisy
     sig_image = None
@@ -128,17 +159,17 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
             format_part, img_str = advance.signature_data.split(';base64,')
             img_data = base64.b64decode(img_str)
             sig_buffer = BytesIO(img_data)
-            sig_image = RLImage(sig_buffer, width=150, height=60)
+            sig_image = RLImage(sig_buffer, width=140, height=55)
         except Exception:
             sig_image = None
 
     sign_data = [
         [
-            Paragraph("<b>Vyplatil (Za zaměstnavatele):</b><br/><br/>.......................................................<br/>Podpis a razítko", header_style),
+            Paragraph("<b>Vyplatil (Za zaměstnavatele):</b><br/><br/><br/>.......................................................<br/>Podpis a razítko", header_style),
             [
                 Paragraph("<b>Převzal v hotovosti (Příjemce):</b>", header_style),
-                sig_image if sig_image else Paragraph("<br/>.......................................................<br/>Vlastnoruční podpis", header_style),
-                Paragraph(f"<font size=8 color='#64748b'>Elektronicky podepsáno dne {advance.created_at.strftime('%d.%m.%Y %H:%M')}</font>", header_style)
+                sig_image if sig_image else Paragraph("<br/><br/>.......................................................<br/>Vlastnoruční podpis", header_style),
+                Paragraph(f"<font size=7 color='#64748b'>Elektronicky podepsáno dne {advance.created_at.strftime('%d.%m.%Y %H:%M')}</font>", header_style)
             ]
         ]
     ]
