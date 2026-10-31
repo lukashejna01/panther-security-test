@@ -2,18 +2,20 @@
 Pohledy pro modul záloh na mzdu Panther Security:
 - Seznam záloh s filtry a řádkovým přehledem
 - Vytvoření zálohy (hotovost s dotykovým podpisem / banka s potvrzením)
-- Generování a stažení oficiálního výdajového pokladního dokladu (VPD) v PDF
+- Generování a stažení oficiálního výdajového pokladního dokladu (VPD) v PDF s plnou podporou češtiny
 """
 
+import os
 import base64
+import unicodedata
+from io import BytesIO
 from decimal import Decimal
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.files.base import ContentFile
-from django.http import FileResponse, Http404, HttpResponse
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
-from django.template.loader import render_to_string
 from django.utils import timezone
 
 from core.decorators import role_required
@@ -21,39 +23,73 @@ from core.forms import AdvancePaymentForm
 from core.models import AdvancePayment, Employee, SystemRole
 
 
-def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
-    """Vygeneruje PDF výdajový pokladní doklad přes ReportLab s plnou podporou české diakritiky."""
-    import base64
-    from io import BytesIO
-    import os
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib import colors
-    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+def _register_czech_fonts():
+    """
+    Registruje TrueType font DejaVuSans z Linux/PythonAnywhere systémových cest
+    nebo z balíčku reportlab. Vrátí názvy zaregistrovaných fontů.
+    """
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     import reportlab
 
-    # Registrace českého TrueType fontu DejaVu
-    font_name = "Helvetica"
+    font_regular = "Helvetica"
     font_bold = "Helvetica-Bold"
 
-    try:
-        rl_dir = os.path.dirname(reportlab.__file__)
-        dejavu_path = os.path.join(rl_dir, "fonts", "DejaVuSans.ttf")
-        dejavu_bold_path = os.path.join(rl_dir, "fonts", "DejaVuSans-Bold.ttf")
+    regular_candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        os.path.join(os.path.dirname(reportlab.__file__), "fonts", "DejaVuSans.ttf"),
+    ]
+    bold_candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans-Bold.ttf",
+        os.path.join(os.path.dirname(reportlab.__file__), "fonts", "DejaVuSans-Bold.ttf"),
+    ]
 
-        if os.path.exists(dejavu_path):
-            pdfmetrics.registerFont(TTFont("DejaVuSans", dejavu_path))
-            font_name = "DejaVuSans"
+    for p in regular_candidates:
+        if os.path.exists(p):
+            try:
+                pdfmetrics.registerFont(TTFont("DejaVuSansCustom", p))
+                font_regular = "DejaVuSansCustom"
+                break
+            except Exception:
+                pass
 
-        if os.path.exists(dejavu_bold_path):
-            pdfmetrics.registerFont(TTFont("DejaVuSans-Bold", dejavu_bold_path))
-            font_bold = "DejaVuSans-Bold"
-        else:
-            font_bold = font_name
-    except Exception:
-        pass
+    for p in bold_candidates:
+        if os.path.exists(p):
+            try:
+                pdfmetrics.registerFont(TTFont("DejaVuSansBoldCustom", p))
+                font_bold = "DejaVuSansBoldCustom"
+                break
+            except Exception:
+                pass
+
+    if font_bold == "Helvetica-Bold" and font_regular != "Helvetica":
+        font_bold = font_regular
+
+    return font_regular, font_bold
+
+
+def _safe_cz(text: str, has_unicode_font: bool) -> str:
+    """Pokud nebyl nalezen font s UTF-8 diakritikou, převede text na ASCII bez háčků a čárek."""
+    if not text:
+        return ""
+    if has_unicode_font:
+        return str(text)
+    return unicodedata.normalize('NFKD', str(text)).encode('ascii', 'ignore').decode('ascii')
+
+
+def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
+    """Vygeneruje PDF výdajový pokladní doklad s plnou podporou české diakritiky a bez manažera."""
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib import colors
+    from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
+    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+    font_name, font_bold = _register_czech_fonts()
+    has_utf = (font_name != "Helvetica")
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -70,8 +106,8 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
         'DocTitle',
         parent=styles['Heading1'],
         fontName=font_bold,
-        fontSize=16,
-        leading=20,
+        fontSize=15,
+        leading=19,
         textColor=colors.HexColor('#0f172a'),
         alignment=1,
         spaceAfter=15
@@ -80,16 +116,16 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
         'HeaderStyle',
         parent=styles['Normal'],
         fontName=font_name,
-        fontSize=9.5,
-        leading=13.5,
+        fontSize=9,
+        leading=13,
         textColor=colors.HexColor('#334155')
     )
     bold_style = ParagraphStyle(
         'BoldStyle',
         parent=styles['Normal'],
         fontName=font_bold,
-        fontSize=9.5,
-        leading=13.5,
+        fontSize=9,
+        leading=13,
         textColor=colors.HexColor('#0f172a')
     )
 
@@ -97,21 +133,22 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
 
     # 1. Název dokladu
     doc_num = f"VPD-{advance.created_at.strftime('%Y')}-{advance.id:04d}"
-    elements.append(Paragraph(f"VÝDAJOVÝ POKLADNÍ DOKLAD č. {doc_num}", title_style))
+    elements.append(Paragraph(_safe_cz(f"VÝDAJOVÝ POKLADNÍ DOKLAD č. {doc_num}", has_utf), title_style))
     elements.append(Spacer(1, 10))
 
     # 2. Informace o stranách
-    addr = getattr(advance.employee, 'full_address', '') or 'Neuvedeno'
+    addr = _safe_cz(getattr(advance.employee, 'full_address', '') or 'Neuvedeno', has_utf)
+    emp_name = _safe_cz(advance.employee.full_name, has_utf)
     birth_info = advance.employee.birth_number or (advance.employee.birth_date.strftime('%d.%m.%Y') if advance.employee.birth_date else 'Neuvedeno')
 
     company_data = [
         [
-            Paragraph("<b>Plátce (Zaměstnavatel):</b><br/>"
-                      "<b>Panther Security s.r.o.</b><br/>"
-                      "Varšavská 715/36, Praha 2, 120 00<br/>"
-                      "IČO: 22525882 | DIČ: CZ22525882", header_style),
-            Paragraph(f"<b>Příjemce (Zaměstnanec):</b><br/>"
-                      f"<b>{advance.employee.full_name}</b><br/>"
+            Paragraph(_safe_cz("<b>Plátce (Zaměstnavatel):</b><br/>"
+                               "<b>Panther Security s.r.o.</b><br/>"
+                               "Varšavská 715/36, Praha 2, 120 00<br/>"
+                               "IČO: 22525882 | DIČ: CZ22525882", has_utf), header_style),
+            Paragraph(f"<b>{_safe_cz('Příjemce (Zaměstnanec):', has_utf)}</b><br/>"
+                      f"<b>{emp_name}</b><br/>"
                       f"Os. číslo: {advance.employee.personal_number or 'Neuvedeno'}<br/>"
                       f"RČ / Datum nar.: {birth_info}<br/>"
                       f"Bydliště: {addr}", header_style)
@@ -130,15 +167,18 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     elements.append(t_parties)
     elements.append(Spacer(1, 15))
 
-    # 3. Podrobnosti o vyplacené částce (bez řádku "Vystavil manažer")
+    # 3. Podrobnosti o vyplacené částce
+    note_txt = _safe_cz(advance.note or 'Bez doplňující poznámky', has_utf)
     amount_czk = f"{advance.amount:,.2f} Kč".replace(',', ' ')
+    if not has_utf:
+        amount_czk = amount_czk.replace('Kč', 'CZK')
 
     details_data = [
-        [Paragraph("Účel platby:", bold_style), Paragraph(f"Záloha na mzdu – {advance.note or 'Bez doplňující poznámky'}", header_style)],
-        [Paragraph("Forma úhrady:", bold_style), Paragraph("Hotovostní výdej z pokladny", header_style)],
-        [Paragraph("Datum a čas vystavení:", bold_style), Paragraph(advance.created_at.strftime("%d.%m.%Y v %H:%M"), header_style)],
-        [Paragraph("Částka k výplatě:", ParagraphStyle('BigSum', parent=bold_style, fontSize=11, textColor=colors.HexColor('#0f766e'))), 
-         Paragraph(f"<b>{amount_czk}</b>", ParagraphStyle('BigSumVal', parent=bold_style, fontName=font_bold, fontSize=13, textColor=colors.HexColor('#0f766e')))]
+        [Paragraph(_safe_cz("Účel platby:", has_utf), bold_style), Paragraph(_safe_cz(f"Záloha na mzdu – {note_txt}", has_utf), header_style)],
+        [Paragraph(_safe_cz("Forma úhrady:", has_utf), bold_style), Paragraph(_safe_cz("Hotovostní výdej z pokladny", has_utf), header_style)],
+        [Paragraph(_safe_cz("Datum a čas vystavení:", has_utf), bold_style), Paragraph(advance.created_at.strftime("%d.%m.%Y v %H:%M"), header_style)],
+        [Paragraph(_safe_cz("Částka k výplatě:", has_utf), ParagraphStyle('BigSum', parent=bold_style, fontSize=11, textColor=colors.HexColor('#0f766e'))), 
+         Paragraph(f"<b>{amount_czk}</b>", ParagraphStyle('BigSumVal', parent=bold_style, fontName=font_bold, fontSize=12, textColor=colors.HexColor('#0f766e')))]
     ]
     t_details = Table(details_data, colWidths=[150, 370])
     t_details.setStyle(TableStyle([
@@ -165,11 +205,11 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
 
     sign_data = [
         [
-            Paragraph("<b>Vyplatil (Za zaměstnavatele):</b><br/><br/><br/>.......................................................<br/>Podpis a razítko", header_style),
+            Paragraph(_safe_cz("<b>Vyplatil (Za zaměstnavatele):</b><br/><br/><br/>.......................................................<br/>Podpis a razítko", has_utf), header_style),
             [
-                Paragraph("<b>Převzal v hotovosti (Příjemce):</b>", header_style),
+                Paragraph(_safe_cz("<b>Převzal v hotovosti (Příjemce):</b>", has_utf), header_style),
                 sig_image if sig_image else Paragraph("<br/><br/>.......................................................<br/>Vlastnoruční podpis", header_style),
-                Paragraph(f"<font size=7 color='#64748b'>Elektronicky podepsáno dne {advance.created_at.strftime('%d.%m.%Y %H:%M')}</font>", header_style)
+                Paragraph(f"<font size=7 color='#64748b'>{_safe_cz(f'Elektronicky podepsáno dne {advance.created_at.strftime(%d.%m.%Y %H:%M)}', has_utf)}</font>", header_style)
             ]
         ]
     ]
@@ -201,7 +241,6 @@ def advance_list_view(request):
     month_val = request.GET.get('month', str(now.month))
     year_val = request.GET.get('year', str(now.year))
 
-    # Filtrování podle roku
     selected_year = None
     if year_val != 'all':
         try:
@@ -211,7 +250,6 @@ def advance_list_view(request):
             selected_year = now.year
             year_val = str(selected_year)
 
-    # Filtrování podle měsíce
     selected_month = None
     if month_val != 'all':
         try:
@@ -221,11 +259,9 @@ def advance_list_view(request):
             selected_month = now.month
             month_val = str(selected_month)
 
-    # Filtrování podle zaměstnance
     if employee_id and employee_id.isdigit():
         advances_qs = advances_qs.filter(employee_id=int(employee_id))
 
-    # Filtrování podle formy
     if payment_method in ['CASH', 'BANK']:
         advances_qs = advances_qs.filter(payment_method=payment_method)
 
@@ -257,14 +293,13 @@ def advance_list_view(request):
         'now': now,
     }
     return render(request, 'advances/advance_list.html', context)
-  
 
 
 @login_required
 @role_required([SystemRole.MANAGER, SystemRole.OWNER])
 def advance_create_view(request, employee_id=None):
     """
-    Vystavení nové zálohy manažerem (buď z profilu zaměstnance, nebo z horního menu).
+    Vystavení nové zálohy manažerem.
     Při hotovosti automaticky vygeneruje podepsané PDF VPD.
     """
     employee = None
@@ -280,7 +315,6 @@ def advance_create_view(request, employee_id=None):
             advance.issued_by = request.user
             advance.save()
 
-            # Hotovost: Automatické vygenerování PDF dokladu
             if advance.payment_method == 'CASH':
                 try:
                     pdf_bytes = _generate_vpd_pdf(advance)
@@ -309,11 +343,10 @@ def advance_create_view(request, employee_id=None):
 def advance_download_vpd_view(request, advance_id):
     """
     Přímé zobrazení / stažení PDF dokladu o záloze (VPD).
-    Generuje doklad přímo do paměti, aby nedocházelo k chybám 404 při chybějícím souboru na disku.
+    Vždy generuje doklad čerstvě do paměti s opraveným fontem a bez položky manažera.
     """
     advance = get_object_or_404(AdvancePayment.objects.select_related('employee', 'issued_by'), id=advance_id)
 
-    # Kontrola oprávnění: superuser, manažer, majitel nebo vlastník zálohy
     profile = getattr(request.user, 'employee_profile', None)
     is_admin = (
         request.user.is_superuser 
@@ -326,14 +359,12 @@ def advance_download_vpd_view(request, advance_id):
         messages.error(request, "Nemáte oprávnění k zobrazení tohoto výdajového dokladu.")
         return redirect('advance_list')
 
-    # Pokud záloha byla vyplacena na účet, přesměrujeme na bankovní potvrzení
     if advance.payment_method == 'BANK':
         if advance.bank_confirmation:
             return redirect(advance.bank_confirmation.url)
         messages.warning(request, "Tato záloha byla vyplacena převodem na účet a nemá VPD doklad.")
         return redirect('advance_list')
 
-    # Vygenerování PDF přímo do paměti (spolehlivé, nezávislé na souborovém systému)
     try:
         pdf_bytes = _generate_vpd_pdf(advance)
     except Exception as e:
@@ -342,6 +373,5 @@ def advance_download_vpd_view(request, advance_id):
 
     filename = f"VPD_{advance.created_at.strftime('%Y')}_{advance.id:04d}.pdf"
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
-    # 'inline' otevře PDF přímo v prohlížeči, pro vynucení stažení změňte na 'attachment'
     response['Content-Disposition'] = f'inline; filename="{filename}"'
     return response
