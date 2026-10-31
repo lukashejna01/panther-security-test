@@ -10,6 +10,9 @@
         <p style="color: var(--text-muted); font-size: 13px;">Pracovníci fyzické ostrahy, velíni a dispečeři.</p>
     </div>
     <div style="display: flex; gap: 10px;">
+        <a href="{% url 'advance_list' %}" class="btn btn-secondary" style="border-color: #0f766e; color: #2dd4bf;">
+            💸 Přehled záloh
+        </a>
         <a href="{% url 'employees_archive_list' %}" class="btn btn-secondary">
             🗄️ Archiv propuštěných zaměstnanců
         </a>
@@ -22,6 +25,7 @@
             <thead>
                 <tr>
                     <th>Jméno a příjmení</th>
+                    <th>Přístupové údaje</th>
                     <th>Role</th>
                     <th>Pozice</th>
                     <th>Smlouva</th>
@@ -37,7 +41,30 @@
                 <tr>
                     <td>
                         <strong style="color: #fff; font-size: 14px;">{{ emp.full_name }}</strong>
-                        <div style="font-size: 11px; color: var(--text-muted);">{{ emp.user.username }}</div>
+                        <div style="font-size: 11px; color: var(--text-muted);">{{ emp.personal_number|default:"" }}</div>
+                    </td>
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 3px; font-size: 12px;">
+                            <div>
+                                <span style="color: var(--text-muted);">Uživatel:</span> 
+                                <strong style="color: #38bdf8;">{{ emp.user.username|default:"Nemá účet" }}</strong>
+                            </div>
+                            {% if emp.generated_password %}
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="color: var(--text-muted);">Heslo:</span>
+                                <span id="pwd-masked-{{ emp.id }}" style="font-family: monospace; letter-spacing: 1px;">••••••••••</span>
+                                <span id="pwd-plain-{{ emp.id }}" style="display: none; font-family: monospace; color: #facc15; font-weight: bold;">{{ emp.generated_password }}</span>
+                                <button type="button" onclick="togglePasswordVisibility('{{ emp.id }}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0 2px;" title="Zobrazit / Skrýt heslo">
+                                    👁️
+                                </button>
+                                <button type="button" onclick="copyCredentials('{{ emp.user.username }}', '{{ emp.generated_password }}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0 2px;" title="Kopírovat přístupy do schránky">
+                                    📋
+                                </button>
+                            </div>
+                            {% else %}
+                            <div style="font-size: 11px; color: var(--text-muted); font-style: italic;">Heslo nezaznamenáno</div>
+                            {% endif %}
+                        </div>
                     </td>
                     <td><span class="badge-tag blue">{{ emp.get_system_role_display }}</span></td>
                     <td>{{ emp.position.title|default:"Strážný" }}</td>
@@ -53,17 +80,43 @@
                     </td>
                     <td>{{ emp.phone }}</td>
                     <td style="text-align: right; white-space: nowrap;">
+                        <a href="{% url 'employee_advance_create' emp.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; border-color: #0f766e; color: #2dd4bf;" title="Vydat zálohu">💸 Záloha</a>
                         <a href="{% url 'employee_detail' emp.id %}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">Karta</a>
                         <a href="{% url 'archive_employee' emp.id %}" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px;" title="Ukončit poměr">Ukončit</a>
                     </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 24px;">Zatím nejsou zaevidováni žádní aktivní zaměstnanci.</td>
+                    <td colspan="10" style="text-align: center; color: var(--text-muted); padding: 24px;">Zatím nejsou zaevidováni žádní aktivní zaměstnanci.</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     </div>
 </div>
+
+<script>
+function togglePasswordVisibility(empId) {
+    const masked = document.getElementById('pwd-masked-' + empId);
+    const plain = document.getElementById('pwd-plain-' + empId);
+    if (!masked || !plain) return;
+
+    if (masked.style.display === 'none') {
+        masked.style.display = 'inline';
+        plain.style.display = 'none';
+    } else {
+        masked.style.display = 'none';
+        plain.style.display = 'inline';
+    }
+}
+
+function copyCredentials(username, password) {
+    const text = `Přihlašovací údaje Panther Security:\nUživatelské jméno: ${username}\nHeslo: ${password}\nOdkaz: https://panther-security.cz/prihlaseni/`;
+    navigator.clipboard.writeText(text).then(function() {
+        alert('Přihlašovací údaje zaměstnance byly zkopírovány do schránky.');
+    }).catch(function(err) {
+        prompt('Zkopírujte přístupy ručně:', text);
+    });
+}
+</script>
 {% endblock %}

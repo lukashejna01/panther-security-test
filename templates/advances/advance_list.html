@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}Evidence záloh - Panther Security{% endblock %}
+
+{% block content %}
+<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 15px;">
+    <div>
+        <span class="badge-tag yellow">FINANCE &amp; POKLADNA</span>
+        <h1 style="font-size: 26px; color: #fff; margin: 6px 0 0;">Evidence záloh zaměstnanců</h1>
+        <p style="color: var(--text-muted); font-size: 13px;">Výdajové pokladní doklady s digitálními podpisy a bankovní převody.</p>
+    </div>
+    <div style="display: flex; gap: 10px;">
+        <a href="{% url 'advance_create' %}" class="btn btn-primary" style="display: inline-flex; align-items: center; gap: 6px;">
+            ➕ Vydat novou zálohu
+        </a>
+    </div>
+</div>
+
+<!-- FILTRY -->
+<div class="card" style="margin-bottom: 20px; padding: 16px;">
+    <form method="get" style="display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;">
+        <div style="flex: 1; min-width: 180px;">
+            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Zaměstnanec</label>
+            <select name="employee_id" class="form-select" onchange="this.form.submit()">
+                <option value="">-- Všichni zaměstnanci --</option>
+                {% for emp in employees %}
+                    <option value="{{ emp.id }}" {% if selected_employee == emp.id|stringformat:"s" %}selected{% endif %}>{{ emp.full_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="width: 160px;">
+            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Forma úhrady</label>
+            <select name="payment_method" class="form-select" onchange="this.form.submit()">
+                <option value="">-- Všechny formy --</option>
+                <option value="CASH" {% if selected_method == 'CASH' %}selected{% endif %}>💵 Hotovost</option>
+                <option value="BANK" {% if selected_method == 'BANK' %}selected{% endif %}>🏦 Bankovní účet</option>
+            </select>
+        </div>
+
+        <div style="width: 140px;">
+            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Měsíc</label>
+            <select name="month" class="form-select" onchange="this.form.submit()">
+                <option value="">-- Celý rok --</option>
+                {% for m_num, m_name in months_list %}
+                    <option value="{{ m_num }}" {% if selected_month == m_num|stringformat:"s" %}selected{% endif %}>{{ m_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div>
+            <a href="{% url 'advance_list' %}" class="btn btn-secondary" style="font-size: 13px;">Reset filtru</a>
+        </div>
+    </form>
+</div>
+
+<!-- TABULKA ZÁLOH -->
+<div class="card">
+    <div class="table-responsive">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Datum a přesný čas</th>
+                    <th>Zaměstnanec</th>
+                    <th>Částka</th>
+                    <th>Forma úhrady</th>
+                    <th>Doklad / Potvrzení</th>
+                    <th>Vydal manažer</th>
+                    <th>Poznámka</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for adv in advances %}
+                <tr>
+                    <td style="white-space: nowrap; font-family: monospace; color: #fff;">
+                        {{ adv.created_at|date:"d.m.Y H:i" }}
+                    </td>
+                    <td>
+                        <strong style="color: #fff; font-size: 14px;">{{ adv.employee.full_name }}</strong>
+                        <div style="font-size: 11px; color: var(--text-muted);">{{ adv.employee.personal_number|default:"" }}</div>
+                    </td>
+                    <td style="font-weight: 800; color: #facc15; font-size: 15px; white-space: nowrap;">
+                        {{ adv.amount }} Kč
+                    </td>
+                    <td>
+                        {% if adv.payment_method == 'CASH' %}
+                            <span class="badge-tag green">💵 Hotovost</span>
+                        {% else %}
+                            <span class="badge-tag blue">🏦 Účet</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if adv.payment_method == 'CASH' %}
+                            {% if adv.receipt_pdf %}
+                                <a href="{% url 'advance_download_vpd' adv.id %}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; border-color: #ef4444; color: #fca5a5;">
+                                    🔴 VPD (PDF)
+                                </a>
+                            {% else %}
+                                <span style="font-size: 11px; color: var(--text-muted);">VPD v přípravě</span>
+                            {% endif %}
+                        {% else %}
+                            {% if adv.bank_confirmation %}
+                                <a href="{{ adv.bank_confirmation.url }}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; border-color: #3b82f6; color: #93c5fd;">
+                                    📄 Potvrzení banky
+                                </a>
+                            {% else %}
+                                <span style="font-size: 11px; color: var(--text-muted);">Bez potvrzení</span>
+                            {% endif %}
+                        {% endif %}
+                    </td>
+                    <td>
+                        <span style="font-size: 12px; color: #cbd5e1;">{{ adv.issued_by.first_name|default:adv.issued_by.username }}</span>
+                    </td>
+                    <td style="font-size: 12px; color: var(--text-muted);">
+                        {{ adv.note|default:"—" }}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                        Nebyly nalezeny žádné vystavené zálohy.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

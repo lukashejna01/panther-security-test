@@ -30,6 +30,9 @@ from .operations_forms import (
     GuardObjectUpdateForm,
     ContactPersonForm,
 )
+from .advance_forms import (
+    AdvancePaymentForm,
+)
 
 __all__ = [
     'CandidateCreateForm',
@@ -50,4 +53,5 @@ __all__ = [
     'GuardObjectCreateForm',
     'GuardObjectUpdateForm',
     'ContactPersonForm',
+    'AdvancePaymentForm',
 ]

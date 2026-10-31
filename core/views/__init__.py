@@ -50,3 +50,8 @@ from .billing_views import (
     guard_object_update_view,
     toggle_invoice_payment_status_view,
 )
+from .advance_views import (
+    advance_list_view,
+    advance_create_view,
+    advance_download_vpd_view,
+)

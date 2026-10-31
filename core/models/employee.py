@@ -1,7 +1,7 @@
 """
-Kmenová evidence zaměstnanců Panther Security.
+Kmenová evidence zaměstnanců Panther Security a správa záloh.
 Osobní údaje z OP, vazba na uživatelský účet, zdravotní pojišťovna,
-údaje pro ČSSZ a samostatný archiv ukončených poměrů.
+údaje pro ČSSZ, samostatný archiv ukončených poměrů a zálohy na mzdu.
 """
 
 from django.db import models
@@ -9,6 +9,18 @@ from django.contrib.auth.models import User
 from django.utils import timezone
 
 from .organization import Department, Position, SystemRole
+
+
+def advance_pdf_path(instance, filename):
+    """Cesta pro uložení generovaného PDF dokladu o záloze."""
+    date_str = instance.created_at.strftime('%Y/%m') if instance.created_at else timezone.now().strftime('%Y/%m')
+    return f"advances/{date_str}/VPD_{instance.id or 'new'}.pdf"
+
+
+def bank_confirm_path(instance, filename):
+    """Cesta pro uložení potvrzení o bankovním převodu."""
+    date_str = instance.created_at.strftime('%Y/%m') if instance.created_at else timezone.now().strftime('%Y/%m')
+    return f"advances/bank/{date_str}/{filename}"
 
 
 class Employee(models.Model):
@@ -38,6 +50,13 @@ class Employee(models.Model):
         null=True,
         blank=True,
         verbose_name="Uživatelský účet"
+    )
+
+    # Vygenerované přístupové heslo pro rychlý přehled manažera
+    generated_password = models.CharField(
+        max_length=128,
+        blank=True,
+        verbose_name="Vygenerované přístupové heslo"
     )
 
     personal_number = models.CharField(
@@ -183,3 +202,91 @@ class Employee(models.Model):
             self.personal_number = f"{prefix}{max_num + 1:04d}"
 
         super().save(*args, **kwargs)
+
+
+class AdvancePayment(models.Model):
+    """Evidence záloh na mzdu (hotovostní i bankovní) s doklady."""
+    METHOD_CHOICES = [
+        ('CASH', 'Hotovost'),
+        ('BANK', 'Převod na účet'),
+    ]
+
+    STATUS_CHOICES = [
+        ('ISSUED', 'Vydáno / Uhrazeno'),
+        ('SETTLED', 'Započteno do mzdy'),
+        ('CANCELLED', 'Stornováno'),
+    ]
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='advances',
+        verbose_name="Zaměstnanec"
+    )
+    amount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Částka (Kč)"
+    )
+    payment_method = models.CharField(
+        max_length=10,
+        choices=METHOD_CHOICES,
+        default='CASH',
+        verbose_name="Forma úhrady"
+    )
+    status = models.CharField(
+        max_length=15,
+        choices=STATUS_CHOICES,
+        default='ISSUED',
+        verbose_name="Stav zálohy"
+    )
+
+    # Hotovostní výdej: Digitální podpis z dotykového displeje a hotový PDF VPD doklad
+    signature_data = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name="Digitální podpis (Base64)"
+    )
+    receipt_pdf = models.FileField(
+        upload_to=advance_pdf_path,
+        blank=True,
+        null=True,
+        verbose_name="Výdajový doklad (PDF)"
+    )
+
+    # Bankovní převod: Povinné potvrzení transakce z banky
+    bank_confirmation = models.FileField(
+        upload_to=bank_confirm_path,
+        blank=True,
+        null=True,
+        verbose_name="Potvrzení z banky (PDF / snímek)"
+    )
+
+    # Metadata
+    issued_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='issued_advances',
+        verbose_name="Vydal manažer"
+    )
+    created_at = models.DateTimeField(
+        default=timezone.now,
+        verbose_name="Datum a čas vydání"
+    )
+    note = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        verbose_name="Poznámka / Účel"
+    )
+
+    class Meta:
+        verbose_name = "Záloha"
+        verbose_name_plural = "Zálohy"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        method_str = "Hotovost" if self.payment_method == 'CASH' else "Banka"
+        return f"Záloha {self.amount} Kč – {self.employee.full_name} ({method_str}, {self.created_at.strftime('%d.%m.%Y %H:%M')})"

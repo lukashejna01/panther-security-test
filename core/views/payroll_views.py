@@ -1,8 +1,9 @@
 """
 Mzdový modul Panther Security:
-- Měsíční sumář mzdových nákladů s roletkami pro manažera a majitele.
+- Měsíční sumář mzdových nákladů ze schválených směn s roletkami pro manažera a majitele.
 - Automatický výpočet mezd, čisté výplaty a zákonných odvodů (SP, ZP, daň) pro rok 2026.
 - Detailní výplatní páska pro zaměstnance i vedení (ze směn i manuální).
+- Automatický odečet a evidence čerpaných záloh (hotovostních i bankovních).
 """
 
 from decimal import Decimal
@@ -10,9 +11,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.db.models import Sum
 
 from core.decorators import role_required
-from core.models import Employee, Shift, ShiftStatus, SystemRole
+from core.models import Employee, Shift, ShiftStatus, SystemRole, AdvancePayment
 
 
 def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_tax_declaration: bool = False):
@@ -100,7 +102,7 @@ def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_ta
 @login_required
 @role_required([SystemRole.OWNER, SystemRole.MANAGER])
 def payroll_summary_view(request):
-    """Měsíční sumář mzdových nákladů ze schválených směn s roletkami měsíc/rok a odvody 2026."""
+    """Měsíční sumář mzdových nákladů ze schválených směn s odečtem záloh a odvody 2026."""
     now = timezone.now()
 
     year_val = request.GET.get('year')
@@ -121,6 +123,8 @@ def payroll_summary_view(request):
     grand_hours = 0.0
     grand_gross = 0.0
     grand_net = 0.0
+    grand_advances = 0.0
+    grand_payout = 0.0
     grand_emp_sp = 0.0
     grand_emp_zp = 0.0
     grand_emp_tax = 0.0
@@ -136,8 +140,19 @@ def payroll_summary_view(request):
         hours = sum(float(s.planned_hours) for s in shifts)
         pay = sum(float(s.total_cost) for s in shifts)
 
-        if hours > 0:
+        # Načtení vyčerpaných záloh za daný měsíc
+        advances_sum = AdvancePayment.objects.filter(
+            employee=emp,
+            status__in=['ISSUED', 'SETTLED'],
+            created_at__year=year,
+            created_at__month=month
+        ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+
+        if hours > 0 or advances_sum > 0:
             calc = calculate_czech_payroll_2026(pay, emp.contract_type)
+            adv_float = float(advances_sum)
+            net_payout = max(0.0, round(calc['net'] - adv_float, 2))
+
             payroll_data.append({
                 'employee': emp,
                 'contract_type': emp.contract_type or 'DPP',
@@ -145,11 +160,15 @@ def payroll_summary_view(request):
                 'hours': round(hours, 1),
                 'hourly_rate': emp.hourly_rate,
                 'calc': calc,
+                'advances_total': advances_sum,
+                'net_payout': net_payout,
             })
 
             grand_hours += hours
             grand_gross += calc['gross']
             grand_net += calc['net']
+            grand_advances += adv_float
+            grand_payout += net_payout
             grand_emp_sp += calc['emp_sp']
             grand_emp_zp += calc['emp_zp']
             grand_emp_tax += calc['emp_tax']
@@ -164,6 +183,8 @@ def payroll_summary_view(request):
         'grand_hours': round(grand_hours, 1),
         'grand_gross': round(grand_gross, 2),
         'grand_net': round(grand_net, 2),
+        'grand_advances': round(grand_advances, 2),
+        'grand_payout': round(grand_payout, 2),
         'grand_emp_sp': round(grand_emp_sp, 2),
         'grand_emp_zp': round(grand_emp_zp, 2),
         'grand_emp_tax': round(grand_emp_tax, 2),
@@ -175,7 +196,7 @@ def payroll_summary_view(request):
 @login_required
 @role_required([SystemRole.STAFF, SystemRole.MANAGER, SystemRole.OWNER])
 def payslip_detail_view(request, employee_id, year, month):
-    """Zobrazení a tisk výplatní pásky zaměstnance se zákonnými odvody 2026."""
+    """Zobrazení a tisk výplatní pásky zaměstnance s rozpadem schválených směn a čerpaných záloh."""
     profile = getattr(request.user, 'employee_profile', None)
     target_employee = get_object_or_404(Employee, id=employee_id)
 
@@ -195,11 +216,25 @@ def payslip_detail_view(request, employee_id, year, month):
 
     calc = calculate_czech_payroll_2026(gross_pay, target_employee.contract_type)
 
+    # Načtení konkrétních záloh za daný měsíc pro výplatní pásku
+    emp_advances = AdvancePayment.objects.filter(
+        employee=target_employee,
+        status__in=['ISSUED', 'SETTLED'],
+        created_at__year=year,
+        created_at__month=month
+    ).order_by('created_at')
+
+    total_advances = sum(a.amount for a in emp_advances)
+    net_payout = max(Decimal('0.00'), Decimal(str(calc['net'])) - total_advances)
+
     context = {
         'employee': target_employee,
         'year': year,
         'month': month,
         'approved_shifts': approved_shifts,
+        'advances': emp_advances,
+        'total_advances': total_advances,
+        'net_payout': net_payout,
         'total_hours': round(total_hours, 1),
         'gross_pay': calc['gross'],
         'emp_sp': calc['emp_sp'],
@@ -227,6 +262,8 @@ def payslip_custom_generate_view(request):
         month = int(request.POST.get('month', now.month))
         year = int(request.POST.get('year', now.year))
 
+        advances_sum = Decimal('0.00')
+
         if employee_id:
             emp = get_object_or_404(Employee, id=employee_id)
             full_name = emp.full_name
@@ -234,6 +271,14 @@ def payslip_custom_generate_view(request):
             contract_type = request.POST.get('contract_type') or emp.contract_type or 'DPP'
             bank_account = request.POST.get('bank_account') or emp.bank_account or 'Výplata v hotovosti'
             health_code = emp.get_health_insurance_code_display() if hasattr(emp, 'get_health_insurance_code_display') else ''
+            
+            # Načtení záloh, pokud jde o existujícího zaměstnance
+            advances_sum = AdvancePayment.objects.filter(
+                employee=emp,
+                status__in=['ISSUED', 'SETTLED'],
+                created_at__year=year,
+                created_at__month=month
+            ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
         else:
             full_name = request.POST.get('manual_name', '').strip() or 'Externí pracovník'
             personal_number = request.POST.get('manual_personal_number', '').strip()
@@ -253,6 +298,7 @@ def payslip_custom_generate_view(request):
             gross_pay = round(hours * hourly_rate, 2)
 
         calc = calculate_czech_payroll_2026(gross_pay, contract_type)
+        net_payout = max(Decimal('0.00'), Decimal(str(calc['net'])) - advances_sum)
 
         mock_employee = {
             'full_name': full_name,
@@ -276,6 +322,8 @@ def payslip_custom_generate_view(request):
             'comp_zp': calc['comp_zp'],
             'comp_total_insurance': calc['comp_total_insurance'],
             'net_pay': calc['net'],
+            'total_advances': advances_sum,
+            'net_payout': net_payout,
             'total_company_cost': calc['total_cost'],
             'is_exempt': calc['is_exempt'],
         }

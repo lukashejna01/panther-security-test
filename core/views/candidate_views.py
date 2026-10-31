@@ -185,6 +185,7 @@ def candidate_onboard_view(request, candidate_id):
                     last_name=ln
                 )
                 employee.user = user
+                employee.generated_password = raw_password  # Uložení hesla pro manažerský přehled
                 employee.system_role = SystemRole.STAFF
                 employee.is_active = True
                 employee.save()

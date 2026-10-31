@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+
+{% block title %}Vydat zálohu - Panther Security{% endblock %}
+
+{% block content %}
+<div style="max-width: 640px; margin: 0 auto; padding-bottom: 40px;">
+    
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'advance_list' %}" class="btn btn-secondary" style="font-size: 12px;">
+            ← Zpět na seznam záloh
+        </a>
+        <h1 style="font-size: 24px; color: #fff; margin: 10px 0 4px; font-weight: 800;">
+            Vystavení zálohy na mzdu
+        </h1>
+        <p style="color: var(--text-muted); font-size: 13px;">
+            Vyplňte částku a zvolte formu výplaty. Hotovostní výdej vyžaduje podpis příjemce na displeji.
+        </p>
+    </div>
+
+    <div class="card" style="padding: 24px;">
+        <form method="post" enctype="multipart/form-data" id="advanceForm">
+            {% csrf_request_token %}{% csrf_token %}
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Zaměstnanec</label>
+                {{ form.employee }}
+                {% if form.employee.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.employee.errors.0 }}</div>{% endif %}
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px;">
+                <div>
+                    <label style="display: block; font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Částka zálohy (Kč)</label>
+                    {{ form.amount }}
+                    {% if form.amount.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.amount.errors.0 }}</div>{% endif %}
+                </div>
+                <div>
+                    <label style="display: block; font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Forma úhrady</label>
+                    {{ form.payment_method }}
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Účel / Poznámka</label>
+                {{ form.note }}
+            </div>
+
+            <!-- SEKCE 1: POTVRZENÍ Z BANKY (pro Bankovní převod) -->
+            <div id="bankSection" style="display: none; background: rgba(15, 23, 42, 0.5); border: 1px solid #1f293d; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <label style="display: block; font-size: 13px; font-weight: 700; color: #60a5fa; margin-bottom: 6px;">
+                    📎 Potvrzení o odeslání platby z bankovnictví (PDF / Snímek obrazovky)
+                </label>
+                {{ form.bank_confirmation }}
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+                    Povinná příloha pro účetnictví při volbě převodu na účet.
+                </div>
+                {% if form.bank_confirmation.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.bank_confirmation.errors.0 }}</div>{% endif %}
+            </div>
+
+            <!-- SEKCE 2: DIGITÁLNÍ PODPIS NA DISPLEJI (pro Hotovost) -->
+            <div id="cashSection" style="background: rgba(15, 23, 42, 0.5); border: 1px solid #1f293d; border-radius: 8px; padding: 16px; margin-bottom: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 13px; font-weight: 700; color: #facc15; margin: 0;">
+                        ✍️ Podpis příjemce na displeji (Dotyková plocha)
+                    </label>
+                    <button type="button" id="clearSigBtn" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;">
+                        Vymazat podpis
+                    </button>
+                </div>
+                
+                <div style="border: 2px dashed #334155; border-radius: 6px; background: #ffffff; touch-action: none; position: relative;">
+                    <canvas id="signatureCanvas" width="580" height="180" style="width: 100%; height: 180px; display: block; cursor: crosshair;"></canvas>
+                </div>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                    Strážný podepíše převzetí hotovosti prstem na mobilu/tabletu nebo myší na PC.
+                </div>
+                {{ form.signature_data }}
+                {% if form.signature_data.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.signature_data.errors.0 }}</div>{% endif %}
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 15px; font-weight: 800; padding: 12px;">
+                Potvrdit a vystavit zálohu
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const methodSelect = document.getElementById('id_payment_method');
+    const cashSection = document.getElementById('cashSection');
+    const bankSection = document.getElementById('bankSection');
+    const canvas = document.getElementById('signatureCanvas');
+    const hiddenSigInput = document.getElementById('id_signature_data');
+    const clearBtn = document.getElementById('clearSigBtn');
+    const form = document.getElementById('advanceForm');
+
+    // Přepínání Hotovost / Banka
+    function toggleMethod() {
+        if (methodSelect.value === 'BANK') {
+            bankSection.style.display = 'block';
+            cashSection.style.display = 'none';
+        } else {
+            bankSection.style.display = 'none';
+            cashSection.style.display = 'block';
+            resizeCanvas();
+        }
+    }
+    methodSelect.addEventListener('change', toggleMethod);
+    toggleMethod();
+
+    // Canvas pro podpis
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let hasDrawn = false;
+
+    function resizeCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0) {
+            canvas.width = rect.width;
+            canvas.height = 180;
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 2.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+    }
+    window.addEventListener('resize', resizeCanvas);
+    setTimeout(resizeCanvas, 200);
+
+    function getCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        if (e.touches && e.touches.length > 0) {
+            return {
+                x: e.touches[0].clientX - rect.left,
+                y: e.touches[0].clientY - rect.top
+            };
+        }
+        return {
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top
+        };
+    }
+
+    function startDrawing(e) {
+        isDrawing = true;
+        const coords = getCoords(e);
+        ctx.beginPath();
+        ctx.moveTo(coords.x, coords.y);
+        e.preventDefault();
+    }
+
+    function draw(e) {
+        if (!isDrawing) return;
+        const coords = getCoords(e);
+        ctx.lineTo(coords.x, coords.y);
+        ctx.stroke();
+        hasDrawn = true;
+        e.preventDefault();
+    }
+
+    function stopDrawing() {
+        if (isDrawing) {
+            isDrawing = false;
+        }
+    }
+
+    // Touch události pro mobil a tablet
+    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    canvas.addEventListener('touchmove', draw, { passive: false });
+    canvas.addEventListener('touchend', stopDrawing);
+
+    // Mouse události pro počítač
+    canvas.addEventListener('mousedown', startDrawing);
+    canvas.addEventListener('mousemove', draw);
+    canvas.addEventListener('mouseup', stopDrawing);
+    canvas.addEventListener('mouseleave', stopDrawing);
+
+    clearBtn.addEventListener('click', function () {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hiddenSigInput.value = '';
+        hasDrawn = false;
+    });
+
+    form.addEventListener('submit', function (e) {
+        if (methodSelect.value === 'CASH') {
+            if (hasDrawn) {
+                hiddenSigInput.value = canvas.toDataURL('image/png');
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
