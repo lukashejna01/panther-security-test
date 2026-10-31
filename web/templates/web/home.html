@@ -1,632 +1,244 @@
 {% extends 'web/base_public.html' %}
 
-{% block extra_head %}
-<!-- Lenis Smooth Scroll -->
-<script src="https://unpkg.com/lenis@1.1.9/dist/lenis.min.js"></script>
-<!-- GSAP & ScrollTrigger -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
-
-<style>
-    :root {
-        --cyan-core: #00d4ff;
-        --cyan-glow: rgba(0, 212, 255, 0.4);
-        --bg-deep: #02060b;
-        --card-bg: rgba(6, 14, 24, 0.65);
-        --card-border: rgba(0, 212, 255, 0.14);
-        --text-dim: #7c98b6;
-    }
-
-    body {
-        background-color: var(--bg-deep) !important;
-        color: #f1f7ff;
-        overflow-x: hidden;
-    }
-
-    /* Plátno s radarovými částicemi na pozadí */
-    #ambient-canvas {
-        position: fixed;
-        inset: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 0;
-        pointer-events: none;
-    }
-
-    .main-wrap {
-        position: relative;
-        z-index: 1;
-        max-width: 1240px;
-        margin: 0 auto;
-        padding: 0 24px;
-    }
-
-    /* 1. HERO SEKCE S EFEKTY */
-    .hero-wrap {
-        min-height: 85vh;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: flex-start;
-        padding-top: 50px;
-        padding-bottom: 70px;
-        position: relative;
-    }
-
-    .hero-badge-glow {
-        display: inline-flex;
-        align-items: center;
-        gap: 10px;
-        background: rgba(0, 212, 255, 0.06);
-        border: 1px solid rgba(0, 212, 255, 0.25);
-        color: var(--cyan-core);
-        padding: 7px 18px;
-        border-radius: 30px;
-        font-size: 0.8rem;
-        font-family: "Courier New", monospace;
-        letter-spacing: 1.5px;
-        margin-bottom: 24px;
-        box-shadow: 0 0 20px rgba(0, 212, 255, 0.15);
-    }
-
-    .live-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background-color: #00ff88;
-        box-shadow: 0 0 10px #00ff88;
-        animation: pulseDot 2s infinite ease-in-out;
-    }
-
-    @keyframes pulseDot {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.4; transform: scale(0.8); }
-    }
-
-    .hero-title-main {
-        font-size: clamp(2.4rem, 5.5vw, 4.4rem);
-        font-weight: 900;
-        line-height: 1.08;
-        letter-spacing: -0.03em;
-        margin-bottom: 24px;
-        max-width: 950px;
-    }
-
-    .hero-title-main span {
-        background: linear-gradient(135deg, #ffffff 40%, var(--cyan-core) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-    }
-
-    .hero-desc-main {
-        font-size: clamp(1.05rem, 1.8vw, 1.25rem);
-        line-height: 1.6;
-        color: var(--text-dim);
-        max-width: 680px;
-        margin-bottom: 38px;
-    }
-
-    .hero-btns {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-    }
-
-    .btn-glow {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: var(--cyan-core);
-        color: #01060c;
-        font-weight: 800;
-        font-size: 0.95rem;
-        padding: 16px 34px;
-        border-radius: 8px;
-        text-decoration: none;
-        box-shadow: 0 0 30px rgba(0, 212, 255, 0.4);
-        transition: all 0.3s ease;
-        overflow: hidden;
-    }
-
-    .btn-glow:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 0 50px rgba(0, 212, 255, 0.75);
-    }
-
-    .btn-outline {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        background: rgba(6, 16, 28, 0.5);
-        color: #e6f1ff;
-        font-weight: 600;
-        font-size: 0.95rem;
-        padding: 16px 30px;
-        border-radius: 8px;
-        text-decoration: none;
-        border: 1px solid var(--card-border);
-        backdrop-filter: blur(10px);
-        transition: all 0.3s ease;
-    }
-
-    .btn-outline:hover {
-        border-color: var(--cyan-core);
-        color: var(--cyan-core);
-        background: rgba(0, 212, 255, 0.05);
-    }
-
-    /* 2. SPOTLIGHT KARTY (INTERAKTIVNÍ SVĚTLO PŘI POHYBU MYŠÍ) */
-    .spotlight-card {
-        position: relative;
-        background: var(--card-bg);
-        border: 1px solid var(--card-border);
-        border-radius: 12px;
-        padding: 30px;
-        backdrop-filter: blur(16px);
-        overflow: hidden;
-        transition: transform 0.3s ease, border-color 0.3s ease;
-    }
-
-    .spotlight-card::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: radial-gradient(400px circle at var(--mouse-x, 0) var(--mouse-y, 0), rgba(0, 212, 255, 0.15), transparent 80%);
-        opacity: 0;
-        transition: opacity 0.4s ease;
-        pointer-events: none;
-    }
-
-    .spotlight-card:hover::before {
-        opacity: 1;
-    }
-
-    .spotlight-card:hover {
-        border-color: rgba(0, 212, 255, 0.45);
-        transform: translateY(-4px);
-    }
-
-    /* BĚŽÍCÍ PÁS */
-    .ticker-wrapper {
-        overflow: hidden;
-        position: relative;
-        width: 100%;
-        mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
-        -webkit-mask-image: linear-gradient(to right, transparent, black 6%, black 94%, transparent);
-    }
-
-    .ticker-track {
-        display: flex;
-        gap: 22px;
-        width: max-content;
-        animation: scrollTicker 38s linear infinite;
-    }
-
-    .ticker-track:hover {
-        animation-play-state: paused;
-    }
-
-    @keyframes scrollTicker {
-        0% { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
-    }
-
-    .ticker-item {
-        width: 320px;
-        flex-shrink: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-    }
-
-    /* 3. ROZPOČTOVÁ MATRIX KALKULAČKA */
-    .calc-matrix {
-        margin: 80px 0;
-        padding: 46px;
-        border-radius: 16px;
-    }
-
-    .calc-layout {
-        display: grid;
-        grid-template-columns: 1.15fr 0.85fr;
-        gap: 46px;
-    }
-
-    @media (max-width: 992px) {
-        .calc-layout { grid-template-columns: 1fr; gap: 32px; }
-        .calc-matrix { padding: 24px; }
-    }
-
-    .styled-input, .styled-select {
-        width: 100%;
-        background: rgba(2, 8, 16, 0.85);
-        border: 1px solid var(--card-border);
-        color: #fff;
-        padding: 13px 18px;
-        border-radius: 6px;
-        font-family: inherit;
-        outline: none;
-        transition: border-color 0.3s ease;
-    }
-
-    .styled-input:focus, .styled-select:focus {
-        border-color: var(--cyan-core);
-    }
-
-    .screen-hud {
-        background: rgba(0, 212, 255, 0.03);
-        border: 1px dashed var(--card-border);
-        border-radius: 10px;
-        padding: 24px;
-        text-align: center;
-        margin-top: 24px;
-    }
-
-    .screen-price {
-        font-size: 2.8rem;
-        font-weight: 900;
-        color: var(--cyan-core);
-        letter-spacing: -1px;
-    }
-
-    /* 4. MAGAZÍN */
-    .articles-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(310px, 1fr));
-        gap: 24px;
-        margin-top: 28px;
-    }
-
-    .article-box {
-        text-decoration: none;
-        display: flex;
-        flex-direction: column;
-        padding: 0;
-    }
-
-    .article-thumb {
-        height: 190px;
-        width: 100%;
-        object-fit: cover;
-        background: #010a14;
-    }
-</style>
-{% endblock %}
-
 {% block content %}
-<!-- Plátno s částicovým polem na pozadí -->
-<canvas id="ambient-canvas"></canvas>
+<!-- 1. HERO SEKCE -->
+<section class="hero-section">
+    <div class="hero-pill">
+        🛡️ Komplexní fyzická ostraha &amp; bezpečnostní technologie
+    </div>
+    <h1 class="hero-title">
+        Bezpečnost vašeho objektu bez kompromisů a lidských chyb.
+    </h1>
+    <p class="hero-desc">
+        Garantujeme prověřené strážné, GPS a QR elektronickou kontrolu obchůzek v reálném čase a přímé napojení na náš nonstop operační velín.
+    </p>
+    <div class="hero-actions">
+        <a href="#kalkulacka" class="btn-primary-action">
+            ⚡ Spočítat orientační cenu ostrahy
+        </a>
+        <a href="#sluzby" class="btn-secondary-action">
+            Přehled služeb
+        </a>
+    </div>
+</section>
 
-<div class="main-wrap">
+<!-- 2. KLÍČOVÉ SLUŽBY - INTERAKTIVNÍ BĚŽÍCÍ PÁS V JEDNOM ŘÁDKU -->
+<section id="sluzby" style="margin-bottom: 40px;">
+    <div style="text-align: center; margin-bottom: 16px;">
+        <div class="calc-badge">⚡ Komplexní bezpečnostní portfolio</div>
+        <h2 class="section-title" style="margin-bottom: 6px;">Naše klíčové bezpečnostní pilíře</h2>
+    </div>
 
-    <!-- 1. HERO SEKCE -->
-    <section class="hero-wrap">
-        <div class="hero-badge-glow gsap-reveal">
-            <span class="live-dot"></span>
-            SYS_DISPATCH: ACTIVE // REÁLNÁ TELEMETRIE 24/7
-        </div>
-        
-        <h1 class="hero-title-main gsap-reveal">
-            Bezpečnost vašeho objektu <span>bez kompromisů</span> a selhání.
-        </h1>
-        
-        <p class="hero-desc-main gsap-reveal">
-            Garantujeme prověřené strážné, GPS a QR elektronickou kontrolu obchůzek v reálném čase a přímé napojení na náš nonstop operační velín.
-        </p>
-        
-        <div class="hero-btns gsap-reveal">
-            <a href="#kalkulacka" class="btn-glow">
-                ⚡ Spočítat cenu ostrahy
-            </a>
-            <a href="#sluzby" class="btn-outline">
-                Přehled služeb ↓
-            </a>
-        </div>
-    </section>
-
-    <!-- 2. KLÍČOVÉ SLUŽBY -->
-    <section id="sluzby" style="margin-bottom: 90px;">
-        <div style="text-align: center; margin-bottom: 36px;" class="gsap-reveal">
-            <div class="hero-badge-glow" style="margin-bottom: 10px;">KOMPLEXNÍ BEZPEČNOSTNÍ PILÍŘE</div>
-            <h2 style="font-size: 2.3rem; font-weight: 800; color: #fff;">Služby Panther Security</h2>
-        </div>
-
-        <div class="ticker-wrapper" id="services-ticker">
-            <div class="ticker-track" id="ticker-track">
-                
-                <!-- SADA 1 -->
-                <div class="spotlight-card ticker-item">
-                    <div>
-                        <div style="font-size: 32px; margin-bottom: 12px;">🕴️</div>
-                        <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 8px;">Osobní doprovody &amp; Eskorty</h3>
-                        <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.55;">Diskrétní ochrana osob (Close Protection), ozbrojený doprovod hotovosti, cenných zásilek a asistence při jednáních.</p>
-                    </div>
-                    <div style="margin-top: 18px; font-size: 11px; color: var(--cyan-core); font-family: monospace; font-weight: 700;">OZBROJENÁ OCHRANA &bull; 24/7</div>
+    <div class="ticker-wrapper" id="services-ticker">
+        <div class="ticker-track" id="ticker-track">
+            
+            <!-- SADA 1 -->
+            <div class="ticker-card border-yellow">
+                <div>
+                    <div class="service-icon">🕴️</div>
+                    <h3 class="service-heading">Osobní doprovody &amp; Eskorty</h3>
+                    <p class="service-text">Diskrétní ochrana osob (Close Protection), ozbrojený doprovod finanční hotovosti, cenných zásilek a asistence při rizikových jednáních.</p>
                 </div>
-
-                <div class="spotlight-card ticker-item">
-                    <div>
-                        <div style="font-size: 32px; margin-bottom: 12px;">🏢</div>
-                        <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 8px;">Fyzická ostraha budov</h3>
-                        <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.55;">Recepční a strážní služba pro administrativní centra, logistické parky, retail a průmyslové areály s GPS kontrolou.</p>
-                    </div>
-                    <div style="margin-top: 18px; font-size: 11px; color: var(--cyan-core); font-family: monospace; font-weight: 700;">RECE дистанция &bull; VRÁTNICE</div>
-                </div>
-
-                <div class="spotlight-card ticker-item">
-                    <div>
-                        <div style="font-size: 32px; margin-bottom: 12px;">🚨</div>
-                        <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 8px;">PCO &amp; Kamerový dohled</h3>
-                        <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.55;">Dálkové střežení 24/7 s okamžitou reakcí a výjezdem motorizované zásahové jednotky po celé ČR.</p>
-                    </div>
-                    <div style="margin-top: 18px; font-size: 11px; color: #ff7b00; font-family: monospace; font-weight: 700;">DOJEZD DO MINUT</div>
-                </div>
-
-                <div class="spotlight-card ticker-item">
-                    <div>
-                        <div style="font-size: 32px; margin-bottom: 12px;">🎪</div>
-                        <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 8px;">Pořadatelská služba</h3>
-                        <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.55;">Koordinace davu, VIP ochrana, kontrola vstupů a turnikety na koncertech, festivalech a sportovních událostech.</p>
-                    </div>
-                    <div style="margin-top: 18px; font-size: 11px; color: #00ff88; font-family: monospace; font-weight: 700;">EVENTY &bull; VIP ZÓNY</div>
-                </div>
-
-                <div class="spotlight-card ticker-item">
-                    <div>
-                        <div style="font-size: 32px; margin-bottom: 12px;">🔍</div>
-                        <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 8px;">Bezpečnostní audity</h3>
-                        <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.55;">Penetrační testování fyzické bezpečnosti, analýza rizik a optimalizace nákladů na stávající ostrahu budovy.</p>
-                    </div>
-                    <div style="margin-top: 18px; font-size: 11px; color: #ff3366; font-family: monospace; font-weight: 700;">RISK MANAGEMENT</div>
-                </div>
-
-                <!-- SADA 2 (PRO PLYNULÝ NEKONEČNÝ LOOP) -->
-                <div class="spotlight-card ticker-item" aria-hidden="true">
-                    <div>
-                        <div style="font-size: 32px; margin-bottom: 12px;">🕴️</div>
-                        <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 8px;">Osobní doprovody &amp; Eskorty</h3>
-                        <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.55;">Diskrétní ochrana osob, ozbrojený doprovod hotovosti a cenných zásilek.</p>
-                    </div>
-                    <div style="margin-top: 18px; font-size: 11px; color: var(--cyan-core); font-family: monospace; font-weight: 700;">OZBROJENÁ OCHRANA &bull; 24/7</div>
-                </div>
-
-                <div class="spotlight-card ticker-item" aria-hidden="true">
-                    <div>
-                        <div style="font-size: 32px; margin-bottom: 12px;">🏢</div>
-                        <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 8px;">Fyzická ostraha budov</h3>
-                        <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.55;">Recepční a strážní služba pro administrativní centra a průmyslové areály.</p>
-                    </div>
-                    <div style="margin-top: 18px; font-size: 11px; color: var(--cyan-core); font-family: monospace; font-weight: 700;">RECE &bull; VRÁTNICE</div>
-                </div>
-
-                <div class="spotlight-card ticker-item" aria-hidden="true">
-                    <div>
-                        <div style="font-size: 32px; margin-bottom: 12px;">🚨</div>
-                        <h3 style="color: #fff; font-size: 1.2rem; margin-bottom: 8px;">PCO &amp; Kamerový dohled</h3>
-                        <p style="color: var(--text-dim); font-size: 0.9rem; line-height: 1.55;">Dálkové střežení 24/7 s okamžitou reakcí a výjezdem motorizované jednotky.</p>
-                    </div>
-                    <div style="margin-top: 18px; font-size: 11px; color: #ff7b00; font-family: monospace; font-weight: 700;">DOJEZD DO MINUT</div>
-                </div>
-
-            </div>
-        </div>
-    </section>
-
-    <!-- 3. INTERAKTIVNÍ KALKULAČKA & POPTÁVKA -->
-    <section id="kalkulacka" class="spotlight-card calc-matrix gsap-reveal">
-        <div class="calc-layout">
-            <!-- Levá strana: Slidery a interakce -->
-            <div>
-                <div class="hero-badge-glow" style="margin-bottom: 12px;">TRANSPARENTNÍ CENOTVORBA</div>
-                <h2 style="font-size: 2.2rem; font-weight: 800; color: #fff; margin-bottom: 12px;">Spočítejte si náklady na ostrahu</h2>
-                <p style="color: var(--text-dim); line-height: 1.6; margin-bottom: 26px;">
-                    Posuňte posuvník a zjistěte orientační měsíční rozpočet včetně kompletní výstroje a pojištění odpovědnosti do 50 mil. Kč.
-                </p>
-
-                <div style="margin-bottom: 24px;">
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px; font-weight: 600;">
-                        <span style="color: #9cb3cc;">Počet střežených hodin týdně:</span>
-                        <span id="hours-val" style="color: var(--cyan-core); font-family: monospace; font-size: 1.05rem;">168 hod (Nonstop 24/7)</span>
-                    </div>
-                    <input type="range" id="hours-range" min="20" max="336" step="10" value="168" style="width: 100%; accent-color: var(--cyan-core); cursor: pointer;">
-                </div>
-
-                <div style="margin-bottom: 24px;">
-                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #9cb3cc;">Požadovaný režim stanoviště:</label>
-                    <select id="guard-type" class="styled-select">
-                        <option value="260">Standardní denní/noční ostraha (od 260 Kč/h)</option>
-                        <option value="310">Recepční služba s AJ (od 310 Kč/h)</option>
-                        <option value="360">Ozbrojená / Certifikovaná ostraha VIP (od 360 Kč/h)</option>
-                    </select>
-                </div>
-
-                <div class="screen-hud">
-                    <div style="font-size: 0.8rem; font-family: monospace; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 6px;">ORIENTAČNÍ MĚSÍČNÍ ROZPOČET BEZ DPH</div>
-                    <div id="total-price" class="screen-price">189 280 Kč</div>
-                    <div style="font-size: 0.75rem; color: #506a85; margin-top: 6px;">Přesnou kalkulaci připravíme po bezpečnostním posouzení objektu.</div>
-                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--panther-yellow); font-weight: 700;">Ozbrojená ochrana &bull; 24/7</div>
             </div>
 
-            <!-- Pravá strana: Asynchronní formulář -->
-            <div style="background: rgba(1, 8, 16, 0.65); padding: 32px; border-radius: 10px; border: 1px solid var(--card-border);">
-                <h3 style="color: #fff; font-size: 1.3rem; margin-bottom: 8px; font-weight: 700;">Získejte nezávaznou nabídku na míru</h3>
-                <p style="color: var(--text-dim); font-size: 0.85rem; margin-bottom: 22px;">Vyplňte kontakt a náš bezpečnostní manažer se s vámi spojí s detailním plánem.</p>
-                
-                <form id="inquiry-form" method="post" action="{% url 'web:submit_inquiry' %}">
-                    {% csrf_token %}
-                    <input type="hidden" name="service_type" value="PHYSICAL">
-                    <input type="hidden" id="form-hours" name="estimated_hours_weekly" value="168">
-                    <input type="hidden" id="form-estimate" name="calculated_estimate_czk" value="189280">
-
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                        <input type="text" name="contact_name" placeholder="Vaše jméno *" required class="styled-input">
-                        <input type="tel" name="phone" placeholder="Telefonní číslo *" required class="styled-input">
-                    </div>
-
-                    <div style="margin-bottom: 12px;">
-                        <input type="email" name="email" placeholder="E-mailová adresa" class="styled-input">
-                    </div>
-
-                    <div style="margin-bottom: 22px;">
-                        <input type="text" name="object_location" placeholder="Město / Lokalita objektu" class="styled-input">
-                    </div>
-
-                    <button type="submit" id="submit-btn" class="btn-glow" style="width: 100%; justify-content: center; border: none; cursor: pointer;">
-                        ✉️ Odeslat poptávku dispečinku
-                    </button>
-
-                    <div id="form-feedback" style="display: none; margin-top: 14px; padding: 12px; border-radius: 6px; font-size: 0.9rem; text-align: center;"></div>
-                </form>
-            </div>
-        </div>
-    </section>
-
-    <!-- 4. MAGAZÍN / ČLÁNKY -->
-    <section style="margin-bottom: 90px;" class="gsap-reveal">
-        <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 12px;">
-            <div>
-                <div class="hero-badge-glow" style="margin-bottom: 8px;">PANTHER INTEL</div>
-                <h2 style="font-size: 2.1rem; font-weight: 800; color: #fff; margin: 0;">Zprávy a události z terénu</h2>
-            </div>
-            <a href="{% url 'web:article_list' %}" style="color: var(--cyan-core); text-decoration: none; font-size: 0.95rem; font-weight: 700;">
-                Zobrazit všechny články →
-            </a>
-        </div>
-
-        <div class="articles-grid">
-            {% for article in featured_articles %}
-            <a href="{% url 'web:article_detail' article.slug %}" class="spotlight-card article-box">
-                {% if article.featured_image %}
-                    <img src="{{ article.featured_image.url }}" alt="{{ article.title }}" class="article-thumb">
-                {% else %}
-                    <div class="article-thumb" style="display: flex; align-items: center; justify-content: center; font-size: 44px; color: var(--cyan-core);">🛡️</div>
-                {% endif %}
-                <div style="padding: 24px; flex-grow: 1; display: flex; flex-direction: column;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.75rem; font-family: monospace; color: var(--cyan-core); margin-bottom: 10px;">
-                        <span>{{ article.category.name|default:"BEZPEČNOST" }}</span>
-                        <span style="color: #64748b;">⏱️ {{ article.reading_time_minutes }} min</span>
-                    </div>
-                    <h3 style="color: #ffffff; font-size: 1.15rem; font-weight: 700; margin-bottom: 10px; line-height: 1.35;">{{ article.title }}</h3>
-                    <p style="color: var(--text-dim); font-size: 0.85rem; line-height: 1.6; margin-bottom: 18px; flex-grow: 1;">{{ article.perex|truncatewords:18 }}</p>
-                    <div style="color: var(--cyan-core); font-size: 0.85rem; font-weight: 700;">Číst analýzu →</div>
+            <div class="ticker-card border-yellow">
+                <div>
+                    <div class="service-icon">🏢</div>
+                    <h3 class="service-heading">Fyzická ostraha budov</h3>
+                    <p class="service-text">Recepční a strážní služba pro administrativní centra, logistické parky, retail a průmyslové areály s GPS kontrolou.</p>
                 </div>
-            </a>
-            {% empty %}
-            <div style="grid-column: 1 / -1; background: var(--card-bg); border: 1px dashed var(--card-border); padding: 36px; border-radius: 8px; text-align: center; color: var(--text-dim);">
-                Zatím nebyly publikovány žádné veřejné články.
+                <div style="margin-top: 14px; font-size: 11px; color: var(--panther-yellow); font-weight: 700;">Recepce &bull; Vrátnice &bull; Areály</div>
             </div>
-            {% endfor %}
-        </div>
-    </section>
 
-</div>
+            <div class="ticker-card border-blue">
+                <div>
+                    <div class="service-icon">🚨</div>
+                    <h3 class="service-heading">PCO &amp; Kamerový dohled</h3>
+                    <p class="service-text">Dálkové střežení 24/7 s okamžitou reakcí a výjezdem motorizované zásahové jednotky po celé ČR.</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-blue); font-weight: 700;">Reakční dojezd do minut</div>
+            </div>
+
+            <div class="ticker-card border-emerald">
+                <div>
+                    <div class="service-icon">🎪</div>
+                    <h3 class="service-heading">Pořadatelská služba</h3>
+                    <p class="service-text">Koordinace davu, VIP ochrana, kontrola vstupů a turnikety na koncertech, festivalech a sportovních událostech.</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-emerald); font-weight: 700;">Eventy &bull; VIP zóny</div>
+            </div>
+
+            <div class="ticker-card border-rose">
+                <div>
+                    <div class="service-icon">🔍</div>
+                    <h3 class="service-heading">Bezpečnostní audity</h3>
+                    <p class="service-text">Penetrační testování fyzické bezpečnosti, analýza rizik a optimalizace nákladů na stávající ostrahu budovy.</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-rose); font-weight: 700;">Risk management</div>
+            </div>
+
+            <!-- SADA 2 (DUPLIKACE PRO NEKONEČNÝ SMYČKOVÝ EFEKT) -->
+            <div class="ticker-card border-yellow" aria-hidden="true">
+                <div>
+                    <div class="service-icon">🕴️</div>
+                    <h3 class="service-heading">Osobní doprovody &amp; Eskorty</h3>
+                    <p class="service-text">Diskrétní ochrana osob (Close Protection), ozbrojený doprovod finanční hotovosti, cenných zásilek a asistence při rizikových jednáních.</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--panther-yellow); font-weight: 700;">Ozbrojená ochrana &bull; 24/7</div>
+            </div>
+
+            <div class="ticker-card border-yellow" aria-hidden="true">
+                <div>
+                    <div class="service-icon">🏢</div>
+                    <h3 class="service-heading">Fyzická ostraha budov</h3>
+                    <p class="service-text">Recepční a strážní služba pro administrativní centra, logistické parky, retail a průmyslové areály s GPS kontrolou.</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--panther-yellow); font-weight: 700;">Recepce &bull; Vrátnice &bull; Areály</div>
+            </div>
+
+            <div class="ticker-card border-blue" aria-hidden="true">
+                <div>
+                    <div class="service-icon">🚨</div>
+                    <h3 class="service-heading">PCO &amp; Kamerový dohled</h3>
+                    <p class="service-text">Dálkové střežení 24/7 s okamžitou reakcí a výjezdem motorizované zásahové jednotky po celé ČR.</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-blue); font-weight: 700;">Reakční dojezd do minut</div>
+            </div>
+
+            <div class="ticker-card border-emerald" aria-hidden="true">
+                <div>
+                    <div class="service-icon">🎪</div>
+                    <h3 class="service-heading">Pořadatelská služba</h3>
+                    <p class="service-text">Koordinace davu, VIP ochrana, kontrola vstupů a turnikety na koncertech, festivalech a sportovních událostech.</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-emerald); font-weight: 700;">Eventy &bull; VIP zóny</div>
+            </div>
+
+            <div class="ticker-card border-rose" aria-hidden="true">
+                <div>
+                    <div class="service-icon">🔍</div>
+                    <h3 class="service-heading">Bezpečnostní audity</h3>
+                    <p class="service-text">Penetrační testování fyzické bezpečnosti, analýza rizik a optimalizace nákladů na stávající ostrahu budovy.</p>
+                </div>
+                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-rose); font-weight: 700;">Risk management</div>
+            </div>
+
+        </div>
+    </div>
+</section>
+
+
+<!-- 3. INTERAKTIVNÍ KALKULAČKA & POPTÁVKOVÝ FORMULÁŘ -->
+<section id="kalkulacka" class="calc-container">
+    <div class="calc-grid">
+        <!-- Levá strana: Slidery a interakce -->
+        <div>
+            <div class="calc-badge">⚡ Transparentní cenotvorba</div>
+            <h2 class="calc-title">Spočítejte si náklady na ostrahu</h2>
+            <p class="calc-desc">
+                Posuňte posuvník a zjistěte orientační měsíční rozpočet včetně kompletní výstroje a pojištění odpovědnosti do 50 mil. Kč.
+            </p>
+
+            <div class="calc-group">
+                <div class="calc-label-flex">
+                    <span>Počet střežených hodin týdně:</span>
+                    <span id="hours-val" style="color: var(--panther-yellow); font-size: 16px;">168 hod (Nonstop 24/7)</span>
+                </div>
+                <input type="range" id="hours-range" min="20" max="336" step="10" value="168" class="calc-range">
+            </div>
+
+            <div class="calc-group">
+                <label class="calc-label-flex">Požadovaný režim stanoviště:</label>
+                <select id="guard-type" class="calc-select">
+                    <option value="260">Standardní denní/noční ostraha (od 260 Kč/h)</option>
+                    <option value="310">Recepční služba s AJ (od 310 Kč/h)</option>
+                    <option value="360">Ozbrojená / Certifikovaná ostraha VIP (od 360 Kč/h)</option>
+                </select>
+            </div>
+
+            <div class="calc-result-box">
+                <div class="calc-result-label">Orientační měsíční rozpočet bez DPH</div>
+                <div id="total-price" class="calc-price">189 280 Kč</div>
+                <div class="calc-subnote">Přesnou kalkulaci připravíme po bezpečnostním posouzení objektu.</div>
+            </div>
+        </div>
+
+        <!-- Pravá strana: Asynchronní formulář -->
+        <div class="inquiry-card">
+            <h3 class="inquiry-title">Získejte nezávaznou nabídku na míru</h3>
+            
+            <form id="inquiry-form" method="post" action="{% url 'web:submit_inquiry' %}">
+                {% csrf_token %}
+                <input type="hidden" name="service_type" value="PHYSICAL">
+                <input type="hidden" id="form-hours" name="estimated_hours_weekly" value="168">
+                <input type="hidden" id="form-estimate" name="calculated_estimate_czk" value="189280">
+
+                <div class="form-row">
+                    <input type="text" name="contact_name" placeholder="Vaše jméno *" required class="inquiry-input">
+                    <input type="tel" name="phone" placeholder="Telefonní číslo *" required class="inquiry-input">
+                </div>
+
+                <div style="margin-bottom: 12px;">
+                    <input type="email" name="email" placeholder="E-mailová adresa" class="inquiry-input">
+                </div>
+
+                <div style="margin-bottom: 16px;">
+                    <input type="text" name="object_location" placeholder="Město / Lokalita objektu" class="inquiry-input">
+                </div>
+
+                <button type="submit" id="submit-btn" class="btn-submit-inquiry">
+                    ✉️ Odeslat poptávku dispečinku
+                </button>
+
+                <div id="form-feedback" class="feedback-msg"></div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<!-- 4. MAGAZÍN A NOVINKY -->
+<section style="margin-bottom: 40px;">
+    <div class="articles-header-flex">
+        <div>
+            <div class="calc-badge">Panther Intel</div>
+            <h2 style="font-size: 26px; font-weight: 800; color: #fff; margin: 4px 0 0;">Zprávy a události z terénu</h2>
+        </div>
+        <a href="{% url 'web:article_list' %}" style="color: var(--accent-blue); text-decoration: none; font-size: 14px; font-weight: 700;">
+            Zobrazit všechny články →
+        </a>
+    </div>
+
+    <div class="services-grid">
+        {% for article in featured_articles %}
+        <a href="{% url 'web:article_detail' article.slug %}" class="article-card">
+            {% if article.featured_image %}
+                <img src="{{ article.featured_image.url }}" alt="{{ article.title }}" class="article-img">
+            {% else %}
+                <div class="article-img-placeholder">🛡️</div>
+            {% endif %}
+            <div class="article-body">
+                <div class="article-meta">
+                    <span>{{ article.category.name|default:"Bezpečnost" }}</span>
+                    <span>⏱️ {{ article.reading_time_minutes }} min čtení</span>
+                </div>
+                <h3 class="article-heading">{{ article.title }}</h3>
+                <p class="article-perex">{{ article.perex|truncatewords:20 }}</p>
+                <div class="article-link-text">Číst analýzu →</div>
+            </div>
+        </a>
+        {% empty %}
+        <div style="grid-column: 1 / -1; background: var(--bg-card); padding: 30px; border-radius: 12px; text-align: center; color: var(--text-muted); border: 1px solid var(--border-subtle);">
+            Zatím nebyly publikovány žádné veřejné články.
+        </div>
+        {% endfor %}
+    </div>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}
 <script>
-    // 1. LENIS SMOOTH SCROLL (PLYnulý luxusní pohyb)
-    const lenis = new Lenis({
-        lerp: 0.08,
-        smoothWheel: true
-    });
-    lenis.on('scroll', ScrollTrigger.update);
-    gsap.ticker.add((time) => lenis.raf(time * 1000));
-    gsap.ticker.lagSmoothing(0);
-
-    // 2. SPOTLIGHT MOUSE EFEKT (světlo sledující kurzor myši na kartách)
-    document.querySelectorAll('.spotlight-card').forEach(card => {
-        card.addEventListener('mousemove', e => {
-            const rect = card.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
-            card.style.setProperty('--mouse-x', `${x}px`);
-            card.style.setProperty('--mouse-y', `${y}px`);
-        });
-    });
-
-    // 3. AMBIENT RADAR CANVAS (lehké částice na pozadí)
-    const canvas = document.getElementById('ambient-canvas');
-    const ctx = canvas.getContext('2d');
-    let width = canvas.width = window.innerWidth;
-    let height = canvas.height = window.innerHeight;
-
-    const particles = [];
-    const count = 55;
-
-    for (let i = 0; i < count; i++) {
-        particles.push({
-            x: Math.random() * width,
-            y: Math.random() * height,
-            vx: (Math.random() - 0.5) * 0.4,
-            vy: (Math.random() - 0.5) * 0.4,
-            radius: Math.random() * 1.5 + 0.5
-        });
-    }
-
-    function drawAmbient() {
-        ctx.clearRect(0, 0, width, height);
-
-        // Vykreslení spojnic mezi blízkými částicemi
-        for (let i = 0; i < count; i++) {
-            for (let j = i + 1; j < count; j++) {
-                const dx = particles[i].x - particles[j].x;
-                const dy = particles[i].y - particles[j].y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-
-                if (dist < 130) {
-                    ctx.strokeStyle = `rgba(0, 212, 255, ${0.12 * (1 - dist / 130)})`;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.moveTo(particles[i].x, particles[i].y);
-                    ctx.lineTo(particles[j].x, particles[j].y);
-                    ctx.stroke();
-                }
-            }
-        }
-
-        // Vykreslení samotných bodů
-        for (let p of particles) {
-            p.x += p.vx;
-            p.y += p.vy;
-
-            if (p.x < 0) p.x = width;
-            if (p.x > width) p.x = 0;
-            if (p.y < 0) p.y = height;
-            if (p.y > height) p.y = 0;
-
-            ctx.fillStyle = 'rgba(0, 212, 255, 0.4)';
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        requestAnimationFrame(drawAmbient);
-    }
-    drawAmbient();
-
-    window.addEventListener('resize', () => {
-        width = canvas.width = window.innerWidth;
-        height = canvas.height = window.innerHeight;
-    });
-
-    // 4. GSAP REVEAL ANIMACE
-    gsap.registerPlugin(ScrollTrigger);
-
-    gsap.utils.toArray('.gsap-reveal').forEach(elem => {
-        gsap.from(elem, {
-            scrollTrigger: {
-                trigger: elem,
-                start: "top 85%",
-            },
-            opacity: 0,
-            y: 35,
-            duration: 0.9,
-            ease: "power2.out"
-        });
-    });
-
-    // 5. KALKULAČKA V REÁLNÉM ČASE
+    // KALKULAČKA V REÁLNÉM ČASE
     const hoursRange = document.getElementById('hours-range');
     const hoursVal = document.getElementById('hours-val');
     const guardType = document.getElementById('guard-type');
@@ -649,7 +261,7 @@
     hoursRange.addEventListener('input', calculateEstimate);
     guardType.addEventListener('change', calculateEstimate);
 
-    // 6. ASYNCHRONNÍ FORMULÁŘ
+    // ASYNCHRONNÍ ODESLÁNÍ BEZ PŘEČERPÁNÍ STRÁNKY
     const form = document.getElementById('inquiry-form');
     const feedback = document.getElementById('form-feedback');
     const submitBtn = document.getElementById('submit-btn');
@@ -670,9 +282,9 @@
 
             feedback.style.display = 'block';
             if (data.status === 'success') {
-                feedback.style.background = 'rgba(0, 255, 136, 0.15)';
-                feedback.style.border = '1px solid rgba(0, 255, 136, 0.3)';
-                feedback.style.color = '#00ff88';
+                feedback.style.background = 'rgba(16, 185, 129, 0.15)';
+                feedback.style.border = '1px solid rgba(16, 185, 129, 0.3)';
+                feedback.style.color = '#6ee7b7';
                 feedback.textContent = data.message;
                 form.reset();
                 calculateEstimate();
@@ -692,5 +304,19 @@
             submitBtn.textContent = '✉️ Odeslat poptávku dispečinku';
         }
     });
+    // INTERAKTIVNÍ OVLÁDÁNÍ BĚŽÍCÍHO PÁSU
+    const tickerTrack = document.getElementById('ticker-track');
+    let isDown = false;
+    let startX;
+    let scrollLeft;
+
+    // Dotyková podpora pro mobil (zastavení při tapnutí)
+    tickerTrack.addEventListener('touchstart', () => {
+        tickerTrack.style.animationPlayState = 'paused';
+    }, { passive: true });
+
+    tickerTrack.addEventListener('touchend', () => {
+        tickerTrack.style.animationPlayState = 'running';
+    }, { passive: true });
 </script>
 {% endblock %}
