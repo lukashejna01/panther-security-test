@@ -5,7 +5,7 @@ Exportuje všechny databázové entity pro celou aplikaci Panther Security.
 
 from .organization import Department, Position, SystemRole
 from .candidate import Candidate, CandidateStatus
-from .employee import Employee
+from .employee import Employee, AdvancePayment
 from .operations import Client, GuardObject, ContactPerson
 from .attendance import Shift, ShiftStatus, ShiftAvailability
 from .billing import (
