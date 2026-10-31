@@ -67,11 +67,11 @@
                     </button>
                 </div>
                 
-                <div style="border: 2px dashed #334155; border-radius: 6px; background: #ffffff; touch-action: none; position: relative;">
-                    <canvas id="signatureCanvas" width="580" height="180" style="width: 100%; height: 180px; display: block; cursor: crosshair;"></canvas>
+                <div style="border: 2px dashed #475569; border-radius: 6px; background: #ffffff; touch-action: none; position: relative; overflow: hidden;">
+                    <canvas id="signatureCanvas" style="width: 100%; height: 200px; display: block; cursor: crosshair; touch-action: none;"></canvas>
                 </div>
                 <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                    Strážný podepíše převzetí hotovosti prstem na mobilu/tabletu nebo myší na PC.
+                    Podepište se prstem nebo stylusem na displeji telefonu / myší na PC.
                 </div>
                 {{ form.signature_data }}
                 {% if form.signature_data.errors %}<div style="color: #ef4444; font-size: 12px; margin-top: 4px;">{{ form.signature_data.errors.0 }}</div>{% endif %}
@@ -94,6 +94,26 @@ document.addEventListener('DOMContentLoaded', function () {
     const clearBtn = document.getElementById('clearSigBtn');
     const form = document.getElementById('advanceForm');
 
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let hasDrawn = false;
+
+    // Inicializace rozměrů a pera bez ztráty stavu
+    function initCanvas() {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width === 0) return;
+
+        // Nastavíme vnitřní rozlišení podle reálné šířky elementu
+        canvas.width = rect.width;
+        canvas.height = rect.height;
+
+        // Výchozí vlastnosti pera
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 3;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+    }
+
     function toggleMethod() {
         if (methodSelect.value === 'BANK') {
             bankSection.style.display = 'block';
@@ -101,89 +121,86 @@ document.addEventListener('DOMContentLoaded', function () {
         } else {
             bankSection.style.display = 'none';
             cashSection.style.display = 'block';
-            resizeCanvas();
+            // Po zobrazení inicializujeme rozměr, pokud ještě nebyl
+            setTimeout(initCanvas, 50);
         }
     }
     methodSelect.addEventListener('change', toggleMethod);
     toggleMethod();
 
-    const ctx = canvas.getContext('2d');
-    let isDrawing = false;
-    let hasDrawn = false;
-
-    function resizeCanvas() {
+    // Přesné získání souřadnic vzhledem k měřítku canvasu
+    function getCanvasCoordinates(e) {
         const rect = canvas.getBoundingClientRect();
-        if (rect.width > 0) {
-            canvas.width = rect.width;
-            canvas.height = 180;
-            ctx.strokeStyle = '#000000';
-            ctx.lineWidth = 2.5;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-        }
-    }
-    window.addEventListener('resize', resizeCanvas);
-    setTimeout(resizeCanvas, 200);
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
 
-    function getCoords(e) {
-        const rect = canvas.getBoundingClientRect();
-        if (e.touches && e.touches.length > 0) {
-            return {
-                x: e.touches[0].clientX - rect.left,
-                y: e.touches[0].clientY - rect.top
-            };
-        }
+        // Poměr měřítka mezi CSS velikostí a vnitřním bufferem canvasu
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+
         return {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top
+            x: (clientX - rect.left) * scaleX,
+            y: (clientY - rect.top) * scaleY
         };
     }
 
-    function startDrawing(e) {
+    function startPosition(e) {
         isDrawing = true;
-        const coords = getCoords(e);
+        const pos = getCanvasCoordinates(e);
         ctx.beginPath();
-        ctx.moveTo(coords.x, coords.y);
+        ctx.moveTo(pos.x, pos.y);
         e.preventDefault();
     }
 
     function draw(e) {
         if (!isDrawing) return;
-        const coords = getCoords(e);
-        ctx.lineTo(coords.x, coords.y);
+        const pos = getCanvasCoordinates(e);
+        ctx.lineTo(pos.x, pos.y);
         ctx.stroke();
         hasDrawn = true;
         e.preventDefault();
     }
 
-    function stopDrawing() {
+    function endPosition(e) {
         if (isDrawing) {
+            ctx.closePath();
             isDrawing = false;
         }
     }
 
-    canvas.addEventListener('touchstart', startDrawing, { passive: false });
+    // Registrace událostí pro dotykové obrazovky
+    canvas.addEventListener('touchstart', startPosition, { passive: false });
     canvas.addEventListener('touchmove', draw, { passive: false });
-    canvas.addEventListener('touchend', stopDrawing);
+    canvas.addEventListener('touchend', endPosition, { passive: false });
+    canvas.addEventListener('touchcancel', endPosition, { passive: false });
 
-    canvas.addEventListener('mousedown', startDrawing);
+    // Registrace událostí pro myš
+    canvas.addEventListener('mousedown', startPosition);
     canvas.addEventListener('mousemove', draw);
-    canvas.addEventListener('mouseup', stopDrawing);
-    canvas.addEventListener('mouseleave', stopDrawing);
+    canvas.addEventListener('mouseup', endPosition);
+    canvas.addEventListener('mouseleave', endPosition);
 
+    // Tlačítko pro vymazání
     clearBtn.addEventListener('click', function () {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         hiddenSigInput.value = '';
         hasDrawn = false;
     });
 
+    // Před odesláním formuláře zapíšeme Base64 data podpisu
     form.addEventListener('submit', function (e) {
         if (methodSelect.value === 'CASH') {
             if (hasDrawn) {
                 hiddenSigInput.value = canvas.toDataURL('image/png');
+            } else {
+                hiddenSigInput.value = '';
             }
         }
     });
+
+    // Prvotní inicializace
+    window.addEventListener('load', initCanvas);
+    setTimeout(initCanvas, 150);
 });
 </script>
 {% endblock %}
