@@ -4,11 +4,23 @@ Osobní údaje z OP, vazba na uživatelský účet, zdravotní pojišťovna,
 údaje pro ČSSZ, samostatný archiv ukončených poměrů a zálohy na mzdu.
 """
 
+import secrets
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
 from .organization import Department, Position, SystemRole
+
+
+def contract_pdf_path(instance, filename):
+    """
+    Cesta pro uložení vygenerované pracovní smlouvy (DPP).
+    Náhodná přípona brání uhodnutí adresy souboru s osobními údaji.
+    """
+    year = timezone.now().strftime('%Y')
+    number = instance.personal_number or f"ID{instance.id or 'new'}"
+    return f"contracts/{year}/{instance.contract_type}_{number}_{secrets.token_hex(8)}.pdf"
 
 
 def advance_pdf_path(instance, filename):
@@ -127,6 +139,29 @@ class Employee(models.Model):
         decimal_places=2,
         default=160.00,
         verbose_name="Základní hodinová mzda (Kč/h)"
+    )
+    work_location = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name="Místo výkonu práce"
+    )
+    contract_end_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Smlouva sjednána do"
+    )
+
+    # Vygenerovaná smlouva (PDF) – stahuje se jen přes chráněný pohled
+    contract_pdf = models.FileField(
+        upload_to=contract_pdf_path,
+        blank=True,
+        null=True,
+        verbose_name="Smlouva (PDF)"
+    )
+    contract_generated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Smlouva vygenerována"
     )
 
     # ČSSZ / OSSZ agenda (ONZ oznámení o nástupu)

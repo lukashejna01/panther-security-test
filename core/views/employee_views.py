@@ -5,11 +5,14 @@ Pohledy pro kmenové zaměstnance Panther Security a samostatný archiv zaměstn
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.http import FileResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.views.decorators.http import require_POST
 
 from core.decorators import role_required
 from core.models import Employee, SystemRole
 from core.forms import EmployeeArchiveForm
+from core.services import has_contract_template, store_contract_pdf
 
 
 @login_required
@@ -30,8 +33,49 @@ def employee_detail_view(request, employee_id):
     context = {
         'employee': employee,
         'shifts': shifts,
+        'has_contract_template': has_contract_template(employee.contract_type),
     }
     return render(request, 'employees/employee_detail.html', context)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+def employee_contract_view(request, employee_id):
+    """
+    Zobrazení smlouvy v PDF. Soubor obsahuje rodné číslo, proto se vydává
+    jen přes tento pohled s kontrolou role – ne přímým odkazem do /media/.
+    """
+    employee = get_object_or_404(Employee, id=employee_id)
+    if not employee.contract_pdf:
+        messages.error(request, "Zaměstnanec zatím nemá vygenerovanou smlouvu.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    try:
+        pdf_file = employee.contract_pdf.open('rb')
+    except FileNotFoundError:
+        messages.error(request, "Soubor smlouvy na serveru chybí. Vygenerujte ji znovu.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    filename = f"{employee.contract_type}_{employee.last_name}_{employee.first_name}.pdf"
+    return FileResponse(pdf_file, content_type='application/pdf', as_attachment=False, filename=filename)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
+def employee_contract_regenerate_view(request, employee_id):
+    """Nové vygenerování smlouvy (po opravě údajů nebo změně vzoru). Stará verze se nahradí."""
+    employee = get_object_or_404(Employee, id=employee_id)
+    if not has_contract_template(employee.contract_type):
+        messages.error(request, f"Pro typ smlouvy {employee.get_contract_type_display()} zatím není připraven vzor.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    try:
+        store_contract_pdf(employee)
+        messages.success(request, f"Smlouva {employee.contract_type} pro {employee.full_name} byla vygenerována.")
+    except Exception as e:
+        messages.error(request, f"Smlouvu se nepodařilo vygenerovat: {e}")
+    return redirect('employee_detail', employee_id=employee.id)
 
 
 @login_required
@@ -76,6 +120,9 @@ def employee_delete_view(request, employee_id):
     emp_name = getattr(employee, 'full_name', f"{employee.first_name} {employee.last_name}")
 
     if request.method == 'POST':
+        # Soubor smlouvy s osobními údaji se nesmaže sám s řádkem v DB
+        if employee.contract_pdf:
+            employee.contract_pdf.delete(save=False)
         # Smazáním employee se smaže profil
         employee.delete()
         # Následně smažeme i auth účet uživatele

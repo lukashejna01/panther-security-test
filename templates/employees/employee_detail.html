@@ -32,6 +32,11 @@
             💸 Vydat zálohu na mzdu
         </a>
         {% endif %}
+        {% if employee.contract_pdf %}
+        <a href="{% url 'employee_contract' employee.id %}" target="_blank" rel="noopener" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; border-color: var(--panther-yellow); color: var(--panther-yellow); font-weight: 700;">
+            📄 Smlouva {{ employee.contract_type }} (PDF)
+        </a>
+        {% endif %}
         <a href="{% url 'download_cssz_onz' employee.id %}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
             🏛️ Stáhnout ČSSZ ONZ (XML)
         </a>
@@ -144,6 +149,43 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="color: var(--text-muted); font-size: 13px;">Datum vzniku poměru:</span>
                 <span style="color: #fff;">{{ employee.start_employment_date|date:"d.m.Y" }}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-muted); font-size: 13px;">Smlouva sjednána do:</span>
+                <span style="color: #fff;">{{ employee.contract_end_date|date:"d.m.Y"|default:"—" }}</span>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+                <span style="color: var(--text-muted); font-size: 13px; white-space: nowrap;">Místo výkonu práce:</span>
+                <span style="color: #fff; text-align: right;">{{ employee.work_location|default:"—" }}</span>
+            </div>
+
+            <!-- SMLOUVA V PDF -->
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">
+                <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 8px;">Smlouva</span>
+                {% if employee.contract_pdf %}
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap;">
+                        <a href="{% url 'employee_contract' employee.id %}" target="_blank" rel="noopener" style="color: var(--panther-yellow); font-weight: 700; text-decoration: none;">
+                            📄 {{ employee.get_contract_type_display }}
+                        </a>
+                        <span style="color: var(--text-muted); font-size: 12px;">vygenerováno {{ employee.contract_generated_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+                {% elif has_contract_template %}
+                    <span style="color: var(--text-muted); font-size: 13px;">Smlouva zatím nebyla vygenerována.</span>
+                {% else %}
+                    <span style="color: var(--text-muted); font-size: 13px;">Pro typ {{ employee.contract_type }} zatím není připraven vzor smlouvy.</span>
+                {% endif %}
+
+                {% if has_contract_template %}
+                <form method="post" action="{% url 'employee_contract_regenerate' employee.id %}" style="margin-top: 10px;"
+                      {% if employee.contract_pdf %}onsubmit="return confirm('Vygenerovat smlouvu znovu z aktuálních údajů? Stávající PDF bude nahrazeno.');"{% endif %}>
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">
+                        🔄 {% if employee.contract_pdf %}Vygenerovat znovu{% else %}Vygenerovat smlouvu{% endif %}
+                    </button>
+                </form>
+                {% endif %}
             </div>
 
             <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">

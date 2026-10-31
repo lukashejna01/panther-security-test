@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from core.views import billing_views, payroll_views, advance_views
+from core.views import billing_views, payroll_views, advance_views, employee_views
 
 urlpatterns = [
     # Veřejné stránky a autentizace
@@ -34,6 +34,8 @@ urlpatterns = [
     path('dispecink/zamestnanec/<int:employee_id>/', views.employee_detail_view, name='employee_detail'),
     path('dispecink/zamestnanci/archiv/', views.employees_archive_list_view, name='employees_archive_list'),
     path('dispecink/zamestnanec/<int:employee_id>/archivovat/', views.archive_employee_view, name='archive_employee'),
+    path('dispecink/zamestnanec/<int:employee_id>/smlouva/', employee_views.employee_contract_view, name='employee_contract'),
+    path('dispecink/zamestnanec/<int:employee_id>/smlouva/vygenerovat/', employee_views.employee_contract_regenerate_view, name='employee_contract_regenerate'),
 
     # Modul Zálohy a Výdajové doklady (VPD)
     path('dispecink/zalohy/', advance_views.advance_list_view, name='advance_list'),

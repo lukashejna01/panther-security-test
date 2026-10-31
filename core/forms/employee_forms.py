@@ -42,12 +42,14 @@ class EmployeeOnboardingForm(forms.ModelForm):
             'contract_type',
             'hourly_rate',
             'start_employment_date',
+            'contract_end_date',
+            'work_location',
             'health_insurance_code',
         ]
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
             'last_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'birth_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'birth_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'}),
             'birth_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'RRMMDD/XXXX'}),
             'id_card_number': forms.TextInput(attrs={'class': 'form-control'}),
             'street': forms.TextInput(attrs={'class': 'form-control'}),
@@ -62,9 +64,25 @@ class EmployeeOnboardingForm(forms.ModelForm):
             'position': forms.Select(attrs={'class': 'form-control'}),
             'contract_type': forms.Select(attrs={'class': 'form-control'}),
             'hourly_rate': forms.NumberInput(attrs={'class': 'form-control', 'step': '1.00'}),
-            'start_employment_date': forms.DateInput(attrs={'type': 'date', 'class': 'form-control'}),
+            'start_employment_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'}),
+            'contract_end_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'}),
+            'work_location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Např. Praha – objekty dle rozpisu směn'}),
             'health_insurance_code': forms.Select(attrs={'class': 'form-control'}),
         }
+
+    def clean(self):
+        """U DPP jsou místo výkonu a konec dohody povinné – propisují se do smlouvy."""
+        cleaned = super().clean()
+        if cleaned.get('contract_type') == 'DPP':
+            start = cleaned.get('start_employment_date')
+            end = cleaned.get('contract_end_date')
+            if not end:
+                self.add_error('contract_end_date', "U DPP vyplňte, do kdy je dohoda sjednána.")
+            elif start and end < start:
+                self.add_error('contract_end_date', "Konec dohody nemůže být dříve než datum nástupu.")
+            if not (cleaned.get('work_location') or '').strip():
+                self.add_error('work_location', "U DPP vyplňte místo výkonu práce.")
+        return cleaned
 
 
 class EmployeeProfileUpdateForm(forms.ModelForm):

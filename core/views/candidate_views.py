@@ -20,8 +20,13 @@ from core.forms import (
     IDCardUploadForm,
     EmployeeOnboardingForm,
 )
-from core.services import extract_data_from_id, generate_onz_xml
+from core.services import extract_data_from_id, generate_onz_xml, has_contract_template, store_contract_pdf
 from .auth_views import generate_credentials
+
+
+def _default_contract_end():
+    """Výchozí konec DPP: konec aktuálního kalendářního roku (limit 300 h se počítá za rok)."""
+    return timezone.localdate().replace(month=12, day=31)
 
 
 @login_required
@@ -134,6 +139,7 @@ def candidate_onboard_view(request, candidate_id):
         'phone': candidate.phone,
         'email': candidate.email,
         'start_employment_date': timezone.now().date(),
+        'contract_end_date': _default_contract_end(),
     }
     employee_form = EmployeeOnboardingForm(initial=initial_employee_data)
 
@@ -160,6 +166,7 @@ def candidate_onboard_view(request, candidate_id):
                         'phone': candidate.phone,
                         'email': candidate.email,
                         'start_employment_date': timezone.now().date(),
+                        'contract_end_date': _default_contract_end(),
                     }
                     employee_form = EmployeeOnboardingForm(initial=extracted_data)
                     messages.success(request, "Doklad totožnosti byl úspěšně vytěžen přes Claude AI. Zkontrolujte formulář a potvrďte nástup.")
@@ -192,6 +199,14 @@ def candidate_onboard_view(request, candidate_id):
 
                 candidate.status = CandidateStatus.HIRED
                 candidate.save()
+
+                # Smlouva v PDF na kartu zaměstnance (zatím existuje vzor jen pro DPP)
+                if has_contract_template(employee.contract_type):
+                    try:
+                        store_contract_pdf(employee)
+                        messages.info(request, f"📄 Smlouva {employee.contract_type} byla vygenerována a je na kartě zaměstnance.")
+                    except Exception as e:
+                        messages.warning(request, f"Zaměstnanec byl uložen, ale smlouvu se nepodařilo vygenerovat: {e}")
 
                 # Výrazná flash zpráva s heslem a přesměrování přímo na kmen zaměstnanců
                 messages.success(
