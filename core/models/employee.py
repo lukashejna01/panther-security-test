@@ -23,6 +23,13 @@ def contract_pdf_path(instance, filename):
     return f"contracts/{year}/{instance.contract_type}_{number}_{secrets.token_hex(8)}.pdf"
 
 
+def termination_pdf_path(instance, filename):
+    """Cesta pro uložení dokumentu o skončení (výpověď / dohoda o ukončení)."""
+    year = timezone.now().strftime('%Y')
+    number = instance.personal_number or f"ID{instance.id or 'new'}"
+    return f"terminations/{year}/{instance.contract_type}_{number}_{secrets.token_hex(8)}.pdf"
+
+
 def advance_pdf_path(instance, filename):
     """Cesta pro uložení generovaného PDF dokladu o záloze."""
     date_str = instance.created_at.strftime('%Y/%m') if instance.created_at else timezone.now().strftime('%Y/%m')
@@ -52,6 +59,13 @@ class Employee(models.Model):
         ('209', '209 - Zaměstnanecká pojišťovna Škoda (ZPŠ)'),
         ('211', '211 - Zdravotní pojišťovna ministerstva vnitra ČR (ZPMV ČR)'),
         ('213', '213 - Revírní bratrská pokladna (RBP)'),
+    ]
+
+    TERMINATION_TYPE_CHOICES = [
+        ('AGREEMENT', 'Dohoda o ukončení'),
+        ('EMPLOYER_NOTICE', 'Výpověď ze strany zaměstnavatele'),
+        ('EMPLOYEE_NOTICE', 'Výpověď ze strany zaměstnance'),
+        ('OTHER', 'Jiný způsob (bez dokumentu)'),
     ]
 
     # Propojení s přihlašovacím účtem do systému
@@ -187,6 +201,30 @@ class Employee(models.Model):
     is_archived = models.BooleanField(default=False, verbose_name="V archivu zaměstnanců")
     termination_date = models.DateField(null=True, blank=True, verbose_name="Datum ukončení poměru")
     termination_reason = models.CharField(max_length=255, blank=True, verbose_name="Důvod ukončení")
+    termination_type = models.CharField(
+        max_length=20,
+        choices=TERMINATION_TYPE_CHOICES,
+        blank=True,
+        verbose_name="Způsob ukončení"
+    )
+    termination_notice_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Datum podpisu / doručení výpovědi"
+    )
+
+    # Vygenerovaný dokument o skončení (PDF) – stahuje se jen přes chráněný pohled
+    termination_pdf = models.FileField(
+        upload_to=termination_pdf_path,
+        blank=True,
+        null=True,
+        verbose_name="Dokument o ukončení (PDF)"
+    )
+    termination_generated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Dokument o ukončení vygenerován"
+    )
 
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Vytvořen dne")
 

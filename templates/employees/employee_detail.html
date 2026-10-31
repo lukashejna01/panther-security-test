@@ -37,6 +37,11 @@
             📄 Smlouva {{ employee.contract_type }} (PDF)
         </a>
         {% endif %}
+        {% if employee.termination_pdf %}
+        <a href="{% url 'employee_termination' employee.id %}" target="_blank" rel="noopener" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px; border-color: #f87171; color: #f87171; font-weight: 700;">
+            📄 {{ employee.get_termination_type_display }} (PDF)
+        </a>
+        {% endif %}
         <a href="{% url 'download_cssz_onz' employee.id %}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
             🏛️ Stáhnout ČSSZ ONZ (XML)
         </a>
@@ -187,6 +192,52 @@
                 </form>
                 {% endif %}
             </div>
+
+            {% if employee.is_archived %}
+            <!-- UKONČENÍ POMĚRU -->
+            <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">
+                <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 8px;">Ukončení poměru</span>
+                <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px;">
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">Způsob:</span>
+                        <span style="color: #fff;">{{ employee.get_termination_type_display|default:"—" }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">Podepsáno / doručeno:</span>
+                        <span style="color: #fff;">{{ employee.termination_notice_date|date:"d.m.Y"|default:"—" }}</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="color: var(--text-muted);">Poměr skončil dnem:</span>
+                        <span style="color: #f87171; font-weight: 700;">{{ employee.termination_date|date:"d.m.Y"|default:"—" }}</span>
+                    </div>
+                    {% if employee.termination_reason %}
+                    <div style="display: flex; justify-content: space-between; gap: 12px;">
+                        <span style="color: var(--text-muted); white-space: nowrap;">Interní poznámka:</span>
+                        <span style="color: #fff; text-align: right;">{{ employee.termination_reason }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if employee.termination_pdf %}
+                    <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px;">
+                        <a href="{% url 'employee_termination' employee.id %}" target="_blank" rel="noopener" style="color: #f87171; font-weight: 700; text-decoration: none;">
+                            📄 {{ employee.get_termination_type_display }}
+                        </a>
+                        <span style="color: var(--text-muted); font-size: 12px;">vygenerováno {{ employee.termination_generated_at|date:"d.m.Y H:i" }}</span>
+                    </div>
+                {% endif %}
+
+                {% if has_termination_template %}
+                <form method="post" action="{% url 'employee_termination_regenerate' employee.id %}" style="margin-top: 10px;"
+                      {% if employee.termination_pdf %}onsubmit="return confirm('Vygenerovat dokument o ukončení znovu z aktuálních údajů? Stávající PDF bude nahrazeno.');"{% endif %}>
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px;">
+                        🔄 {% if employee.termination_pdf %}Vygenerovat dokument znovu{% else %}Vygenerovat dokument o ukončení{% endif %}
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
 
             <div style="border-top: 1px solid var(--border-color); padding-top: 12px; margin-top: 4px;">
                 <span style="color: var(--text-muted); font-size: 12px; text-transform: uppercase; display: block; margin-bottom: 4px;">Bankovní účet pro výplatu mezd</span>

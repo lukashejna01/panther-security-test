@@ -6,7 +6,7 @@
 <div style="margin-bottom: 24px;">
     <a href="{% url 'employee_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 10px;">← Zpět do kmene</a>
     <h1 style="font-size: 26px; color: #fff; margin: 0;">🗄️ Archiv bývalých zaměstnanců</h1>
-    <p style="color: var(--text-muted); font-size: 13px;">Ukončené pracovní poměry a dohody.</p>
+    <p style="color: var(--text-muted); font-size: 13px;">Ukončené pracovní poměry a dohody včetně smluv a dokumentů o ukončení.</p>
 </div>
 
 <div class="card">
@@ -16,23 +16,42 @@
                 <tr>
                     <th>Jméno a příjmení</th>
                     <th>Ukončeno dne</th>
-                    <th>Důvod ukončení</th>
+                    <th>Způsob ukončení</th>
                     <th>Typ smlouvy</th>
+                    <th>Dokumenty</th>
                     <th>Telefon</th>
                 </tr>
             </thead>
             <tbody>
                 {% for emp in archived_employees %}
                 <tr>
-                    <td><strong style="color: #fff;">{{ emp.full_name }}</strong></td>
+                    <td>
+                        <a href="{% url 'employee_detail' emp.id %}" style="color: #fff; font-weight: 700; text-decoration: none;">{{ emp.full_name }}</a>
+                        {% if emp.termination_reason %}
+                            <div style="font-size: 11px; color: var(--text-muted);">{{ emp.termination_reason }}</div>
+                        {% endif %}
+                    </td>
                     <td><span class="badge-tag red">{{ emp.termination_date|date:"d.m.Y"|default:"—" }}</span></td>
-                    <td>{{ emp.termination_reason|default:"Dohoda" }}</td>
+                    <td>{{ emp.get_termination_type_display|default:"—" }}</td>
                     <td>{{ emp.contract_type }}</td>
+                    <td>
+                        <div style="display: flex; flex-direction: column; gap: 4px; font-size: 13px;">
+                            {% if emp.contract_pdf %}
+                                <a href="{% url 'employee_contract' emp.id %}" target="_blank" rel="noopener" style="color: var(--panther-yellow); text-decoration: none;">📄 Smlouva</a>
+                            {% endif %}
+                            {% if emp.termination_pdf %}
+                                <a href="{% url 'employee_termination' emp.id %}" target="_blank" rel="noopener" style="color: #f87171; text-decoration: none;">📄 {{ emp.get_termination_type_display }}</a>
+                            {% endif %}
+                            {% if not emp.contract_pdf and not emp.termination_pdf %}
+                                <span style="color: var(--text-muted);">—</span>
+                            {% endif %}
+                        </div>
+                    </td>
                     <td>{{ emp.phone }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 24px;">V archivu zaměstnanců nejsou žádné záznamy.</td>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 24px;">V archivu zaměstnanců nejsou žádné záznamy.</td>
                 </tr>
                 {% endfor %}
             </tbody>

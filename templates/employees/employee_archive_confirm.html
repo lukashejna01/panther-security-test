@@ -3,29 +3,136 @@
 {% block title %}Ukončit poměr: {{ employee.full_name }}{% endblock %}
 
 {% block content %}
-<div style="max-width: 500px; margin: 40px auto;">
+<div style="max-width: 520px; margin: 40px auto;">
     <div class="card" style="border-color: var(--danger); text-align: center;">
         <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
         <h2 style="color: #fff; margin-bottom: 6px;">Ukončit pracovní poměr?</h2>
         <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
-            Zaměstnanec <strong>{{ employee.full_name }}</strong> bude deaktivován a přesunut do archivu zaměstnanců.
+            Zaměstnanec <strong>{{ employee.full_name }}</strong> ({{ employee.contract_type }}) bude deaktivován a přesunut do archivu zaměstnanců.
+            {% if has_templates %}Dokument o ukončení se vygeneruje a otevře v novém okně.{% endif %}
         </p>
 
-        <form method="post" style="text-align: left;">
+        {% if form.non_field_errors %}
+            <div style="color: #f87171; font-size: 13px; margin-bottom: 12px; text-align: left;">{{ form.non_field_errors|join:" " }}</div>
+        {% endif %}
+
+        <form method="post" id="termination-form" style="text-align: left;">
             {% csrf_token %}
             <div class="form-group">
-                <label>Datum ukončení poměru *</label>
-                {{ form.termination_date }}
+                <label>Způsob ukončení *</label>
+                {{ form.termination_type }}
             </div>
+
+            <div class="form-group">
+                <label id="notice-date-label">Datum podpisu / doručení *</label>
+                {{ form.notice_date }}
+                {% for err in form.notice_date.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ err }}</div>{% endfor %}
+            </div>
+
+            <!-- U výpovědi se konec dopočítá z výpovědní doby -->
+            <div class="form-group" id="notice-info" style="display: none; background: rgba(0,0,0,0.25); padding: 10px 12px; border-radius: 8px; font-size: 13px; color: var(--text-muted);">
+                Výpovědní doba {{ notice_days }} dnů běží ode dne doručení.
+                Poměr skončí dnem <strong id="computed-end" style="color: var(--panther-yellow);">—</strong>.
+            </div>
+
+            <div class="form-group" id="end-date-group">
+                <label>Poměr skončí dnem *</label>
+                {{ form.termination_date }}
+                {% for err in form.termination_date.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ err }}</div>{% endfor %}
+            </div>
+
             <div class="form-group" style="margin-bottom: 20px;">
-                <label>Důvod ukončení *</label>
+                <label>{{ form.termination_reason.label }}</label>
                 {{ form.termination_reason }}
             </div>
+
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
-                <a href="{% url 'employee_list' %}" class="btn btn-secondary">Zrušit</a>
-                <button type="submit" class="btn btn-danger">Ukončit a archivovat</button>
+                <a href="{% url 'employee_detail' employee.id %}" class="btn btn-secondary">Zrušit</a>
+                <button type="submit" id="termination-submit" class="btn btn-danger">Ukončit a archivovat</button>
             </div>
         </form>
     </div>
 </div>
+
+<script>
+(function () {
+    const NOTICE_TYPES = ['EMPLOYER_NOTICE', 'EMPLOYEE_NOTICE'];
+    const NOTICE_DAYS = parseInt('{{ notice_days|default:"" }}', 10) || null;
+    const ARCHIVE_URL = "{% url 'employees_archive_list' %}";
+
+    const form = document.getElementById('termination-form');
+    const typeSelect = document.getElementById('id_termination_type');
+    const noticeDate = document.getElementById('id_notice_date');
+    const endDate = document.getElementById('id_termination_date');
+    const noticeInfo = document.getElementById('notice-info');
+    const endGroup = document.getElementById('end-date-group');
+    const computedEnd = document.getElementById('computed-end');
+    const noticeLabel = document.getElementById('notice-date-label');
+    const submitBtn = document.getElementById('termination-submit');
+
+    function isNotice() {
+        return NOTICE_DAYS && NOTICE_TYPES.includes(typeSelect.value);
+    }
+
+    // U výpovědi: konec = den doručení + výpovědní doba - 1 den (doba začíná dnem doručení)
+    function updateFields() {
+        const notice = isNotice();
+        noticeInfo.style.display = notice ? 'block' : 'none';
+        endGroup.style.display = notice ? 'none' : 'block';
+        noticeLabel.textContent = notice ? 'Datum doručení výpovědi *' : 'Datum podpisu *';
+        if (!notice && !endDate.value && noticeDate.value) endDate.value = noticeDate.value;
+        if (notice && noticeDate.value) {
+            const d = new Date(noticeDate.value + 'T12:00:00');
+            d.setDate(d.getDate() + NOTICE_DAYS - 1);
+            computedEnd.textContent = d.getDate() + '. ' + (d.getMonth() + 1) + '. ' + d.getFullYear();
+        }
+    }
+    typeSelect.addEventListener('change', updateFields);
+    noticeDate.addEventListener('change', updateFields);
+    updateFields();
+
+    // Odeslání: nové okno se otevře hned po kliknutí (jinak by ho prohlížeč zablokoval),
+    // po uložení se do něj načte PDF a tato stránka přejde do archivu.
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Ukončuji…';
+
+        const win = window.open('', '_blank');
+        if (win) {
+            win.document.write('<p style="font-family: sans-serif; padding: 24px;">Generuji dokument o ukončení…</p>');
+        }
+
+        let response;
+        try {
+            response = await fetch(window.location.href, {
+                method: 'POST',
+                body: new FormData(form),
+                headers: { 'X-Requested-With': 'fetch' },
+                credentials: 'same-origin',
+            });
+        } catch (err) {
+            if (win) win.close();
+            window.location.href = ARCHIVE_URL;
+            return;
+        }
+
+        if (response.status === 400) {
+            // Chyba ve formuláři: klasické odeslání zobrazí chyby u polí
+            if (win) win.close();
+            form.submit();
+            return;
+        }
+
+        let data = null;
+        try { data = await response.json(); } catch (err) { data = null; }
+
+        if (win) {
+            if (data && data.document) win.location.href = data.document;
+            else win.close();
+        }
+        window.location.href = (data && data.redirect) || ARCHIVE_URL;
+    });
+})();
+</script>
 {% endblock %}

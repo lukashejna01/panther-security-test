@@ -4,7 +4,10 @@ editaci profilů a archivaci ukončených pracovních poměrů.
 """
 
 from django import forms
+from django.utils import timezone
+
 from core.models import Employee
+from core.services.contract_pdf import compute_termination_date
 
 
 class IDCardUploadForm(forms.Form):
@@ -98,15 +101,50 @@ class EmployeeProfileUpdateForm(forms.ModelForm):
 
 
 class EmployeeArchiveForm(forms.Form):
-    """Ukončení pracovního poměru a přesun zaměstnance do archivu."""
+    """
+    Ukončení pracovního poměru a přesun zaměstnance do archivu.
+    U výpovědi se den skončení dopočítá z výpovědní doby podle typu smlouvy,
+    u dohody o ukončení a jiného způsobu se zadává ručně.
+    """
+    termination_type = forms.ChoiceField(
+        label="Způsob ukončení",
+        choices=Employee.TERMINATION_TYPE_CHOICES,
+        initial='AGREEMENT',
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+    notice_date = forms.DateField(
+        label="Datum podpisu / doručení výpovědi",
+        initial=timezone.localdate,
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'})
+    )
     termination_date = forms.DateField(
-        label="Datum ukončení pracovního poměru",
-        widget=forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+        label="Poměr skončí dnem",
+        required=False,
+        widget=forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'})
     )
     termination_reason = forms.CharField(
-        label="Důvod ukončení",
+        label="Interní poznámka (nepropisuje se do dokumentu)",
+        required=False,
         widget=forms.TextInput(attrs={
             'class': 'form-control',
-            'placeholder': 'Např. dohoda, výpověď zaměstnancem, hrubé porušení kázně...'
+            'placeholder': 'Např. odstěhování, nespolehlivost, ukončení zakázky...'
         })
     )
+
+    def __init__(self, *args, employee=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.employee = employee
+
+    def clean(self):
+        cleaned = super().clean()
+        termination_type = cleaned.get('termination_type')
+        notice_date = cleaned.get('notice_date')
+        contract_type = self.employee.contract_type if self.employee else None
+
+        end = compute_termination_date(contract_type, termination_type, notice_date, cleaned.get('termination_date'))
+        if not end:
+            self.add_error('termination_date', "Vyplňte den, kterým poměr skončí.")
+        elif notice_date and end < notice_date:
+            self.add_error('termination_date', "Poměr nemůže skončit dříve, než je datum podpisu.")
+        cleaned['termination_date'] = end
+        return cleaned
