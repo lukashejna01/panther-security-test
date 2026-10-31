@@ -3,10 +3,11 @@ Mzdový modul Panther Security:
 - Měsíční sumář mzdových nákladů ze schválených směn s roletkami pro manažera a majitele.
 - Automatický výpočet mezd, čisté výplaty a zákonných odvodů (SP, ZP, daň) pro rok 2026.
 - Detailní výplatní páska pro zaměstnance i vedení (ze směn i manuální).
-- Automatický odečet a evidence čerpaných záloh (hotovostních i bankovních).
+- Odečet záloh v reálném výplatním cyklu (od 25. dne odpracovaného měsíce do 24. dne výplatního měsíce).
 """
 
 from decimal import Decimal
+from datetime import datetime, date
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
@@ -15,6 +16,29 @@ from django.db.models import Sum
 
 from core.decorators import role_required
 from core.models import Employee, Shift, ShiftStatus, SystemRole, AdvancePayment
+
+# Nastavený výplatní den v měsíci
+PAYROLL_PAYOUT_DAY = 25
+
+
+def get_advance_period_for_payroll(payroll_year: int, payroll_month: int, payout_day: int = PAYROLL_PAYOUT_DAY):
+    """
+    Vrátí časové rozmezí záloh (start, end) pro danou mzdu.
+    Např. pro mzdu za říjen (10) při výplatě 25. listopadu (11):
+    start = 25. 10. v 00:00:00
+    end   = 24. 11. ve 23:59:59
+    """
+    if payroll_month == 12:
+        next_year = payroll_year + 1
+        next_month = 1
+    else:
+        next_year = payroll_year
+        next_month = payroll_month + 1
+
+    start_dt = datetime(payroll_year, payroll_month, payout_day, 0, 0, 0)
+    end_dt = datetime(next_year, next_month, payout_day - 1, 23, 59, 59)
+
+    return timezone.make_aware(start_dt), timezone.make_aware(end_dt)
 
 
 def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_tax_declaration: bool = False):
@@ -102,13 +126,16 @@ def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_ta
 @login_required
 @role_required([SystemRole.OWNER, SystemRole.MANAGER])
 def payroll_summary_view(request):
-    """Měsíční sumář mzdových nákladů ze schválených směn s odečtem záloh a odvody 2026."""
+    """Měsíční sumář mzdových nákladů s odečtem záloh za daný výplatní cyklus."""
     now = timezone.now()
 
     year_val = request.GET.get('year')
     month_val = request.GET.get('month')
     year = int(year_val) if year_val and year_val.isdigit() else now.year
     month = int(month_val) if month_val and month_val.isdigit() else now.month
+
+    # Výpočet intervalu pro zálohy (od 25. dne do 24. dne dalšího měsíce)
+    adv_start, adv_end = get_advance_period_for_payroll(year, month)
 
     months_list = [
         (1, 'Leden'), (2, 'Únor'), (3, 'Březen'), (4, 'Duben'),
@@ -140,12 +167,12 @@ def payroll_summary_view(request):
         hours = sum(float(s.planned_hours) for s in shifts)
         pay = sum(float(s.total_cost) for s in shifts)
 
-        # Načtení vyčerpaných záloh za daný měsíc
+        # Načtení záloh z výplatního období (25. odpracovaného měsíce až 24. výplatního měsíce)
         advances_sum = AdvancePayment.objects.filter(
             employee=emp,
             status__in=['ISSUED', 'SETTLED'],
-            created_at__year=year,
-            created_at__month=month
+            created_at__gte=adv_start,
+            created_at__lte=adv_end
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         if hours > 0 or advances_sum > 0:
@@ -180,6 +207,8 @@ def payroll_summary_view(request):
         'months_list': months_list,
         'available_years': available_years,
         'payroll_data': payroll_data,
+        'advance_period_start': adv_start,
+        'advance_period_end': adv_end,
         'grand_hours': round(grand_hours, 1),
         'grand_gross': round(grand_gross, 2),
         'grand_net': round(grand_net, 2),
@@ -196,7 +225,7 @@ def payroll_summary_view(request):
 @login_required
 @role_required([SystemRole.STAFF, SystemRole.MANAGER, SystemRole.OWNER])
 def payslip_detail_view(request, employee_id, year, month):
-    """Zobrazení a tisk výplatní pásky zaměstnance s rozpadem schválených směn a čerpaných záloh."""
+    """Zobrazení a tisk výplatní pásky s odečtem záloh z intervalu výplatního cyklu."""
     profile = getattr(request.user, 'employee_profile', None)
     target_employee = get_object_or_404(Employee, id=employee_id)
 
@@ -216,12 +245,13 @@ def payslip_detail_view(request, employee_id, year, month):
 
     calc = calculate_czech_payroll_2026(gross_pay, target_employee.contract_type)
 
-    # Načtení konkrétních záloh za daný měsíc pro výplatní pásku
+    # Načtení záloh za reálný výplatní cyklus (25. den měsíce M až 24. den měsíce M+1)
+    adv_start, adv_end = get_advance_period_for_payroll(year, month)
     emp_advances = AdvancePayment.objects.filter(
         employee=target_employee,
         status__in=['ISSUED', 'SETTLED'],
-        created_at__year=year,
-        created_at__month=month
+        created_at__gte=adv_start,
+        created_at__lte=adv_end
     ).order_by('created_at')
 
     total_advances = sum(a.amount for a in emp_advances)
@@ -231,6 +261,8 @@ def payslip_detail_view(request, employee_id, year, month):
         'employee': target_employee,
         'year': year,
         'month': month,
+        'advance_period_start': adv_start,
+        'advance_period_end': adv_end,
         'approved_shifts': approved_shifts,
         'advances': emp_advances,
         'total_advances': total_advances,
@@ -253,7 +285,7 @@ def payslip_detail_view(request, employee_id, year, month):
 @login_required
 @role_required([SystemRole.MANAGER, SystemRole.OWNER])
 def payslip_custom_generate_view(request):
-    """Generování jednorázové výplatní pásky pro kohokoli (ze seznamu i ručně zadaného)."""
+    """Generování jednorázové výplatní pásky pro kohokoli."""
     now = timezone.now()
     employees = Employee.objects.filter(is_active=True).order_by('last_name')
 
@@ -262,7 +294,9 @@ def payslip_custom_generate_view(request):
         month = int(request.POST.get('month', now.month))
         year = int(request.POST.get('year', now.year))
 
+        adv_start, adv_end = get_advance_period_for_payroll(year, month)
         advances_sum = Decimal('0.00')
+        emp_advances = []
 
         if employee_id:
             emp = get_object_or_404(Employee, id=employee_id)
@@ -272,13 +306,13 @@ def payslip_custom_generate_view(request):
             bank_account = request.POST.get('bank_account') or emp.bank_account or 'Výplata v hotovosti'
             health_code = emp.get_health_insurance_code_display() if hasattr(emp, 'get_health_insurance_code_display') else ''
             
-            # Načtení záloh, pokud jde o existujícího zaměstnance
-            advances_sum = AdvancePayment.objects.filter(
+            emp_advances = list(AdvancePayment.objects.filter(
                 employee=emp,
                 status__in=['ISSUED', 'SETTLED'],
-                created_at__year=year,
-                created_at__month=month
-            ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
+                created_at__gte=adv_start,
+                created_at__lte=adv_end
+            ).order_by('created_at'))
+            advances_sum = sum(a.amount for a in emp_advances)
         else:
             full_name = request.POST.get('manual_name', '').strip() or 'Externí pracovník'
             personal_number = request.POST.get('manual_personal_number', '').strip()
@@ -313,6 +347,9 @@ def payslip_custom_generate_view(request):
             'employee': mock_employee,
             'year': year,
             'month': month,
+            'advance_period_start': adv_start,
+            'advance_period_end': adv_end,
+            'advances': emp_advances,
             'total_hours': round(hours, 1),
             'gross_pay': calc['gross'],
             'emp_sp': calc['emp_sp'],

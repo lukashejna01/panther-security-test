@@ -161,7 +161,7 @@
             <div style="border-top: 1px solid #243044; padding-top: 12px; margin-bottom: 14px;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
                     <span style="font-size: 12px; font-weight: 700; color: #f87171; text-transform: uppercase; letter-spacing: 0.5px;">
-                        Čerpané zálohy v tomto měsíci:
+                        Čerpané zálohy za výplatní cyklus ({{ advance_period_start|date:"d.m." }} – {{ advance_period_end|date:"d.m.Y" }}):
                     </span>
                     <strong style="color: #f87171; font-size: 15px;">
                         {% if total_advances > 0 %}- {{ total_advances }} Kč{% else %}0 Kč{% endif %}
