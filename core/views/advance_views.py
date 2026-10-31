@@ -2,12 +2,11 @@
 Pohledy pro modul záloh na mzdu Panther Security:
 - Seznam záloh s filtry a řádkovým přehledem
 - Vytvoření zálohy (hotovost s dotykovým podpisem / banka s potvrzením)
-- Generování a stažení oficiálního výdajového pokladního dokladu (VPD) v PDF
+- Generování a stažení oficiálního výdajového pokladního dokladu (VPD) v PDF s plnou českou diakritikou
 """
 
 import os
 import base64
-import unicodedata
 from io import BytesIO
 from decimal import Decimal
 from django.conf import settings
@@ -23,19 +22,69 @@ from core.forms import AdvancePaymentForm
 from core.models import AdvancePayment, Employee, SystemRole
 
 
-def _strip_cz(text: str) -> str:
-    """Odstraní diakritiku pro bezpečné vykreslení ve standardním PDF fontu."""
-    if not text:
-        return ""
-    return unicodedata.normalize('NFKD', str(text)).encode('ascii', 'ignore').decode('ascii')
+def _register_czech_font():
+    """
+    Zaregistruje TrueType font s plnou podporou české diakritiky (UTF-8).
+    Prohledává známé cesty na Linuxu / PythonAnywhere i uvnitř ReportLabu.
+    """
+    from reportlab.pdfbase import pdfmetrics
+    from reportlab.pdfbase.ttfonts import TTFont
+    import reportlab
+
+    # Pokud již byl font zaregistrován, rovnou vrátíme jeho název
+    registered = pdfmetrics.getRegisteredFontNames()
+    if "PantherCzech" in registered:
+        return "PantherCzech", "PantherCzech-Bold" if "PantherCzech-Bold" in registered else "PantherCzech"
+
+    font_candidates_regular = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSans.ttf",
+        os.path.join(os.path.dirname(reportlab.__file__), "fonts", "DejaVuSans.ttf"),
+    ]
+
+    font_candidates_bold = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "/usr/share/fonts/truetype/freefont/FreeSansBold.ttf",
+        os.path.join(os.path.dirname(reportlab.__file__), "fonts", "DejaVuSans-Bold.ttf"),
+    ]
+
+    reg_name = None
+    bold_name = None
+
+    for p in font_candidates_regular:
+        if os.path.exists(p):
+            try:
+                pdfmetrics.registerFont(TTFont("PantherCzech", p))
+                reg_name = "PantherCzech"
+                break
+            except Exception:
+                pass
+
+    for p in font_candidates_bold:
+        if os.path.exists(p):
+            try:
+                pdfmetrics.registerFont(TTFont("PantherCzech-Bold", p))
+                bold_name = "PantherCzech-Bold"
+                break
+            except Exception:
+                pass
+
+    if not reg_name:
+        return "Helvetica", "Helvetica-Bold"
+
+    return reg_name, (bold_name or reg_name)
 
 
 def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
-    """Vygeneruje PDF výdajový pokladní doklad přes ReportLab bez závislosti na externích fontech."""
+    """Vygeneruje PDF výdajový pokladní doklad přes ReportLab s plnou podporou české diakritiky."""
     from reportlab.lib.pagesizes import A4
     from reportlab.lib import colors
     from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image as RLImage
     from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+
+    font_name, font_bold = _register_czech_font()
 
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -51,7 +100,7 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     title_style = ParagraphStyle(
         'DocTitle',
         parent=styles['Heading1'],
-        fontName='Helvetica-Bold',
+        fontName=font_bold,
         fontSize=15,
         leading=19,
         textColor=colors.HexColor('#0f172a'),
@@ -61,7 +110,7 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     header_style = ParagraphStyle(
         'HeaderStyle',
         parent=styles['Normal'],
-        fontName='Helvetica',
+        fontName=font_name,
         fontSize=9,
         leading=13,
         textColor=colors.HexColor('#334155')
@@ -69,7 +118,7 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     bold_style = ParagraphStyle(
         'BoldStyle',
         parent=styles['Normal'],
-        fontName='Helvetica-Bold',
+        fontName=font_bold,
         fontSize=9,
         leading=13,
         textColor=colors.HexColor('#0f172a')
@@ -79,25 +128,25 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
 
     # 1. Název dokladu
     doc_num = f"VPD-{advance.created_at.strftime('%Y')}-{advance.id:04d}"
-    elements.append(Paragraph(_strip_cz(f"VYDAJOVY POKLADNI DOKLAD c. {doc_num}"), title_style))
+    elements.append(Paragraph(f"VÝDAJOVÝ POKLADNÍ DOKLAD č. {doc_num}", title_style))
     elements.append(Spacer(1, 10))
 
     # 2. Informace o stranách
-    addr = _strip_cz(getattr(advance.employee, 'full_address', '') or 'Neuvedeno')
-    emp_name = _strip_cz(advance.employee.full_name)
+    addr = getattr(advance.employee, 'full_address', '') or 'Neuvedeno'
+    emp_name = advance.employee.full_name
     birth_info = advance.employee.birth_number or (advance.employee.birth_date.strftime('%d.%m.%Y') if advance.employee.birth_date else 'Neuvedeno')
 
     company_data = [
         [
-            Paragraph(_strip_cz("<b>Platce (Zamestnavatel):</b><br/>"
-                                "<b>Panther Security s.r.o.</b><br/>"
-                                "Varsavska 715/36, Praha 2, 120 00<br/>"
-                                "ICO: 22525882 | DIC: CZ22525882"), header_style),
-            Paragraph(_strip_cz("<b>Prijemce (Zamestnanec):</b><br/>") +
-                      f"<b>{emp_name}</b><br/>" +
-                      _strip_cz(f"Os. cislo: {advance.employee.personal_number or 'Neuvedeno'}<br/>") +
-                      f"RC / Datum nar.: {birth_info}<br/>" +
-                      _strip_cz(f"Bydliste: {addr}"), header_style)
+            Paragraph("<b>Plátce (Zaměstnavatel):</b><br/>"
+                      "<b>Panther Security s.r.o.</b><br/>"
+                      "Varšavská 715/36, Praha 2, 120 00<br/>"
+                      "IČO: 22525882 | DIČ: CZ22525882", header_style),
+            Paragraph("<b>Příjemce (Zaměstnanec):</b><br/>"
+                      f"<b>{emp_name}</b><br/>"
+                      f"Os. číslo: {advance.employee.personal_number or 'Neuvedeno'}<br/>"
+                      f"RČ / Datum nar.: {birth_info}<br/>"
+                      f"Bydliště: {addr}", header_style)
         ]
     ]
     t_parties = Table(company_data, colWidths=[260, 260])
@@ -114,15 +163,15 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     elements.append(Spacer(1, 15))
 
     # 3. Podrobnosti o vyplacené částce
-    note_txt = _strip_cz(advance.note or 'Bez doplnujici poznamky')
-    amount_czk = f"{advance.amount:,.2f} CZK".replace(',', ' ')
+    note_txt = advance.note or 'Bez doplňující poznámky'
+    amount_czk = f"{advance.amount:,.2f} Kč".replace(',', ' ')
 
     details_data = [
-        [Paragraph(_strip_cz("Ucel platby:"), bold_style), Paragraph(_strip_cz(f"Zaloha na mzdu - {note_txt}"), header_style)],
-        [Paragraph(_strip_cz("Forma uhrady:"), bold_style), Paragraph(_strip_cz("Hotovostni vydej z pokladny"), header_style)],
-        [Paragraph(_strip_cz("Datum a cas vystaveni:"), bold_style), Paragraph(advance.created_at.strftime("%d.%m.%Y v %H:%M"), header_style)],
-        [Paragraph(_strip_cz("Castka k vyplate:"), ParagraphStyle('BigSum', parent=bold_style, fontSize=11, textColor=colors.HexColor('#0f766e'))), 
-         Paragraph(f"<b>{amount_czk}</b>", ParagraphStyle('BigSumVal', parent=bold_style, fontName='Helvetica-Bold', fontSize=12, textColor=colors.HexColor('#0f766e')))]
+        [Paragraph("Účel platby:", bold_style), Paragraph(f"Záloha na mzdu – {note_txt}", header_style)],
+        [Paragraph("Forma úhrady:", bold_style), Paragraph("Hotovostní výdej z pokladny", header_style)],
+        [Paragraph("Datum a čas vystavení:", bold_style), Paragraph(advance.created_at.strftime("%d.%m.%Y v %H:%M"), header_style)],
+        [Paragraph("Částka k výplatě:", ParagraphStyle('BigSum', parent=bold_style, fontSize=11, textColor=colors.HexColor('#0f766e'))), 
+         Paragraph(f"<b>{amount_czk}</b>", ParagraphStyle('BigSumVal', parent=bold_style, fontName=font_bold, fontSize=12, textColor=colors.HexColor('#0f766e')))]
     ]
     t_details = Table(details_data, colWidths=[150, 370])
     t_details.setStyle(TableStyle([
@@ -149,11 +198,11 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
 
     sign_data = [
         [
-            Paragraph(_strip_cz("<b>Vyplatil (Za zamestnavatele):</b><br/><br/><br/>.......................................................<br/>Podpis a razitko"), header_style),
+            Paragraph("<b>Vyplatil (Za zaměstnavatele):</b><br/><br/><br/>.......................................................<br/>Podpis a razítko", header_style),
             [
-                Paragraph(_strip_cz("<b>Prevzal v hotovosti (Prijemce):</b>"), header_style),
-                sig_image if sig_image else Paragraph("<br/><br/>.......................................................<br/>Vlastnorucni podpis", header_style),
-                Paragraph(f"<font size=7 color='#64748b'>Elektronicky podepsano dne {advance.created_at.strftime('%d.%m.%Y %H:%M')}</font>", header_style)
+                Paragraph("<b>Převzal v hotovosti (Příjemce):</b>", header_style),
+                sig_image if sig_image else Paragraph("<br/><br/>.......................................................<br/>Vlastnoruční podpis", header_style),
+                Paragraph(f"<font size=7 color='#64748b'>Elektronicky podepsáno dne {advance.created_at.strftime('%d.%m.%Y %H:%M')}</font>", header_style)
             ]
         ]
     ]
@@ -287,6 +336,7 @@ def advance_create_view(request, employee_id=None):
 def advance_download_vpd_view(request, advance_id):
     """
     Přímé zobrazení / stažení PDF dokladu o záloze (VPD).
+    Vždy generuje doklad čerstvě do paměti s plnou podporou české diakritiky.
     """
     advance = get_object_or_404(AdvancePayment.objects.select_related('employee', 'issued_by'), id=advance_id)
 
