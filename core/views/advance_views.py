@@ -276,23 +276,41 @@ def advance_create_view(request, employee_id=None):
 
 @login_required
 def advance_download_vpd_view(request, advance_id):
-    """Přímé zobrazení / stažení PDF dokladu o záloze."""
-    advance = get_object_or_404(AdvancePayment, id=advance_id)
+    """
+    Přímé zobrazení / stažení PDF dokladu o záloze (VPD).
+    Generuje doklad přímo do paměti, aby nedocházelo k chybám 404 při chybějícím souboru na disku.
+    """
+    advance = get_object_or_404(AdvancePayment.objects.select_related('employee', 'issued_by'), id=advance_id)
 
-    # Oprávnění: Manažer/Majitel nebo samotný zaměstnanec
+    # Kontrola oprávnění: superuser, manažer, majitel nebo vlastník zálohy
     profile = getattr(request.user, 'employee_profile', None)
-    is_admin = request.user.is_superuser or (profile and profile.system_role in [SystemRole.MANAGER, SystemRole.OWNER])
+    is_admin = (
+        request.user.is_superuser 
+        or request.user.is_staff 
+        or (profile and profile.system_role in [SystemRole.MANAGER, SystemRole.OWNER])
+    )
     is_own = profile and advance.employee_id == profile.id
 
     if not (is_admin or is_own):
-        raise Http404("Nemáte oprávnění k tomuto dokladu.")
+        messages.error(request, "Nemáte oprávnění k zobrazení tohoto výdajového dokladu.")
+        return redirect('advance_list')
 
-    if not advance.receipt_pdf:
-        # Pokud PDF ještě neexistuje, zkusíme ho vygenerovat on-the-fly
-        try:
-            pdf_bytes = _generate_vpd_pdf(advance)
-            advance.receipt_pdf.save(f"VPD_{advance.id}.pdf", ContentFile(pdf_bytes), save=True)
-        except Exception:
-            raise Http404("Doklad nebyl nalezen.")
+    # Pokud záloha byla vyplacena na účet, přesměrujeme na bankovní potvrzení
+    if advance.payment_method == 'BANK':
+        if advance.bank_confirmation:
+            return redirect(advance.bank_confirmation.url)
+        messages.warning(request, "Tato záloha byla vyplacena převodem na účet a nemá VPD doklad.")
+        return redirect('advance_list')
 
-    return FileResponse(advance.receipt_pdf.open('rb'), content_type='application/pdf')
+    # Vygenerování PDF přímo do paměti (spolehlivé, nezávislé na souborovém systému)
+    try:
+        pdf_bytes = _generate_vpd_pdf(advance)
+    except Exception as e:
+        messages.error(request, f"Chyba při generování PDF výdajového dokladu: {e}")
+        return redirect('advance_list')
+
+    filename = f"VPD_{advance.created_at.strftime('%Y')}_{advance.id:04d}.pdf"
+    response = HttpResponse(pdf_bytes, content_type='application/pdf')
+    # 'inline' otevře PDF přímo v prohlížeči, pro vynucení stažení změňte na 'attachment'
+    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    return response
