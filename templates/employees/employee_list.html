@@ -31,7 +31,7 @@
                     <th>Smlouva</th>
                     <th>Hodinová sazba</th>
                     <th>Pojišťovna</th>
-                    <th>ČSSZ ONZ</th>
+                    <th>Přihlášení ČSSZ</th>
                     <th>Telefon</th>
                     <th style="text-align: right;">Akce</th>
                 </tr>
@@ -72,11 +72,19 @@
                     <td style="font-weight: 700; color: #fff;">{{ emp.hourly_rate }} Kč/h</td>
                     <td>{{ emp.health_insurance_code }}</td>
                     <td>
-                        {% if emp.is_reported_cssz %}
-                            <span class="badge-tag green">✅ Nahlášeno</span>
-                        {% else %}
-                            <a href="{% url 'download_cssz_onz' emp.id %}" class="badge-tag red" style="text-decoration: none;">⚠️ Odeslat</a>
-                        {% endif %}
+                        {% with cssz=emp.cssz_status %}
+                        <a href="{% url 'employee_detail' emp.id %}" style="text-decoration: none;" title="Otevřít kartu a označit odeslání">
+                            {% if cssz.state == 'done' %}
+                                <span class="badge-tag green">✅ Nahlášeno</span>
+                            {% elif cssz.state == 'ok' %}
+                                <span class="badge-tag blue">⏳ {{ cssz.text }}</span>
+                            {% elif cssz.state == 'warn' %}
+                                <span class="badge-tag yellow">⚠️ {{ cssz.text }}</span>
+                            {% else %}
+                                <span class="badge-tag red">🚨 {{ cssz.text }}</span>
+                            {% endif %}
+                        </a>
+                        {% endwith %}
                     </td>
                     <td>{{ emp.phone }}</td>
                     <td style="text-align: right;">

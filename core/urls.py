@@ -27,7 +27,6 @@ urlpatterns = [
     path('dispecink/kandidat/<int:candidate_id>/pohovor/', views.schedule_interview_view, name='schedule_interview'),
     path('dispecink/kandidat/<int:candidate_id>/onboard/', views.candidate_onboard_view, name='candidate_onboard'),
     path('dispecink/kandidat/<int:candidate_id>/archivovat/', views.archive_candidate_view, name='archive_candidate'),
-    path('dispecink/kandidat/<int:candidate_id>/onz/', views.download_cssz_onz_view, name='download_cssz_onz'),
 
     # Kmen zaměstnanců
     path('dispecink/zamestnanci/', views.employee_list_view, name='employee_list'),
@@ -38,6 +37,7 @@ urlpatterns = [
     path('dispecink/zamestnanec/<int:employee_id>/smlouva/vygenerovat/', employee_views.employee_contract_regenerate_view, name='employee_contract_regenerate'),
     path('dispecink/zamestnanec/<int:employee_id>/ukonceni/', employee_views.employee_termination_view, name='employee_termination'),
     path('dispecink/zamestnanec/<int:employee_id>/ukonceni/vygenerovat/', employee_views.employee_termination_regenerate_view, name='employee_termination_regenerate'),
+    path('dispecink/zamestnanec/<int:employee_id>/cssz/', employee_views.employee_cssz_mark_view, name='employee_cssz_mark'),
 
     # Modul Zálohy a Výdajové doklady (VPD)
     path('dispecink/zalohy/', advance_views.advance_list_view, name='advance_list'),

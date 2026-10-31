@@ -42,9 +42,6 @@
             📄 {{ employee.get_termination_type_display }} (PDF)
         </a>
         {% endif %}
-        <a href="{% url 'download_cssz_onz' employee.id %}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
-            🏛️ Stáhnout ČSSZ ONZ (XML)
-        </a>
         {% if employee.is_active %}
         <a href="{% url 'archive_employee' employee.id %}" class="btn btn-danger" style="display: inline-flex; align-items: center; gap: 6px;">
             ⚠️ Ukončit poměr
@@ -76,16 +73,44 @@
         </div>
     </div>
 
-    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid {% if employee.is_reported_cssz %}#10b981{% else %}#ef4444{% endif %};">
-        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">Hlášení ČSSZ (ONZ)</div>
+    {% with cssz=employee.cssz_status %}
+    <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid {% if cssz.state == 'done' %}#10b981{% elif cssz.state == 'ok' %}#3b82f6{% elif cssz.state == 'warn' %}#f59e0b{% else %}#ef4444{% endif %};">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">Přihlášení na ČSSZ</div>
         <div style="margin-top: 6px;">
-            {% if employee.is_reported_cssz %}
-                <span class="badge-tag green">✅ Odesláno ({{ employee.reported_cssz_date|date:"d.m.Y" }})</span>
+            {% if cssz.state == 'done' %}
+                <span class="badge-tag green">✅ {{ cssz.text }}</span>
+            {% elif cssz.state == 'ok' %}
+                <span class="badge-tag blue">⏳ {{ cssz.text }}</span>
+            {% elif cssz.state == 'warn' %}
+                <span class="badge-tag yellow">⚠️ {{ cssz.text }}</span>
             {% else %}
-                <span class="badge-tag red">⚠️ Neodesláno</span>
+                <span class="badge-tag red">🚨 {{ cssz.text }}</span>
             {% endif %}
         </div>
+
+        {% if employee.is_active or employee.is_reported_cssz %}
+        <form method="post" action="{% url 'employee_cssz_mark' employee.id %}" style="margin-top: 10px;">
+            {% csrf_token %}
+            {% if employee.is_reported_cssz %}
+                <input type="hidden" name="action" value="undo">
+                <button type="submit" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;"
+                        onclick="return confirm('Opravdu zrušit označení, že přihláška byla odeslána na ČSSZ?');">
+                    ↩️ Zrušit označení
+                </button>
+            {% else %}
+                <input type="hidden" name="action" value="sent">
+                <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px; border-color: #10b981; color: #34d399; font-weight: 700;"
+                        onclick="return confirm('Potvrzujete, že přihláška (REGZEC) byla odeslána na ČSSZ datovou schránkou?');">
+                    ✅ Označit jako odesláno
+                </button>
+                <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
+                    Lhůta: nejpozději v den nástupu, před začátkem práce. Generování XML pro datovou schránku připravujeme.
+                </div>
+            {% endif %}
+        </form>
+        {% endif %}
     </div>
+    {% endwith %}
 </div>
 
 <!-- DETAILNÍ KARTY: IDENTITA, SMLOUVA A KONTAKTY -->

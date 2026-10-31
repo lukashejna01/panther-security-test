@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.decorators.http import require_POST
 
 from core.decorators import role_required
@@ -116,6 +117,33 @@ def employee_termination_regenerate_view(request, employee_id):
         messages.success(request, f"Dokument „{employee.get_termination_type_display()}“ byl vygenerován.")
     except Exception as e:
         messages.error(request, f"Dokument o ukončení se nepodařilo vygenerovat: {e}")
+    return redirect('employee_detail', employee_id=employee.id)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
+def employee_cssz_mark_view(request, employee_id):
+    """
+    Ruční potvrzení, že přihláška zaměstnance byla odeslána na ČSSZ (datovou schránkou).
+    action=sent označí jako nahlášeno, action=undo označení zruší (omylem kliknuto).
+    """
+    employee = get_object_or_404(Employee, id=employee_id)
+    action = request.POST.get('action')
+
+    if action == 'sent':
+        employee.is_reported_cssz = True
+        employee.reported_cssz_date = timezone.now()
+        messages.success(request, f"Přihláška {employee.full_name} na ČSSZ je označená jako odeslaná.")
+    elif action == 'undo':
+        employee.is_reported_cssz = False
+        employee.reported_cssz_date = None
+        messages.info(request, f"Označení odeslání na ČSSZ u {employee.full_name} bylo zrušeno.")
+    else:
+        messages.error(request, "Neznámá akce.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    employee.save(update_fields=['is_reported_cssz', 'reported_cssz_date'])
     return redirect('employee_detail', employee_id=employee.id)
 
 

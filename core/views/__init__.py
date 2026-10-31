@@ -14,7 +14,6 @@ from .candidate_views import (
     archive_candidate_view,
     candidates_archive_list_view,
     candidate_onboard_view,
-    download_cssz_onz_view,
 )
 from .employee_views import (
     employee_list_view,

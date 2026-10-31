@@ -1,12 +1,11 @@
 """
 Pohledy pro náborovou pipeline, evidenci zájemců, plánování pohovorů,
-samostatný archiv zájemců a převod zájemce na kmenového zaměstnance (OCR dokladu a ČSSZ ONZ).
+samostatný archiv zájemců a převod zájemce na kmenového zaměstnance (OCR dokladu).
 """
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
@@ -20,7 +19,7 @@ from core.forms import (
     IDCardUploadForm,
     EmployeeOnboardingForm,
 )
-from core.services import extract_data_from_id, generate_onz_xml, has_contract_template, store_contract_pdf
+from core.services import extract_data_from_id, has_contract_template, store_contract_pdf
 from .auth_views import generate_credentials
 
 
@@ -208,13 +207,18 @@ def candidate_onboard_view(request, candidate_id):
                     except Exception as e:
                         messages.warning(request, f"Zaměstnanec byl uložen, ale smlouvu se nepodařilo vygenerovat: {e}")
 
-                # Výrazná flash zpráva s heslem a přesměrování přímo na kmen zaměstnanců
+                # Výrazná flash zpráva s heslem a přesměrování na kartu zaměstnance (hlášení ČSSZ)
                 messages.success(
                     request,
                     f"🎉 Zaměstnanec {fn} {ln} byl úspěšně zařazen do kmene! "
                     f"Přihlašovací jméno: {username} | Dočasné heslo: {raw_password} (předejte zaměstnanci)"
                 )
-                return redirect('employee_list')
+                messages.warning(
+                    request,
+                    f"🏛️ Nezapomeňte přihlásit zaměstnance na ČSSZ nejpozději v den nástupu "
+                    f"({employee.start_employment_date:%d.%m.%Y}), ještě před začátkem práce."
+                )
+                return redirect('employee_detail', employee_id=employee.id)
             else:
                 messages.error(request, "Zkontrolujte prosím chyby ve formuláři nástupu.")
 
@@ -224,20 +228,3 @@ def candidate_onboard_view(request, candidate_id):
         'employee_form': employee_form,
     }
     return render(request, 'candidates/candidate_onboard.html', context)
-
-
-@login_required
-@role_required([SystemRole.MANAGER, SystemRole.OWNER])
-def download_cssz_onz_view(request, employee_id):
-    """Vygeneruje a stáhne oficiální XML balíček ČSSZ ONZ2022 pro oznámení nástupu."""
-    employee = get_object_or_404(Employee, id=employee_id)
-    xml_content = generate_onz_xml(employee)
-
-    employee.is_reported_cssz = True
-    employee.reported_cssz_date = timezone.now()
-    employee.save(update_fields=['is_reported_cssz', 'reported_cssz_date'])
-
-    response = HttpResponse(xml_content, content_type='application/xml; charset=utf-8')
-    filename = f"ONZ_{employee.last_name}_{employee.birth_number or employee.id}.xml"
-    response['Content-Disposition'] = f'attachment; filename="{filename}"'
-    return response

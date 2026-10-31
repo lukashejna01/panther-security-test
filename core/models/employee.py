@@ -30,6 +30,16 @@ def termination_pdf_path(instance, filename):
     return f"terminations/{year}/{instance.contract_type}_{number}_{secrets.token_hex(8)}.pdf"
 
 
+def _czech_days(count):
+    """Správný tvar slova „den“ podle počtu: 1 den, 2–4 dny, 5 dní."""
+    count = abs(count)
+    if count == 1:
+        return "den"
+    if 2 <= count <= 4:
+        return "dny"
+    return "dní"
+
+
 def advance_pdf_path(instance, filename):
     """Cesta pro uložení generovaného PDF dokladu o záloze."""
     date_str = instance.created_at.strftime('%Y/%m') if instance.created_at else timezone.now().strftime('%Y/%m')
@@ -255,6 +265,39 @@ class Employee(models.Model):
         city_part = f"{self.zip_code} {self.city}".strip()
         parts = [p for p in [street_part, city_part] if p]
         return ", ".join(parts) or "Adresa neuvedena"
+
+    @property
+    def cssz_deadline(self):
+        """
+        Lhůta pro přihlášení zaměstnance na ČSSZ (REGZEC): od 1. 7. 2026 nejpozději
+        v den nástupu, ještě před zahájením práce.
+        """
+        return self.start_employment_date
+
+    @property
+    def cssz_status(self):
+        """
+        Stav hlášení na ČSSZ pro zobrazení v aplikaci.
+        state: done (nahlášeno), ok (dost času), warn (3 a méně dní), today (dnes), late (po lhůtě)
+        """
+        if self.is_reported_cssz:
+            when = timezone.localtime(self.reported_cssz_date).strftime('%d.%m.%Y') if self.reported_cssz_date else ''
+            return {'state': 'done', 'text': f"Nahlášeno {when}".strip(), 'days': None}
+
+        deadline = self.cssz_deadline
+        if not deadline:
+            return {'state': 'warn', 'text': "Chybí datum nástupu", 'days': None}
+
+        days = (deadline - timezone.localdate()).days
+        if days > 0:
+            return {
+                'state': 'ok' if days > 3 else 'warn',
+                'text': f"Zbývá {days} {_czech_days(days)} (do {deadline:%d.%m.%Y})",
+                'days': days,
+            }
+        if days == 0:
+            return {'state': 'today', 'text': "Nahlásit dnes – před nástupem do práce", 'days': 0}
+        return {'state': 'late', 'text': f"Po lhůtě {-days} {_czech_days(-days)}", 'days': days}
 
     def save(self, *args, **kwargs):
         if not self.personal_number:
