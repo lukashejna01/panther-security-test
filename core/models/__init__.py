@@ -34,4 +34,5 @@ __all__ = [
     'InvoiceType',
     'InvoiceStatus',
     'InvoiceItem',
+    'AdvancePayment'
 ]

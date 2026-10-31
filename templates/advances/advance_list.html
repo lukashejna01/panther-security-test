@@ -16,9 +16,44 @@
     </div>
 </div>
 
-<!-- FILTRY -->
+<!-- RYCHLÝ SUMÁŘ VYBRANÉHO OBDOBÍ -->
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
+    <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid var(--panther-yellow);">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Celkem zálohy za období</div>
+        <div style="font-size: 22px; font-weight: 800; color: #facc15; margin-top: 4px;">{{ total_amount }} Kč</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #10b981;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Vyplaceno v hotovosti (VPD)</div>
+        <div style="font-size: 20px; font-weight: 800; color: #10b981; margin-top: 4px;">{{ total_cash }} Kč</div>
+    </div>
+    <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #3b82f6;">
+        <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Odesláno na účet (Banka)</div>
+        <div style="font-size: 20px; font-weight: 800; color: #60a5fa; margin-top: 4px;">{{ total_bank }} Kč</div>
+    </div>
+</div>
+
+<!-- FILTRY DLE OBDOBÍ, ZAMĚSTNANCE A FORMY -->
 <div class="card" style="margin-bottom: 20px; padding: 16px;">
-    <form method="get" style="display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-end;">
+    <form method="get" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end;">
+        <div style="width: 140px;">
+            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Měsíc</label>
+            <select name="month" class="form-select" onchange="this.form.submit()">
+                <option value="all" {% if selected_month == 'all' %}selected{% endif %}>Celý rok</option>
+                {% for m_num, m_name in months_list %}
+                    <option value="{{ m_num }}" {% if selected_month == m_num|stringformat:"s" %}selected{% endif %}>{{ m_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div style="width: 120px;">
+            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Rok</label>
+            <select name="year" class="form-select" onchange="this.form.submit()">
+                {% for y in available_years %}
+                    <option value="{{ y }}" {% if selected_year == y|stringformat:"s" %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
         <div style="flex: 1; min-width: 180px;">
             <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Zaměstnanec</label>
             <select name="employee_id" class="form-select" onchange="this.form.submit()">
@@ -29,27 +64,17 @@
             </select>
         </div>
 
-        <div style="width: 160px;">
-            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Forma úhrady</label>
+        <div style="width: 150px;">
+            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Forma</label>
             <select name="payment_method" class="form-select" onchange="this.form.submit()">
-                <option value="">-- Všechny formy --</option>
+                <option value="">-- Všechny --</option>
                 <option value="CASH" {% if selected_method == 'CASH' %}selected{% endif %}>💵 Hotovost</option>
                 <option value="BANK" {% if selected_method == 'BANK' %}selected{% endif %}>🏦 Bankovní účet</option>
             </select>
         </div>
 
-        <div style="width: 140px;">
-            <label style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: block; margin-bottom: 4px;">Měsíc</label>
-            <select name="month" class="form-select" onchange="this.form.submit()">
-                <option value="">-- Celý rok --</option>
-                {% for m_num, m_name in months_list %}
-                    <option value="{{ m_num }}" {% if selected_month == m_num|stringformat:"s" %}selected{% endif %}>{{ m_name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-
         <div>
-            <a href="{% url 'advance_list' %}" class="btn btn-secondary" style="font-size: 13px;">Reset filtru</a>
+            <a href="{% url 'advance_list' %}" class="btn btn-secondary" style="font-size: 13px;">Reset</a>
         </div>
     </form>
 </div>
@@ -63,7 +88,7 @@
                     <th>Datum a přesný čas</th>
                     <th>Zaměstnanec</th>
                     <th>Částka</th>
-                    <th>Forma úhrady</th>
+                    <th>Forma</th>
                     <th>Doklad / Potvrzení</th>
                     <th>Vydal manažer</th>
                     <th>Poznámka</th>
@@ -96,7 +121,9 @@
                                     🔴 VPD (PDF)
                                 </a>
                             {% else %}
-                                <span style="font-size: 11px; color: var(--text-muted);">VPD v přípravě</span>
+                                <a href="{% url 'advance_download_vpd' adv.id %}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;">
+                                    Generovat PDF
+                                </a>
                             {% endif %}
                         {% else %}
                             {% if adv.bank_confirmation %}
@@ -118,7 +145,7 @@
                 {% empty %}
                 <tr>
                     <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 30px;">
-                        Nebyly nalezeny žádné vystavené zálohy.
+                        V tomto období nebyly nalezeny žádné vystavené zálohy.
                     </td>
                 </tr>
                 {% endfor %}

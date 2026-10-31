@@ -19,7 +19,7 @@
 
     <div class="card" style="padding: 24px;">
         <form method="post" enctype="multipart/form-data" id="advanceForm">
-            {% csrf_request_token %}{% csrf_token %}
+            {% csrf_token %}
 
             <div style="margin-bottom: 16px;">
                 <label style="display: block; font-size: 13px; font-weight: 700; color: #fff; margin-bottom: 6px;">Zaměstnanec</label>
@@ -94,7 +94,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const clearBtn = document.getElementById('clearSigBtn');
     const form = document.getElementById('advanceForm');
 
-    // Přepínání Hotovost / Banka
     function toggleMethod() {
         if (methodSelect.value === 'BANK') {
             bankSection.style.display = 'block';
@@ -108,7 +107,6 @@ document.addEventListener('DOMContentLoaded', function () {
     methodSelect.addEventListener('change', toggleMethod);
     toggleMethod();
 
-    // Canvas pro podpis
     const ctx = canvas.getContext('2d');
     let isDrawing = false;
     let hasDrawn = false;
@@ -164,12 +162,10 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    // Touch události pro mobil a tablet
     canvas.addEventListener('touchstart', startDrawing, { passive: false });
     canvas.addEventListener('touchmove', draw, { passive: false });
     canvas.addEventListener('touchend', stopDrawing);
 
-    // Mouse události pro počítač
     canvas.addEventListener('mousedown', startDrawing);
     canvas.addEventListener('mousemove', draw);
     canvas.addEventListener('mouseup', stopDrawing);

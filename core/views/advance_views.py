@@ -160,47 +160,73 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
 def advance_list_view(request):
     """
     Globální přehled všech vystavených záloh.
-    Každý řádek obsahuje: datum a přesný čas, zaměstnance, částku, formu,
-    odkaz na PDF VPD / bankovní potvrzení a schvalovatele.
+    Podpora filtrování podle vybraného měsíce, roku, zaměstnance a platební metody.
     """
+    now = timezone.now()
     advances_qs = AdvancePayment.objects.select_related('employee', 'issued_by').all()
 
-    # Filtry
-    employee_id = request.GET.get('employee_id')
-    payment_method = request.GET.get('payment_method')
-    month_val = request.GET.get('month')
-    year_val = request.GET.get('year')
+    employee_id = request.GET.get('employee_id', '')
+    payment_method = request.GET.get('payment_method', '')
+    month_val = request.GET.get('month', str(now.month))
+    year_val = request.GET.get('year', str(now.year))
 
+    # Filtrování podle roku
+    selected_year = None
+    if year_val != 'all':
+        try:
+            selected_year = int(year_val)
+            advances_qs = advances_qs.filter(created_at__year=selected_year)
+        except ValueError:
+            selected_year = now.year
+            year_val = str(selected_year)
+
+    # Filtrování podle měsíce
+    selected_month = None
+    if month_val != 'all':
+        try:
+            selected_month = int(month_val)
+            advances_qs = advances_qs.filter(created_at__month=selected_month)
+        except ValueError:
+            selected_month = now.month
+            month_val = str(selected_month)
+
+    # Filtrování podle zaměstnance
     if employee_id and employee_id.isdigit():
         advances_qs = advances_qs.filter(employee_id=int(employee_id))
+
+    # Filtrování podle formy
     if payment_method in ['CASH', 'BANK']:
         advances_qs = advances_qs.filter(payment_method=payment_method)
-    if month_val and month_val.isdigit():
-        advances_qs = advances_qs.filter(created_at__month=int(month_val))
-    if year_val and year_val.isdigit():
-        advances_qs = advances_qs.filter(created_at__year=int(year_val))
 
-    advances = list(advances_qs)
+    advances = list(advances_qs.order_by('-created_at'))
     total_amount = sum(a.amount for a in advances)
+    total_cash = sum(a.amount for a in advances if a.payment_method == 'CASH')
+    total_bank = sum(a.amount for a in advances if a.payment_method == 'BANK')
 
     months_list = [
         (1, 'Leden'), (2, 'Únor'), (3, 'Březen'), (4, 'Duben'),
         (5, 'Květen'), (6, 'Červen'), (7, 'Červenec'), (8, 'Srpen'),
         (9, 'Září'), (10, 'Říjen'), (11, 'Listopad'), (12, 'Prosinec')
     ]
+    available_years = list(range(now.year - 2, now.year + 3))
     employees = Employee.objects.filter(is_active=True).order_by('last_name', 'first_name')
 
     context = {
         'advances': advances,
         'total_amount': total_amount,
+        'total_cash': total_cash,
+        'total_bank': total_bank,
         'employees': employees,
         'months_list': months_list,
+        'available_years': available_years,
         'selected_employee': employee_id,
         'selected_method': payment_method,
         'selected_month': month_val,
         'selected_year': year_val,
+        'now': now,
     }
     return render(request, 'advances/advance_list.html', context)
+  
 
 
 @login_required
