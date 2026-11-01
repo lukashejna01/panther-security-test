@@ -21,7 +21,7 @@ from core.forms import (
     EmployeeOnboardingForm,
 )
 from core.services import extract_data_from_id, has_contract_template, store_contract_pdf
-from .auth_views import generate_credentials
+from .auth_views import generate_credentials, remember_new_credentials
 
 
 def _cssz_defaults():
@@ -207,10 +207,11 @@ def candidate_onboard_view(request, candidate_id):
                     last_name=ln
                 )
                 employee.user = user
-                employee.generated_password = raw_password  # Uložení hesla pro manažerský přehled
+                employee.must_change_password = True
                 employee.system_role = SystemRole.STAFF
                 employee.is_active = True
                 employee.save()
+                remember_new_credentials(request, employee, raw_password)
 
                 candidate.status = CandidateStatus.HIRED
                 candidate.save()
@@ -223,11 +224,11 @@ def candidate_onboard_view(request, candidate_id):
                     except Exception as e:
                         messages.warning(request, f"Zaměstnanec byl uložen, ale smlouvu se nepodařilo vygenerovat: {e}")
 
-                # Výrazná flash zpráva s heslem a přesměrování na kartu zaměstnance (hlášení ČSSZ)
+                # Přesměrování na kartu zaměstnance – tam se jednou zobrazí dočasné heslo (a hlášení ČSSZ)
                 messages.success(
                     request,
                     f"🎉 Zaměstnanec {fn} {ln} byl úspěšně zařazen do kmene! "
-                    f"Přihlašovací jméno: {username} | Dočasné heslo: {raw_password} (předejte zaměstnanci)"
+                    f"Přihlašovací údaje najdete na kartě níže (zobrazí se jen jednou)."
                 )
                 messages.warning(
                     request,

@@ -12,6 +12,7 @@ from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.cache import add_never_cache_headers
 from django.views.decorators.http import require_POST
 
 from core.decorators import role_required
@@ -28,6 +29,7 @@ from core.services import (
     store_termination_pdf,
 )
 from core.services.contract_pdf import NOTICE_PERIOD_DAYS
+from .auth_views import generate_password, pop_new_credentials, remember_new_credentials
 from core.services.cssz_submit import (
     IsdsError,
     check_protocols,
@@ -86,8 +88,56 @@ def employee_detail_view(request, employee_id):
         'isds_configured': isds_configured(),
         'isds_environment': isds_environment(),
         'cssz_databox': cssz_databox(isds_environment()),
+        'new_credentials': pop_new_credentials(request, employee),
+        'can_reset_password': _can_reset_password(request.user, employee),
     }
-    return render(request, 'employees/employee_detail.html', context)
+    response = render(request, 'employees/employee_detail.html', context)
+    if context['new_credentials']:
+        # Stránka s dočasným heslem nesmí zůstat v cache prohlížeče
+        add_never_cache_headers(response)
+    return response
+
+
+def _can_reset_password(user, employee):
+    """
+    Manažer smí resetovat heslo jen strážným, majitel strážným i manažerům.
+    Účty majitelů a superuživatelů se tudy resetovat nedají (jinak by si
+    manažer mohl převzít vyšší účet) a vlastní heslo se mění v profilu.
+    """
+    target = employee.user
+    if not target or target == user or target.is_superuser:
+        return False
+    if user.is_superuser:
+        return True
+    profile = getattr(user, 'employee_profile', None)
+    if not profile:
+        return False
+    if profile.system_role == SystemRole.OWNER:
+        return employee.system_role in (SystemRole.STAFF, SystemRole.MANAGER)
+    if profile.system_role == SystemRole.MANAGER:
+        return employee.system_role == SystemRole.STAFF
+    return False
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
+def employee_reset_password_view(request, employee_id):
+    """Vygeneruje nové dočasné heslo, které se jednou zobrazí na kartě zaměstnance."""
+    employee = get_object_or_404(Employee.objects.select_related('user'), id=employee_id)
+    if not _can_reset_password(request.user, employee):
+        messages.error(request, "Heslo tohoto účtu nemůžete resetovat.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    raw_password = generate_password()
+    employee.user.set_password(raw_password)
+    employee.user.save(update_fields=['password'])
+    employee.must_change_password = True
+    employee.save(update_fields=['must_change_password'])
+    remember_new_credentials(request, employee, raw_password)
+
+    messages.success(request, "Nové dočasné heslo je vygenerováno. Staré heslo přestalo platit.")
+    return redirect('employee_detail', employee_id=employee.id)
 
 
 @login_required

@@ -106,11 +106,10 @@ class Employee(models.Model):
         verbose_name="Uživatelský účet"
     )
 
-    # Vygenerované přístupové heslo pro rychlý přehled manažera
-    generated_password = models.CharField(
-        max_length=128,
-        blank=True,
-        verbose_name="Vygenerované přístupové heslo"
+    # Dočasné heslo od manažera se neukládá – po prvním přihlášení se musí změnit
+    must_change_password = models.BooleanField(
+        default=False,
+        verbose_name="Musí si změnit heslo"
     )
 
     personal_number = models.CharField(

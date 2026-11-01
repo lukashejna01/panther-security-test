@@ -36,9 +36,34 @@ def generate_credentials(first_name: str, last_name: str):
         username = f"{base_username}{counter}"
         counter += 1
 
-    alphabet = string.ascii_letters + string.digits
-    password = ''.join(secrets.choice(alphabet) for _ in range(10))
-    return username, password
+    return username, generate_password()
+
+
+def generate_password():
+    """Náhodné dočasné heslo (12 znaků, bez snadno zaměnitelných 0/O, 1/l/I)."""
+    alphabet = ''.join(c for c in string.ascii_letters + string.digits if c not in '0O1lI')
+    return ''.join(secrets.choice(alphabet) for _ in range(12))
+
+
+def remember_new_credentials(request, employee, raw_password):
+    """
+    Dočasné heslo se nikam neukládá – manažer ho uvidí jen jednou na kartě
+    zaměstnance. Drží se v session na serveru (ne ve flash zprávě, ta jde do cookie).
+    """
+    request.session['new_credentials'] = {
+        'employee_id': employee.id,
+        'username': employee.user.username,
+        'password': raw_password,
+    }
+
+
+def pop_new_credentials(request, employee):
+    """Vydá dočasné heslo pro kartu zaměstnance a hned ho ze session smaže."""
+    credentials = request.session.get('new_credentials')
+    if credentials and credentials.get('employee_id') == employee.id:
+        del request.session['new_credentials']
+        return credentials
+    return None
 
 
 def redirect_user_by_role(user):
@@ -116,6 +141,9 @@ def profile_view(request):
             if password_form.is_valid():
                 user = password_form.save()
                 update_session_auth_hash(request, user)
+                if profile and profile.must_change_password:
+                    profile.must_change_password = False
+                    profile.save(update_fields=['must_change_password'])
                 messages.success(request, "Vaše heslo bylo úspěšně změněno.")
                 return redirect('user_profile')
             else:

@@ -33,6 +33,7 @@ urlpatterns = [
     path('dispecink/zamestnanec/<int:employee_id>/', views.employee_detail_view, name='employee_detail'),
     path('dispecink/zamestnanci/archiv/', views.employees_archive_list_view, name='employees_archive_list'),
     path('dispecink/zamestnanec/<int:employee_id>/archivovat/', views.archive_employee_view, name='archive_employee'),
+    path('dispecink/zamestnanec/<int:employee_id>/heslo/', employee_views.employee_reset_password_view, name='employee_reset_password'),
     path('dispecink/zamestnanec/<int:employee_id>/smlouva/', employee_views.employee_contract_view, name='employee_contract'),
     path('dispecink/zamestnanec/<int:employee_id>/smlouva/vygenerovat/', employee_views.employee_contract_regenerate_view, name='employee_contract_regenerate'),
     path('dispecink/zamestnanec/<int:employee_id>/ukonceni/', employee_views.employee_termination_view, name='employee_termination'),

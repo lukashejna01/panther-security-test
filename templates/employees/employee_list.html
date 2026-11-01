@@ -49,20 +49,8 @@
                                 <span style="color: var(--text-muted);">Uživatel:</span> 
                                 <strong style="color: #38bdf8;">{{ emp.user.username|default:"Nemá účet" }}</strong>
                             </div>
-                            {% if emp.generated_password %}
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span style="color: var(--text-muted);">Heslo:</span>
-                                <span id="pwd-masked-{{ emp.id }}" style="font-family: monospace; letter-spacing: 1px;">••••••••••</span>
-                                <span id="pwd-plain-{{ emp.id }}" style="display: none; font-family: monospace; color: #facc15; font-weight: bold;">{{ emp.generated_password }}</span>
-                                <button type="button" onclick="togglePasswordVisibility('{{ emp.id }}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0 2px;" title="Zobrazit / Skrýt heslo">
-                                    👁️
-                                </button>
-                                <button type="button" onclick="copyCredentials('{{ emp.user.username }}', '{{ emp.generated_password }}')" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0 2px;" title="Kopírovat přístupy do schránky">
-                                    📋
-                                </button>
-                            </div>
-                            {% else %}
-                            <div style="font-size: 11px; color: var(--text-muted); font-style: italic;">Heslo nezaznamenáno</div>
+                            {% if emp.must_change_password %}
+                            <div style="font-size: 11px; color: #facc15;">⏳ Čeká na první přihlášení</div>
                             {% endif %}
                         </div>
                     </td>
@@ -101,28 +89,4 @@
     </div>
 </div>
 
-<script>
-function togglePasswordVisibility(empId) {
-    const masked = document.getElementById('pwd-masked-' + empId);
-    const plain = document.getElementById('pwd-plain-' + empId);
-    if (!masked || !plain) return;
-
-    if (masked.style.display === 'none') {
-        masked.style.display = 'inline';
-        plain.style.display = 'none';
-    } else {
-        masked.style.display = 'none';
-        plain.style.display = 'inline';
-    }
-}
-
-function copyCredentials(username, password) {
-    const text = `Přihlašovací údaje Panther Security:\nUživatelské jméno: ${username}\nHeslo: ${password}\nOdkaz: https://panther-security.cz/prihlaseni/`;
-    navigator.clipboard.writeText(text).then(function() {
-        alert('Přihlašovací údaje zaměstnance byly zkopírovány do schránky.');
-    }).catch(function(err) {
-        prompt('Zkopírujte přístupy ručně:', text);
-    });
-}
-</script>
 {% endblock %}

@@ -424,20 +424,29 @@
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <span style="font-size: 13px; color: var(--text-muted);">Heslo:</span>
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        {% if employee.generated_password %}
-                            <span id="detail-pwd-masked" style="font-family: monospace; letter-spacing: 2px;">••••••••••</span>
-                            <span id="detail-pwd-plain" style="display: none; font-family: monospace; color: #facc15; font-weight: bold; font-size: 14px;">{{ employee.generated_password }}</span>
-                            <button type="button" onclick="toggleDetailPassword()" style="background: none; border: none; cursor: pointer; color: var(--text-muted); padding: 0;" title="Zobrazit / Skrýt heslo">
-                                👁️
-                            </button>
-                            <button type="button" onclick="copyDetailCredentials('{{ employee.user.username }}', '{{ employee.generated_password }}')" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" title="Kopírovat přístupy do schránky">
+                        {% if new_credentials %}
+                            <strong style="font-family: monospace; color: #facc15; font-size: 14px;">{{ new_credentials.password }}</strong>
+                            <button type="button" id="copy-credentials" data-username="{{ new_credentials.username }}" data-password="{{ new_credentials.password }}" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;" title="Kopírovat přístupy do schránky">
                                 📋 Kopírovat
                             </button>
-                        {% else %}
-                            <span style="color: var(--text-muted); font-size: 12px; font-style: italic;">Heslo nezaznamenáno</span>
+                        {% elif employee.must_change_password %}
+                            <span style="color: #facc15; font-size: 12px;">⏳ Dočasné, čeká na změnu</span>
+                        {% elif employee.user %}
+                            <span style="color: var(--text-muted); font-size: 12px;">Nastavené zaměstnancem</span>
+                        {% endif %}
+                        {% if can_reset_password %}
+                            <form method="post" action="{% url 'employee_reset_password' employee.id %}" style="margin: 0;" onsubmit="return confirm('Vygenerovat nové heslo? Staré heslo okamžitě přestane platit.');">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-secondary" style="padding: 2px 8px; font-size: 11px;">🔑 Nové heslo</button>
+                            </form>
                         {% endif %}
                     </div>
                 </div>
+                {% if new_credentials %}
+                <div style="margin-top: 8px; font-size: 11px; color: #fca5a5;">
+                    ⚠️ Heslo se zobrazuje jen teď. Předejte ho zaměstnanci, po prvním přihlášení si ho musí změnit.
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -501,26 +510,15 @@
 </div>
 
 <script>
-function toggleDetailPassword() {
-    const masked = document.getElementById('detail-pwd-masked');
-    const plain = document.getElementById('detail-pwd-plain');
-    if (!masked || !plain) return;
-
-    if (masked.style.display === 'none') {
-        masked.style.display = 'inline';
-        plain.style.display = 'none';
-    } else {
-        masked.style.display = 'none';
-        plain.style.display = 'inline';
-    }
-}
-
-function copyDetailCredentials(username, password) {
-    const text = `Přihlašovací údaje Panther Security:\nUživatelské jméno: ${username}\nHeslo: ${password}\nOdkaz: https://panther-security.cz/prihlaseni/`;
-    navigator.clipboard.writeText(text).then(function() {
-        alert('Přihlašovací údaje zaměstnance byly zkopírovány do schránky.');
-    }).catch(function(err) {
-        prompt('Zkopírujte přístupy ručně:', text);
+const copyCredentialsBtn = document.getElementById('copy-credentials');
+if (copyCredentialsBtn) {
+    copyCredentialsBtn.addEventListener('click', function() {
+        const text = `Přihlašovací údaje Panther Security:\nUživatelské jméno: ${this.dataset.username}\nHeslo: ${this.dataset.password}\nOdkaz: https://panther-security.cz/prihlaseni/`;
+        navigator.clipboard.writeText(text).then(function() {
+            alert('Přihlašovací údaje zaměstnance byly zkopírovány do schránky.');
+        }).catch(function() {
+            prompt('Zkopírujte přístupy ručně:', text);
+        });
     });
 }
 </script>
