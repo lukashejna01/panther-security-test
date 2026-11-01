@@ -7,6 +7,7 @@ from .organization import Department, Position, SystemRole
 from .candidate import Candidate, CandidateStatus
 from .employee import Employee, AdvancePayment
 from .cssz import CsszSubmission
+from .tax import TaxDeclaration, TaxDeclarationChild
 from .operations import Client, GuardObject, ContactPerson
 from .attendance import Shift, ShiftStatus, ShiftAvailability
 from .billing import (
@@ -37,4 +38,6 @@ __all__ = [
     'InvoiceItem',
     'AdvancePayment',
     'CsszSubmission',
+    'TaxDeclaration',
+    'TaxDeclarationChild',
 ]

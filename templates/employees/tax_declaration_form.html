@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}Prohlášení poplatníka {{ year }}: {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+    <a href="{% url 'employee_detail' employee.id %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 12px;">← Zpět na kartu</a>
+    <h1 style="font-size: 24px; color: #fff; margin: 0 0 4px;">🩷 Prohlášení poplatníka daně – {{ year }}</h1>
+    <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 18px; line-height: 1.5;">
+        {{ employee.full_name }} &bull; RČ {{ employee.birth_number }} &bull; {{ employee.full_address }}<br>
+        Aplikace vyplní oficiální tiskopis MFin 5457 (vzor č. 27). Podpis a datum doplní zaměstnanec ručně na vytištěném tiskopisu.
+    </p>
+
+    <form method="post" class="card">
+        {% csrf_token %}
+        {{ children.management_form }}
+        {% if form.non_field_errors %}<div style="color: #f87171; font-size: 13px; margin-bottom: 12px;">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+
+        <h3 style="font-size: 14px; color: var(--panther-yellow); margin: 0 0 10px;">Slevy na dani (§ 35ba)</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; font-size: 13px; color: #e2e8f0;">
+            <label style="display: flex; gap: 8px; align-items: center;">{{ form.basic_credit }} Základní sleva na poplatníka – 2 570 Kč měsíčně</label>
+            <div class="form-group" style="max-width: 420px; margin: 0;">
+                <label>{{ form.disability.label }}</label>
+                {{ form.disability }}
+                <div style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">210 Kč (I./II. stupeň) nebo 420 Kč (III. stupeň) měsíčně – jen s rozhodnutím o invalidním důchodu.</div>
+            </div>
+            <label style="display: flex; gap: 8px; align-items: center;">{{ form.ztpp }} Držitel průkazu ZTP/P – 1 345 Kč měsíčně</label>
+        </div>
+
+        <h3 style="font-size: 14px; color: var(--panther-yellow); margin: 0 0 6px;">Vyživované děti (§ 35c) – daňové zvýhodnění</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin: 0 0 10px; line-height: 1.5;">
+            Uveďte všechny vyživované děti ve společné domácnosti, i ty, na které zvýhodnění neuplatňuje (pak „Neuplatňuji“).
+            Měsíčně 1 267 Kč na 1. dítě, 1 860 Kč na 2. a 2 320 Kč na 3. a další; dítě se ZTP/P dvojnásobek.
+            Zletilé dítě jen do 26 let, pokud se soustavně připravuje na povolání.
+        </p>
+        <div style="overflow-x: auto; margin-bottom: 20px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px;">
+                <thead>
+                    <tr style="text-align: left; color: var(--text-muted); font-size: 11px; text-transform: uppercase;">
+                        <th style="padding: 4px;">Jméno</th><th style="padding: 4px;">Příjmení</th><th style="padding: 4px;">Rodné číslo</th>
+                        <th style="padding: 4px;">Uplatňuji na</th><th style="padding: 4px;">ZTP/P</th><th style="padding: 4px;">Zletilé</th><th style="padding: 4px;">Odebrat</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for child in children.forms %}
+                    <tr>
+                        {% for hidden in child.hidden_fields %}{{ hidden }}{% endfor %}
+                        <td style="padding: 4px;">{{ child.first_name }}</td>
+                        <td style="padding: 4px;">{{ child.last_name }}</td>
+                        <td style="padding: 4px;">{{ child.birth_number }}</td>
+                        <td style="padding: 4px;">{{ child.claim }}</td>
+                        <td style="padding: 4px; text-align: center;">{{ child.ztpp }}</td>
+                        <td style="padding: 4px; text-align: center;">{{ child.adult }}</td>
+                        <td style="padding: 4px; text-align: center;">{% if child.instance.pk %}{{ child.DELETE }}{% endif %}</td>
+                    </tr>
+                    {% if child.errors %}
+                    <tr><td colspan="7" style="color: #f87171; font-size: 12px; padding: 0 4px 6px;">
+                        {% for field, errs in child.errors.items %}{% for e in errs %}{{ e }} {% endfor %}{% endfor %}
+                    </td></tr>
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% for e in children.non_form_errors %}<div style="color: #f87171; font-size: 12px;">{{ e }}</div>{% endfor %}
+        </div>
+
+        <h3 style="font-size: 14px; color: var(--panther-yellow); margin: 0 0 6px;">Druhý poplatník ve společné domácnosti (vyplňuje se jen při uplatnění zvýhodnění na děti)</h3>
+        <div class="form-group" style="max-width: 420px;">
+            <label>Vyživuje tytéž děti i jiný poplatník (např. druhý rodič)?</label>
+            {{ form.other_parent }}
+            {% for e in form.other_parent.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ e }}</div>{% endfor %}
+        </div>
+        <div id="other-parent" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 20px;">
+            {% for field in form %}{% if field.name|slice:":6" == 'other_' and field.name != 'other_parent' %}
+            <div class="form-group" style="margin: 0;">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% for e in field.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ e }}</div>{% endfor %}
+            </div>
+            {% endif %}{% endfor %}
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 14px; font-weight: 800;">
+            📄 Uložit a vyplnit tiskopis
+        </button>
+    </form>
+</div>
+
+<script>
+(function () {
+    const select = document.getElementById('id_other_parent');
+    const box = document.getElementById('other-parent');
+    function sync() { box.style.display = select.value === 'ANO' ? '' : 'none'; }
+    select.addEventListener('change', sync);
+    sync();
+})();
+</script>
+{% endblock %}

@@ -146,10 +146,42 @@
                 <span>Zdravotní pojištění (4,5 %):</span>
                 <span>{% if emp_zp > 0 %}- {{ emp_zp|kc }} Kč{% else %}0 Kč{% endif %}</span>
             </div>
+            {% if calc.withholding %}
             <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 14px; color: #cbd5e1;">
-                <span>Daň z příjmu (15 %):</span>
+                <span>Srážková daň (15 %, bez prohlášení poplatníka):</span>
                 <span>{% if tax > 0 %}- {{ tax|kc }} Kč{% else %}0 Kč{% endif %}</span>
             </div>
+            {% else %}
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #cbd5e1;">
+                <span>Záloha na daň (15 %{% if calc.tax_before_credits > 0 %}, ze základu zaokrouhleného na stokoruny{% endif %}):</span>
+                <span>{% if calc.tax_before_credits > 0 %}- {{ calc.tax_before_credits|kc }} Kč{% else %}0 Kč{% endif %}</span>
+            </div>
+            {% if calc.credit_personal > 0 %}
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #6ee7b7;">
+                <span>Sleva na dani (prohlášení poplatníka):</span>
+                <span>+ {{ calc.credit_personal|kc }} Kč</span>
+            </div>
+            {% endif %}
+            {% if calc.credit_children > 0 %}
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #6ee7b7;">
+                <span>Sleva na dani na děti:</span>
+                <span>+ {{ calc.credit_children|kc }} Kč</span>
+            </div>
+            {% endif %}
+            {% if calc.tax_bonus > 0 %}
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #6ee7b7;">
+                <span>Daňový bonus na děti:</span>
+                <span>+ {{ calc.tax_bonus|kc }} Kč</span>
+            </div>
+            {% endif %}
+            <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 14px; color: #cbd5e1;">
+                <span>Daň po slevách:</span>
+                <span>{% if tax > 0 %}- {{ tax|kc }} Kč{% else %}0 Kč{% endif %}</span>
+            </div>
+            {% if not calc.has_declaration %}
+            <div style="font-size: 11px; color: #fde68a; margin: -8px 0 12px;">Bez podepsaného prohlášení poplatníka – slevy na dani se neuplatňují.</div>
+            {% endif %}
+            {% endif %}
 
             <!-- ČISTÁ MZDA PŘED ZÁLOHAMI -->
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 700; color: #cbd5e1; border-top: 1px solid #243044; padding-top: 10px; margin-bottom: 14px;">

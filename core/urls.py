@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from core.views import billing_views, payroll_views, advance_views, employee_views, two_factor_views
+from core.views import billing_views, payroll_views, advance_views, employee_views, tax_views, two_factor_views
 
 urlpatterns = [
     # Veřejné stránky a autentizace
@@ -50,6 +50,12 @@ urlpatterns = [
     path('dispecink/zamestnanec/<int:employee_id>/cssz/odpoved/', employee_views.employee_cssz_protocol_check_view, name='employee_cssz_protocol_check'),
     path('dispecink/zamestnanec/<int:employee_id>/cssz/protokol/<int:submission_id>/', employee_views.employee_cssz_protocol_view, name='employee_cssz_protocol'),
     path('dispecink/zamestnanec/<int:employee_id>/cssz/odhlaska/', employee_views.employee_cssz_deregister_view, name='employee_cssz_deregister'),
+
+    # Prohlášení poplatníka daně („růžový papír“)
+    path('dispecink/zamestnanec/<int:employee_id>/prohlaseni/', tax_views.tax_declaration_edit_view, name='tax_declaration_edit'),
+    path('dispecink/zamestnanec/<int:employee_id>/prohlaseni/<int:declaration_id>/pdf/', tax_views.tax_declaration_pdf_view, name='tax_declaration_pdf'),
+    path('dispecink/zamestnanec/<int:employee_id>/prohlaseni/<int:declaration_id>/podpis/', tax_views.tax_declaration_sign_view, name='tax_declaration_sign'),
+    path('dispecink/zamestnanec/<int:employee_id>/prohlaseni/<int:declaration_id>/odvolat/', tax_views.tax_declaration_withdraw_view, name='tax_declaration_withdraw'),
 
     # Modul Zálohy a Výdajové doklady (VPD)
     path('dispecink/zalohy/', advance_views.advance_list_view, name='advance_list'),

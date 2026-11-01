@@ -16,6 +16,14 @@ from django.db.models import Sum
 
 from core.decorators import role_required
 from core.models import Employee, Shift, ShiftStatus, SystemRole, AdvancePayment
+from core.services.tax import (
+    MONTHLY_BASIC_CREDIT,
+    MonthlyCredits,
+    advance_tax,
+    apply_credits,
+    monthly_credits,
+    withholding_tax,
+)
 
 # Nastavený výplatní den v měsíci
 PAYROLL_PAYOUT_DAY = 25
@@ -41,15 +49,19 @@ def get_advance_period_for_payroll(payroll_year: int, payroll_month: int, payout
     return timezone.make_aware(start_dt), timezone.make_aware(end_dt)
 
 
-def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_tax_declaration: bool = False):
+def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_tax_declaration: bool = False,
+                                 credits: MonthlyCredits = None):
     """
     Kalkulátor odvodů a čisté mzdy podle legislativy pro rok 2026:
     - DPP: limit 12 000 Kč.
     - DPČ: limit 4 500 Kč.
     - HPP: plné odvody (SP 7.1 % + 24.8 %, ZP 4.5 % + 9.0 %).
     - IČO: fakturace bez srážek, čistá = hrubá.
-    - Daň z příjmu: 15 %.
+    - Daň: záloha podle § 38h (core.services.tax); bez prohlášení u DPP/DPČ pod limitem
+      srážková daň. S prohlášením (`credits`) slevy na dani, zvýhodnění na děti a bonus.
     """
+    if credits is None:
+        credits = MonthlyCredits(has_declaration=True, basic=MONTHLY_BASIC_CREDIT) if has_tax_declaration else MonthlyCredits()
     gross = round(float(gross_amount or 0.0), 2)
     contract = (contract_type or '').upper()
 
@@ -65,6 +77,12 @@ def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_ta
             'emp_zp': 0.0,
             'emp_tax': 0.0,
             'emp_deductions': 0.0,
+            'tax_before_credits': 0.0,
+            'credit_personal': 0.0,
+            'credit_children': 0.0,
+            'tax_bonus': 0.0,
+            'withholding': False,
+            'has_declaration': False,
             'comp_sp': 0.0,
             'comp_zp': 0.0,
             'comp_total_insurance': 0.0,
@@ -100,22 +118,30 @@ def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_ta
         comp_sp = round(gross * 0.248, 2)
         comp_zp = round(gross * 0.090, 2)
 
-    calculated_tax = round(gross * 0.15, 2)
-    if has_tax_declaration:
-        tax_credit = 2570.00
-        emp_tax = max(0.0, round(calculated_tax - tax_credit, 2))
+    # Bez prohlášení se z dohody pod limitem (bez účasti na pojištění) sráží srážková daň
+    withholding = not credits.has_declaration and is_exempt and ('DPP' in contract or 'DPČ' in contract or 'DPC' in contract)
+    if withholding:
+        tax_before_credits = withholding_tax(gross)
+        emp_tax, tax_bonus, credit_personal, credit_children = tax_before_credits, 0, 0, 0
     else:
-        emp_tax = calculated_tax
+        tax_before_credits = advance_tax(gross)
+        emp_tax, tax_bonus, credit_personal, credit_children = apply_credits(tax_before_credits, gross, credits)
 
-    net = max(0.0, round(gross - emp_sp - emp_zp - emp_tax, 2))
+    net = max(0.0, round(gross - emp_sp - emp_zp - emp_tax + tax_bonus, 2))
     total_cost = round(gross + comp_sp + comp_zp, 2)
 
     return {
         'gross': gross,
         'emp_sp': emp_sp,
         'emp_zp': emp_zp,
-        'emp_tax': emp_tax,
+        'emp_tax': float(emp_tax),
         'emp_deductions': round(emp_sp + emp_zp + emp_tax, 2),
+        'tax_before_credits': float(tax_before_credits),
+        'credit_personal': float(credit_personal),
+        'credit_children': float(credit_children),
+        'tax_bonus': float(tax_bonus),
+        'withholding': withholding,
+        'has_declaration': credits.has_declaration,
         'comp_sp': comp_sp,
         'comp_zp': comp_zp,
         'comp_total_insurance': round(comp_sp + comp_zp, 2),
@@ -178,7 +204,7 @@ def payroll_summary_view(request):
         ).aggregate(total=Sum('amount'))['total'] or Decimal('0.00')
 
         if hours > 0 or advances_sum > 0:
-            calc = calculate_czech_payroll_2026(pay, emp.contract_type)
+            calc = calculate_czech_payroll_2026(pay, emp.contract_type, credits=monthly_credits(emp, year, month))
             adv_float = float(advances_sum)
             net_payout = max(0.0, round(calc['net'] - adv_float, 2))
 
@@ -245,7 +271,8 @@ def payslip_detail_view(request, employee_id, year, month):
     total_hours = sum(float(s.planned_hours) for s in approved_shifts)
     gross_pay = sum(float(s.total_cost) for s in approved_shifts)
 
-    calc = calculate_czech_payroll_2026(gross_pay, target_employee.contract_type)
+    calc = calculate_czech_payroll_2026(gross_pay, target_employee.contract_type,
+                                        credits=monthly_credits(target_employee, year, month))
 
     # Načtení záloh za reálný výplatní cyklus (25. den měsíce M až 24. den měsíce M+1)
     adv_start, adv_end = get_advance_period_for_payroll(year, month)
@@ -280,6 +307,7 @@ def payslip_detail_view(request, employee_id, year, month):
         'net_pay': calc['net'],
         'total_company_cost': calc['total_cost'],
         'is_exempt': calc['is_exempt'],
+        'calc': calc,
     }
     return render(request, 'payroll/payslip_detail.html', context)
 
@@ -333,7 +361,8 @@ def payslip_custom_generate_view(request):
         else:
             gross_pay = round(hours * hourly_rate, 2)
 
-        calc = calculate_czech_payroll_2026(gross_pay, contract_type)
+        credits = monthly_credits(emp, year, month) if employee_id else MonthlyCredits()
+        calc = calculate_czech_payroll_2026(gross_pay, contract_type, credits=credits)
         net_payout = max(Decimal('0.00'), Decimal(str(calc['net'])) - advances_sum)
 
         mock_employee = {
@@ -365,6 +394,7 @@ def payslip_custom_generate_view(request):
             'net_payout': net_payout,
             'total_company_cost': calc['total_cost'],
             'is_exempt': calc['is_exempt'],
+            'calc': calc,
         }
         return render(request, 'payroll/payslip_detail.html', context)
 

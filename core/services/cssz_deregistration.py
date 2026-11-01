@@ -92,6 +92,7 @@ def average_net_earnings(employee, gross_by_month):
     kalendářní čtvrtletí. Když v něm zaměstnanec nepracoval, vezme se pravděpodobný
     výdělek z měsíců, které odpracoval. Zaokrouhluje se na celé koruny nahoru.
     """
+    from core.services.tax import monthly_credits
     from core.views.payroll_views import calculate_czech_payroll_2026
 
     end = employee.termination_date
@@ -103,7 +104,12 @@ def average_net_earnings(employee, gross_by_month):
         months = [m for m, gross in gross_by_month.items() if gross and m <= end]
     if not months:
         return None
-    net = sum(calculate_czech_payroll_2026(gross_by_month[m], employee.contract_type)['net'] for m in months)
+    net = 0.0
+    for m in months:
+        # Se slevami podle prohlášení, ale bez daňového bonusu (ten se nepřičítá)
+        calc = calculate_czech_payroll_2026(gross_by_month[m], employee.contract_type,
+                                            credits=monthly_credits(employee, m.year, m.month))
+        net += calc['net'] - calc['tax_bonus']
     return math.ceil(net / len(months))
 
 

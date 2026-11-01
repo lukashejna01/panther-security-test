@@ -169,6 +169,56 @@
 </div>
 {% endif %}
 
+<!-- PROHLÁŠENÍ POPLATNÍKA DANĚ („růžový papír“) -->
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid #f9a8d4;">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; margin-bottom: 10px;">
+        <div>
+            <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 4px;">🩷 Prohlášení poplatníka daně („růžový papír“)</h2>
+            <div style="font-size: 12px; color: var(--text-muted);">
+                S podepsaným prohlášením se ve mzdě uplatní sleva na poplatníka (2 570 Kč měsíčně), případně slevy za invaliditu, ZTP/P a zvýhodnění na děti.
+                Prohlášení lze mít jen u jednoho zaměstnavatele.
+            </div>
+        </div>
+        <a href="{% url 'tax_declaration_edit' employee.id %}?year={{ tax_year }}" class="btn btn-secondary" style="font-size: 13px;">✏️ Vyplnit prohlášení {{ tax_year }}</a>
+    </div>
+    {% for decl in tax_declarations %}
+    <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: 10px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <div style="font-size: 13px;">
+            <strong style="color: #fff;">Rok {{ decl.year }}</strong>
+            {% if decl.state == 'signed' %}<span class="badge-tag green">✅ Podepsáno {{ decl.signed_on|date:"d.m.Y" }}</span>
+            {% elif decl.state == 'withdrawn' %}<span class="badge-tag red">Odvoláno {{ decl.withdrawn_on|date:"d.m.Y" }}</span>
+            {% else %}<span class="badge-tag yellow">⏳ Vyplněno, čeká na podpis</span>{% endif %}
+            <div style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">
+                {% if decl.basic_credit %}sleva na poplatníka{% endif %}{% if decl.disability %} · {{ decl.get_disability_display }}{% endif %}{% if decl.ztpp %} · ZTP/P{% endif %}
+                {% with kids=decl.children.all %}{% if kids %} · děti: {% for k in kids %}{{ k.first_name }} ({{ k.get_claim_display }}{% if k.ztpp %}, ZTP/P{% endif %}){% if not forloop.last %}, {% endif %}{% endfor %}{% endif %}{% endwith %}
+            </div>
+        </div>
+        <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+            {% if decl.pdf %}<a href="{% url 'tax_declaration_pdf' employee.id decl.id %}" target="_blank" class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;">📄 Tiskopis k podpisu</a>{% endif %}
+            {% if decl.signed_scan %}<a href="{% url 'tax_declaration_pdf' employee.id decl.id %}?scan=1" target="_blank" class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px;">📎 Podepsaný sken</a>{% endif %}
+            {% if decl.state == 'draft' %}
+            <form method="post" action="{% url 'tax_declaration_sign' employee.id decl.id %}" enctype="multipart/form-data" style="display: flex; gap: 6px; align-items: center; margin: 0; flex-wrap: wrap;">
+                {% csrf_token %}
+                <input type="date" name="signed_on" class="form-control" value="{{ today|date:'Y-m-d' }}" style="width: auto; padding: 4px 8px; font-size: 12px;" required>
+                <input type="file" name="signed_scan" accept=".pdf,.jpg,.jpeg,.png" style="font-size: 11px; max-width: 190px;">
+                <button type="submit" class="btn btn-primary" style="font-size: 12px; padding: 4px 10px;">✍️ Zaměstnanec podepsal</button>
+            </form>
+            {% endif %}
+            {% if decl.state != 'withdrawn' %}
+            <form method="post" action="{% url 'tax_declaration_withdraw' employee.id decl.id %}" style="display: flex; gap: 6px; align-items: center; margin: 0;"
+                  onsubmit="return confirm('Odvolat prohlášení? Slevy na dani se od dalšího měsíce přestanou uplatňovat.');">
+                {% csrf_token %}
+                <input type="date" name="withdrawn_on" class="form-control" value="{{ today|date:'Y-m-d' }}" style="width: auto; padding: 4px 8px; font-size: 12px;" required>
+                <button type="submit" class="btn btn-secondary" style="font-size: 12px; padding: 4px 10px; color: #fca5a5;">Odvolat</button>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+    {% empty %}
+    <div style="font-size: 13px; color: var(--text-muted);">Zaměstnanec zatím prohlášení nemá – daň se počítá bez slev.</div>
+    {% endfor %}
+</div>
+
 {% if show_cssz_deregistration %}
 <!-- ODHLÁŠKA Z ČSSZ (REGZEC akce 2) -->
 {% with dereg=employee.cssz_deregistration_status %}
