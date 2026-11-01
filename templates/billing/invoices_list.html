@@ -123,13 +123,13 @@
                     <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px;">
                             {% if inv.status == 'PAID' %}
-                                <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #fca5a5;" title="Označit jako neuhrazenou">
+                                <form method="post" action="{% url 'invoice_toggle_payment' inv.id %}" style="display: inline; margin: 0;">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #fca5a5;" title="Označit jako neuhrazenou">
                                     ↩ Zrušit
-                                </a>
+                                </button></form>
                             {% else %}
-                                <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #6ee7b7;" title="Označit jako zaplacenou">
+                                <form method="post" action="{% url 'invoice_toggle_payment' inv.id %}" style="display: inline; margin: 0;">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px; background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #6ee7b7;" title="Označit jako zaplacenou">
                                     ✓ Uhrazeno
-                                </a>
+                                </button></form>
                             {% endif %}
 
                             <a href="{% url 'invoice_detail' inv.variable_symbol|default:inv.invoice_number %}" target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 11px;">
@@ -217,13 +217,13 @@
                     <td style="text-align: right;">
                         <div style="display: inline-flex; gap: 6px;">
                             {% if inv.status == 'PAID' %}
-                                <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
+                                <form method="post" action="{% url 'invoice_toggle_payment' inv.id %}" style="display: inline; margin: 0;">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #fca5a5;">
                                     ↩ Zrušit
-                                </a>
+                                </button></form>
                             {% else %}
-                                <a href="{% url 'invoice_toggle_payment' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #6ee7b7;">
+                                <form method="post" action="{% url 'invoice_toggle_payment' inv.id %}" style="display: inline; margin: 0;">{% csrf_token %}<input type="hidden" name="next" value="{{ request.get_full_path }}"><button type="submit" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; color: #6ee7b7;">
                                     ✓ Zaplaceno
-                                </a>
+                                </button></form>
                             {% endif %}
                             
                             <a href="{% url 'invoice_edit' inv.id %}?next={{ request.get_full_path|urlencode }}" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;" title="Upravit fakturu">

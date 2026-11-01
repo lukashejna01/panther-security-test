@@ -16,6 +16,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.views.decorators.http import require_POST
 from reportlab.graphics.barcode import qrencoder
 from django.db import models, transaction
 from django.http import Http404
@@ -296,25 +297,38 @@ def invoice_detail_view(request, variable_symbol):
 
 @login_required
 @role_required([SystemRole.OWNER])
+@require_POST
 def toggle_invoice_payment_status_view(request, invoice_id):
-    """Rychlá změna stavu faktury na Uhrazeno / Neuhrazeno."""
+    """Rychlá změna stavu faktury na Uhrazeno / Neuhrazeno (jen POST – mění data)."""
     invoice = get_object_or_404(Invoice, id=invoice_id)
     next_url = _safe_return_url(
-        request, request.GET.get('next') or request.META.get('HTTP_REFERER'), 'invoice_list'
+        request, request.POST.get('next') or request.META.get('HTTP_REFERER'), 'invoice_list'
     )
 
     if invoice.status == InvoiceStatus.PAID:
         invoice.status = InvoiceStatus.UNPAID
-        invoice.paid_date = None
-        invoice.save()
+        invoice.paid_at = None
+        invoice.save(update_fields=['status', 'paid_at'])
         messages.info(request, f"Faktura #{invoice.invoice_number} byla označena jako NEUHRAZENÁ.")
     else:
         invoice.status = InvoiceStatus.PAID
-        invoice.paid_date = timezone.localdate()
-        invoice.save()
-        messages.success(request, f"Faktura #{invoice.invoice_number} byla označena jako UHRAZENÁ ({invoice.paid_date.strftime('%d.%m.%Y')}).")
+        invoice.paid_at = timezone.localdate()
+        invoice.save(update_fields=['status', 'paid_at'])
+        messages.success(request, f"Faktura #{invoice.invoice_number} byla označena jako UHRAZENÁ ({invoice.paid_at.strftime('%d.%m.%Y')}).")
 
     return redirect(next_url)
+
+
+def _next_outgoing_invoice_number(year):
+    """
+    Další číslo vydané faktury ve tvaru RRRRNNNN. Bere nejvyšší existující číslo
+    v roce (ne počet faktur), takže smazání starší faktury nezpůsobí kolizi.
+    """
+    numbers = Invoice.objects.filter(invoice_number__regex=rf'^{year}[0-9]{{4}}$').values_list('invoice_number', flat=True)
+    seq = max((int(n[4:]) for n in numbers), default=0) + 1
+    while Invoice.objects.filter(invoice_number=f"{year}{seq:04d}").exists():
+        seq += 1
+    return f"{year}{seq:04d}"
 
 
 def _parse_invoice_items(request):
@@ -369,9 +383,7 @@ def generate_client_invoice_view(request):
         vat_amount = round(subtotal * Decimal('0.21'), 2)
         total_with_vat = subtotal + vat_amount
 
-        year = issue_date.year
-        count = Invoice.objects.filter(invoice_type=InvoiceType.OUTGOING, issue_date__year=year).count() + 1
-        inv_number = f"{year}{count:04d}"
+        inv_number = _next_outgoing_invoice_number(issue_date.year)
         variable_symbol = inv_number
 
         invoice = Invoice.objects.create(
