@@ -314,10 +314,6 @@
                     <img src="{{ qr_code_url }}" 
                          alt="QR Platba SPAYD" 
                          style="width: 105px; height: 105px; display: block; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px; background: #ffffff;">
-                {% else %}
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=SPD*1.0*ACC:{{ company.iban|default:'CZ780300000000352412682' }}*AM:{{ invoice.total_amount }}*CC:CZK*X-VS:{{ invoice.variable_symbol|default:invoice.invoice_number }}*MSG:Faktura_{{ invoice.invoice_number }}" 
-                         alt="QR Platba SPAYD" 
-                         style="width: 105px; height: 105px; display: block; border: 1px solid #cbd5e1; border-radius: 4px; padding: 3px; background: #ffffff;">
                 {% endif %}
 
                 <div style="font-size: 12px; line-height: 1.5; color: #334155;">

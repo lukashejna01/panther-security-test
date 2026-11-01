@@ -8,12 +8,14 @@ from datetime import timedelta, date, datetime
 from decimal import Decimal
 import os
 import shutil
-import urllib.parse
+import base64
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.utils.http import url_has_allowed_host_and_scheme
+from reportlab.graphics.barcode import qrencoder
 from django.db import models
 from django.http import Http404
 from django.core.files.base import ContentFile
@@ -70,6 +72,32 @@ def _format_iban(account_number_str, bank_code_str):
         return f"CZ{checksum:02d}{code_num}{prefix_num}{body_num}"
     except Exception:
         return "CZ6508000000000123456789"
+
+
+def _qr_code_data_uri(text):
+    """
+    QR kód (QR Platba / SPAYD) jako SVG v data URI. Generuje se lokálně,
+    aby číslo účtu, částka a VS neodcházely na cizí službu.
+    """
+    qr = qrencoder.QRCode(None, qrencoder.QRErrorCorrectLevel.M)
+    qr.addData(text)
+    qr.make()
+    n = qr.getModuleCount()
+    path = ''.join(f'M{c},{r}h1v1h-1z' for r in range(n) for c in range(n) if qr.isDark(r, c))
+    svg = (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 {n + 8} {n + 8}" shape-rendering="crispEdges">'
+        f'<rect x="-4" y="-4" width="{n + 8}" height="{n + 8}" fill="#fff"/><path d="{path}" fill="#000"/></svg>'
+    )
+    return 'data:image/svg+xml;base64,' + base64.b64encode(svg.encode()).decode()
+
+
+def _safe_return_url(request, candidate, default):
+    """Návrat jen na adresu v rámci našeho webu (ochrana proti přesměrování na cizí stránku)."""
+    if candidate and url_has_allowed_host_and_scheme(
+        candidate, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ):
+        return candidate
+    return default
 
 
 def _format_price(val):
@@ -231,9 +259,7 @@ def invoice_detail_view(request, variable_symbol):
         f"X-VS:{invoice.variable_symbol or invoice.invoice_number}",
         f"MSG:Faktura {invoice.invoice_number}",
     ]
-    spayd_string = "*".join(spayd_parts)
-    encoded_spayd = urllib.parse.quote(spayd_string)
-    qr_code_url = f"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={encoded_spayd}&margin=0"
+    qr_code_url = _qr_code_data_uri("*".join(spayd_parts))
 
     formatted_items = []
     for it in invoice.items.all():
@@ -265,7 +291,9 @@ def invoice_detail_view(request, variable_symbol):
 def toggle_invoice_payment_status_view(request, invoice_id):
     """Rychlá změna stavu faktury na Uhrazeno / Neuhrazeno."""
     invoice = get_object_or_404(Invoice, id=invoice_id)
-    next_url = request.GET.get('next') or request.META.get('HTTP_REFERER') or 'invoice_list'
+    next_url = _safe_return_url(
+        request, request.GET.get('next') or request.META.get('HTTP_REFERER'), 'invoice_list'
+    )
 
     if invoice.status == InvoiceStatus.PAID:
         invoice.status = InvoiceStatus.UNPAID
@@ -501,11 +529,10 @@ def invoice_delete_view(request, invoice_id):
 
     # Zjištění kam se vrátit po smazání nebo zrušení
     default_redirect = f"/fakturace/?year={invoice.issue_date.year}&month={invoice.issue_date.month}"
-    return_url = (
-        request.POST.get('return_url') 
-        or request.GET.get('next') 
-        or request.META.get('HTTP_REFERER') 
-        or default_redirect
+    return_url = _safe_return_url(
+        request,
+        request.POST.get('return_url') or request.GET.get('next') or request.META.get('HTTP_REFERER'),
+        default_redirect,
     )
 
     if request.method == 'POST':

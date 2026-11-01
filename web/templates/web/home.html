@@ -173,6 +173,10 @@
                 <input type="hidden" name="service_type" value="PHYSICAL">
                 <input type="hidden" id="form-hours" name="estimated_hours_weekly" value="168">
                 <input type="hidden" id="form-estimate" name="calculated_estimate_czk" value="189280">
+                <!-- Past na roboty: člověk pole nevidí ani do něj neskočí tabulátorem -->
+                <div style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
+                    <input type="text" name="website" tabindex="-1" autocomplete="off">
+                </div>
 
                 <div class="form-row">
                     <input type="text" name="contact_name" placeholder="Vaše jméno *" required class="inquiry-input">

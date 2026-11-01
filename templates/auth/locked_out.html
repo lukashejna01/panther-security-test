@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+
+{% block title %}Přihlášení zablokováno - Panther Security{% endblock %}
+
+{% block content %}
+<div style="max-width: 440px; margin: 60px auto 0;">
+    <div class="card" style="padding: 36px 30px; text-align: center;">
+        <span class="brand-badge" style="margin-bottom: 12px; display: inline-block;">PŘIHLÁŠENÍ</span>
+        <h2 style="font-size: 22px; color: #fff; margin: 0;">Příliš mnoho pokusů</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 12px;">
+            Přihlášení k tomuto účtu bylo kvůli opakovaně chybnému heslu dočasně zablokováno.
+            Zkuste to znovu za 30 minut, nebo kontaktujte dispečink.
+        </p>
+    </div>
+</div>
+{% endblock %}

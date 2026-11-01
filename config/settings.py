@@ -30,7 +30,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    
+
+    # Zabezpečení: blokace hádání hesel a Content-Security-Policy
+    'axes',
+    'csp',
+
     # Naše aplikace
     'core',
     'web',
@@ -45,6 +49,15 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'core.middleware.ForcePasswordChangeMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'csp.middleware.CSPMiddleware',
+    # Musí být poslední – převádí zablokované přihlášení na stránku s hláškou
+    'axes.middleware.AxesMiddleware',
+]
+
+AUTHENTICATION_BACKENDS = [
+    # Musí být první – při zablokování odmítne přihlášení dřív, než se ověří heslo
+    'axes.backends.AxesStandaloneBackend',
+    'django.contrib.auth.backends.ModelBackend',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -131,6 +144,56 @@ SESSION_COOKIE_AGE = 60 * 60 * 10  # odhlášení po 10 hodinách (jedna směna 
 CSRF_COOKIE_SECURE = not LOCAL_DEV
 CSRF_COOKIE_HTTPONLY = True
 CSRF_TRUSTED_ORIGINS = ['https://www.panther-security.cz', 'https://panther-security.cz']
+
+# Ochrana proti hádání hesel (django-axes): 5 chybných pokusů na stejný účet
+# ze stejné IP adresy = blokace na 30 minut. Úspěšné přihlášení počítadlo nuluje.
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 0.5  # hodiny
+AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
+AXES_RESET_ON_SUCCESS = True
+AXES_CLIENT_IP_CALLABLE = 'core.client_ip.get_client_ip'
+AXES_LOCKOUT_TEMPLATE = 'auth/locked_out.html'
+
+# Administrace na nenápadné adrese – v .env nastavit např. ADMIN_URL=sprava-7f3k9/
+ADMIN_URL = os.getenv('ADMIN_URL', 'admin/')
+
+# Content-Security-Policy: prohlížeč načte skripty, styly a obrázky jen z našeho
+# webu (+ písma Google Fonts) a stránku nepůjde vložit do cizího webu.
+# 'unsafe-inline' je zatím nutné kvůli skriptům a stylům přímo v šablonách.
+CONTENT_SECURITY_POLICY = {
+    'DIRECTIVES': {
+        'default-src': ["'self'"],
+        'script-src': ["'self'", "'unsafe-inline'"],
+        'style-src': ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        'font-src': ["'self'", 'https://fonts.gstatic.com'],
+        'img-src': ["'self'", 'data:'],
+        'connect-src': ["'self'"],
+        'object-src': ["'none'"],
+        'base-uri': ["'self'"],
+        'form-action': ["'self'"],
+        'frame-ancestors': ["'none'"],
+    },
+}
+
+# Logování do error logu PythonAnywhere (Web → Log files). Bez toho se při
+# DEBUG = False chyby serveru ani bezpečnostní události nikam nezapisují.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'simple': {'format': '{asctime} {levelname} {name}: {message}', 'style': '{'},
+    },
+    'handlers': {
+        'console': {'class': 'logging.StreamHandler', 'formatter': 'simple'},
+    },
+    'loggers': {
+        'django.request': {'handlers': ['console'], 'level': 'ERROR'},
+        'django.security': {'handlers': ['console'], 'level': 'WARNING'},
+        'axes': {'handlers': ['console'], 'level': 'WARNING'},
+        'core': {'handlers': ['console'], 'level': 'INFO'},
+        'web': {'handlers': ['console'], 'level': 'INFO'},
+    },
+}
 
 # Konfigurace externích API a firemní údaje
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
