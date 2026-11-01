@@ -9,6 +9,7 @@ from decimal import Decimal
 import os
 import shutil
 import base64
+import logging
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -46,32 +47,37 @@ from core.forms import (
 )
 from core.services import extract_data_from_invoice
 
+logger = logging.getLogger(__name__)
+
+
+def _iban_is_valid(iban):
+    """Kontrolní součet IBAN (mod 97)."""
+    rearranged = iban[4:] + iban[:4]
+    return int(''.join(str(int(ch, 36)) for ch in rearranged)) % 97 == 1
+
 
 def _format_iban(account_number_str, bank_code_str):
-    """Základní formátování CZ IBAN pro platební standard SPAYD."""
-    clean_acc = str(account_number_str).replace(" ", "").replace("-", "")
-    if clean_acc.startswith("CZ"):
-        return clean_acc
+    """
+    CZ IBAN pro platební standard SPAYD z čísla účtu (s předčíslím) a kódu banky.
+    Při chybějícím nebo neplatném účtu vrací None – nikdy nedosazuje náhradní číslo,
+    aby QR platba nemohla poslat peníze na cizí účet.
+    """
+    account = str(account_number_str or '').replace(' ', '')
+    if account.upper().startswith('CZ'):
+        iban = account.upper()
+        return iban if len(iban) == 24 and iban[2:].isdigit() and _iban_is_valid(iban) else None
 
-    bank_code = str(bank_code_str).strip() or "0800"
-    account = str(account_number_str).strip() or "123456789"
+    bank_code = str(bank_code_str or '').strip()
+    prefix, _, body = account.rpartition('-')
+    prefix = prefix or '0'
+    if not (prefix.isdigit() and body.isdigit() and bank_code.isdigit()):
+        return None
+    if len(prefix) > 6 or len(body) > 10 or len(bank_code) != 4:
+        return None
 
-    prefix = "0"
-    acc_body = account
-    if "-" in account:
-        parts = account.split("-")
-        prefix = parts[0]
-        acc_body = parts[1]
-
-    try:
-        prefix_num = f"{int(prefix):06d}"
-        body_num = f"{int(acc_body):010d}"
-        code_num = f"{int(bank_code):04d}"
-        numeric_iban = f"{code_num}{prefix_num}{body_num}123500"
-        checksum = 98 - (int(numeric_iban) % 97)
-        return f"CZ{checksum:02d}{code_num}{prefix_num}{body_num}"
-    except Exception:
-        return "CZ6508000000000123456789"
+    bban = f"{bank_code}{int(prefix):06d}{int(body):010d}"
+    checksum = 98 - int(f"{bban}123500") % 97
+    return f"CZ{checksum:02d}{bban}"
 
 
 def _qr_code_data_uri(text):
@@ -226,12 +232,14 @@ def invoice_detail_view(request, variable_symbol):
     if not invoice:
         raise Http404("Faktura nebyla nalezena.")
 
-    bank_account = getattr(settings, 'COMPANY_BANK_ACCOUNT', '352412682/0800')
-    bank_code = getattr(settings, 'COMPANY_BANK_CODE', '0800')
-    if '/' in bank_account:
-        acc_part, bank_code = bank_account.split('/')
-    else:
-        acc_part = bank_account
+    acc_part = settings.COMPANY_BANK_ACCOUNT.strip()
+    bank_code = settings.COMPANY_BANK_CODE.strip()
+    if '/' in acc_part:
+        acc_part, bank_code = (p.strip() for p in acc_part.split('/', 1))
+    iban = _format_iban(acc_part, bank_code)
+    if not iban:
+        logger.warning("Faktura %s: chybí nebo je neplatný COMPANY_BANK_ACCOUNT / COMPANY_BANK_CODE v .env", invoice.invoice_number)
+        messages.error(request, "Bankovní účet firmy není v .env nastavený správně – faktura je bez platebních údajů a QR kódu. Neodesílejte ji klientovi.")
 
     company = {
         'name': getattr(settings, 'COMPANY_NAME', 'Panther Security s.r.o.'),
@@ -240,9 +248,9 @@ def invoice_detail_view(request, variable_symbol):
         'street': getattr(settings, 'COMPANY_STREET', 'Varšavská 715/36'),
         'city': getattr(settings, 'COMPANY_CITY', 'Praha 2'),
         'zip': getattr(settings, 'COMPANY_ZIP', '120 00'),
-        'bank_account': bank_account,
+        'bank_account': acc_part,
         'bank_code': bank_code,
-        'iban': _format_iban(acc_part, bank_code),
+        'iban': iban,
         'contact_person': 'Lukáš Hejna',
         'contact_role': 'Jednatel společnosti',
         'contact_phone': '+420 608 255 197',
@@ -259,7 +267,7 @@ def invoice_detail_view(request, variable_symbol):
         f"X-VS:{invoice.variable_symbol or invoice.invoice_number}",
         f"MSG:Faktura {invoice.invoice_number}",
     ]
-    qr_code_url = _qr_code_data_uri("*".join(spayd_parts))
+    qr_code_url = _qr_code_data_uri("*".join(spayd_parts)) if iban else None
 
     formatted_items = []
     for it in invoice.items.all():

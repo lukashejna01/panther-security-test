@@ -318,8 +318,12 @@
 
                 <div style="font-size: 12px; line-height: 1.5; color: #334155;">
                     <strong style="display: block; color: #0f172a; margin-bottom: 2px;">Platební údaje:</strong>
-                    Účet: <strong>{{ company.bank_account|default:"352412682" }}{% if company.bank_code %}/{{ company.bank_code }}{% endif %}</strong><br>
-                    IBAN: <strong>{{ company.iban|default:"CZ780300000000352412682" }}</strong><br>
+                    {% if company.iban %}
+                    Účet: <strong>{{ company.bank_account }}/{{ company.bank_code }}</strong><br>
+                    IBAN: <strong>{{ company.iban }}</strong><br>
+                    {% else %}
+                    <strong style="color: #dc2626;">⚠️ Bankovní účet není nastavený</strong><br>
+                    {% endif %}
                     VS: <strong>{{ invoice.variable_symbol|default:invoice.invoice_number }}</strong>
                 </div>
             </div>
