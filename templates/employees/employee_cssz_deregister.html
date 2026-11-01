@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}Odhláška z ČSSZ: {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 820px; margin: 0 auto;">
+    <a href="{% url 'employee_detail' employee.id %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 12px;">← Zpět na kartu</a>
+    <h1 style="font-size: 24px; color: #fff; margin: 0 0 4px;">🏛️ Odhláška z ČSSZ</h1>
+    <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 6px;">
+        {{ employee.full_name }} &bull; {{ employee.get_contract_type_display }} &bull;
+        nástup {{ employee.start_employment_date|date:"d.m.Y" }} &bull;
+        <strong style="color: #fff;">skončení {{ employee.termination_date|date:"d.m.Y" }}</strong>
+        {% if employee.termination_type %}({{ employee.get_termination_type_display }}){% endif %}
+    </p>
+    <div style="margin-bottom: 18px;">
+        {% if status.state == 'done' %}<span class="badge-tag green">✅ {{ status.text }}</span>
+        {% elif status.state == 'ok' or status.state == 'wait' %}<span class="badge-tag blue">⏳ {{ status.text }}</span>
+        {% elif status.state == 'warn' %}<span class="badge-tag yellow">⚠️ {{ status.text }}</span>
+        {% else %}<span class="badge-tag red">🚨 {{ status.text }}</span>{% endif %}
+        {% if isds_environment == 'prod' %}
+            <span class="badge-tag green">Datová schránka: OSTRÉ prostředí (ČSSZ {{ cssz_databox }})</span>
+        {% else %}
+            <span class="badge-tag yellow">🧪 Datová schránka: TESTOVACÍ prostředí (ČSSZ {{ cssz_databox }})</span>
+        {% endif %}
+    </div>
+
+    {% if problems %}
+    <div class="card" style="border-color: rgba(239, 68, 68, 0.5); margin-bottom: 18px;">
+        <strong style="color: #fca5a5; font-size: 14px;">Odhlášku zatím nejde podat:</strong>
+        <ul style="color: #fca5a5; font-size: 13px; margin: 8px 0 0; padding-left: 20px; line-height: 1.6;">
+            {% for problem in problems %}<li>{{ problem }}</li>{% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    <form method="post" class="card">
+        {% csrf_token %}
+
+        <h3 style="font-size: 14px; color: var(--panther-yellow); margin: 0 0 6px;">Identifikace u ČSSZ</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin: 0 0 10px;">
+            Obojí přidělila ČSSZ při přihlášce a je v jejím protokolu. U přihlášek odeslaných z aplikace se doplní samo.
+        </p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px;">
+            {% for field in form %}{% if field.name == 'ikmpsv' or field.name == 'job_id' %}
+            <div class="form-group">
+                <label>{{ field.label }}</label>
+                {{ field }}
+                {% for err in field.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ err }}</div>{% endfor %}
+            </div>
+            {% endif %}{% endfor %}
+        </div>
+
+        <h3 style="font-size: 14px; color: var(--panther-yellow); margin: 0 0 6px;">Podklady pro úřad práce (podpora v nezaměstnanosti)</h3>
+        <p style="color: var(--text-muted); font-size: 12px; margin: 0 0 12px; line-height: 1.5;">
+            Údaje jsou předvyplněné odhadem ze schválených směn v aplikaci.
+            <strong style="color: #fde68a;">Před odesláním je zkontrolujte s tím, kdo vede mzdy</strong> –
+            průměrný výdělek se počítá z hrubé mzdy za předchozí kalendářní čtvrtletí.
+        </p>
+
+        <label style="display: flex; gap: 10px; align-items: flex-start; font-size: 13px; color: #e2e8f0; margin-bottom: 16px; cursor: pointer;">
+            {{ form.no_insurance }}
+            <span>{{ form.no_insurance.label }}<br>
+                <span style="color: var(--text-muted); font-size: 12px;">Pak se podklady pro úřad práce nevyplňují (důvod neposkytnutí podkladů 2).
+                {% if suggestion.no_insurance %}Podle směn v aplikaci zaměstnanec v žádném měsíci nedosáhl limitu pro účast na pojištění.{% endif %}</span>
+            </span>
+        </label>
+
+        <div id="unemployment-fields">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 15px; margin-bottom: 15px;">
+                {% for field in form %}{% if field.name == 'reason' or field.name == 'avg_net' %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                    {% for err in field.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ err }}</div>{% endfor %}
+                </div>
+                {% endif %}{% endfor %}
+            </div>
+
+            <div class="form-group" style="margin-bottom: 18px;">
+                <label>{{ form.periods.label }}</label>
+                {{ form.periods }}
+                <div style="color: var(--text-muted); font-size: 12px; margin-top: 4px;">{{ form.periods.help_text }} U DPP a DPČ jen měsíce, kdy výdělek založil účast na pojištění.</div>
+                {% for err in form.periods.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ err }}</div>{% endfor %}
+            </div>
+
+            <h4 style="font-size: 13px; color: #e2e8f0; margin: 0 0 8px;">Odchodné / odstupné</h4>
+            <p style="color: var(--text-muted); font-size: 12px; margin: 0 0 10px;">Povinné jen u organizačních a zdravotních důvodů (§ 52 písm. a–e ZP).</p>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 20px;">
+                {% for field in form %}{% if field.name == 'severance_belongs' or field.name == 'severance_type' or field.name == 'severance_amount' or field.name == 'severance_paid_full' %}
+                <div class="form-group">
+                    <label>{{ field.label }}</label>
+                    {{ field }}
+                    {% for err in field.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ err }}</div>{% endfor %}
+                </div>
+                {% endif %}{% endfor %}
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button type="submit" name="download" class="btn btn-secondary" style="flex: 1 1 200px;">⬇️ Zkontrolovat a stáhnout XML</button>
+            {% if isds_configured and status.state != 'done' %}
+            <button type="submit" name="send" class="btn btn-primary" style="flex: 1 1 200px;"
+                    onclick="return confirm('{% if isds_environment == 'prod' %}Odeslat odhlášku {{ employee.full_name|escapejs }} na ČSSZ (OSTRÉ podání)?{% else %}Odeslat TEST odhlášky do testovací schránky ČSSZ?{% endif %}');">
+                📤 {% if isds_environment == 'prod' %}Odeslat na ČSSZ datovou schránkou{% else %}Odeslat TEST na ČSSZ{% endif %}
+            </button>
+            {% endif %}
+        </div>
+    </form>
+</div>
+
+<script>
+(function () {
+    const box = document.getElementById('id_no_insurance');
+    const fields = document.getElementById('unemployment-fields');
+    function sync() { fields.style.display = box.checked ? 'none' : ''; }
+    box.addEventListener('change', sync);
+    sync();
+})();
+</script>
+{% endblock %}

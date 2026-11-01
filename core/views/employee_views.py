@@ -18,7 +18,7 @@ from django.views.decorators.http import require_POST
 from core.decorators import role_required
 from core.models import Employee, SystemRole
 from core.forms import EmployeeArchiveForm
-from core.forms.employee_forms import EmployeeCsszDataForm
+from core.forms.employee_forms import CsszDeregistrationForm, EmployeeCsszDataForm, format_periods
 from core.services import (
     RegzecDataError,
     build_regzec_xml,
@@ -29,6 +29,8 @@ from core.services import (
     store_termination_pdf,
 )
 from core.services.contract_pdf import NOTICE_PERIOD_DAYS
+from core.services.cssz import ACTIVITY_CODES, build_deregistration_xml, check_deregistration_data
+from core.services.cssz_deregistration import deregistration_suggestions
 from .auth_views import generate_password, pop_new_credentials, remember_new_credentials
 from core.services.cssz_submit import (
     IsdsError,
@@ -36,6 +38,7 @@ from core.services.cssz_submit import (
     cssz_databox,
     isds_configured,
     isds_environment,
+    submit_deregistration,
     submit_regzec,
 )
 
@@ -88,6 +91,7 @@ def employee_detail_view(request, employee_id):
         'isds_configured': isds_configured(),
         'isds_environment': isds_environment(),
         'cssz_databox': cssz_databox(isds_environment()),
+        'show_cssz_deregistration': bool(employee.termination_date) and employee.contract_type in ACTIVITY_CODES,
         'new_credentials': pop_new_credentials(request, employee),
         'can_reset_password': _can_reset_password(request.user, employee),
     }
@@ -353,6 +357,72 @@ def employee_cssz_protocol_view(request, employee_id, submission_id):
 
 @login_required
 @role_required([SystemRole.MANAGER, SystemRole.OWNER])
+def employee_cssz_deregister_view(request, employee_id):
+    """
+    Odhláška zaměstnance z ČSSZ (REGZEC akce 2) po skončení zaměstnání.
+    Formulář se předvyplní z dat aplikace; tlačítko „download“ vrátí XML ke kontrole,
+    „send“ ho odešle datovou schránkou. OIČ a ID zaměstnání se uloží ke kartě.
+    """
+    employee = get_object_or_404(Employee, id=employee_id)
+    if not employee.termination_date:
+        messages.error(request, "Zaměstnanec nemá ukončený poměr – nejdřív ukončete pracovní poměr.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    suggestion = deregistration_suggestions(employee)
+    initial = {**suggestion, 'periods': format_periods(suggestion['periods'])}
+    form = CsszDeregistrationForm(request.POST or None, initial=initial)
+    environment = isds_environment()
+    test = environment == 'test' and bool(getattr(settings, 'CSSZ_TEST_VS', ''))
+    problems = []
+
+    if request.method == 'POST' and form.is_valid():
+        data = form.cleaned_data
+        # Identifikátory od ČSSZ si zapamatujeme, i když podání zatím neprojde kontrolou
+        if (data['ikmpsv'], data['job_id']) != (employee.cssz_ikmpsv, employee.cssz_job_id):
+            employee.cssz_ikmpsv, employee.cssz_job_id = data['ikmpsv'], data['job_id']
+            employee.save(update_fields=['cssz_ikmpsv', 'cssz_job_id'])
+
+        problems = check_deregistration_data(employee, data, test=test)
+        if not problems and 'download' in request.POST:
+            xml_bytes, year = build_deregistration_xml(employee, data, test=test)
+            response = HttpResponse(xml_bytes, content_type='application/xml')
+            filename = f"REGZEC{year % 100}_odhlaska_{employee.personal_number or employee.id}.xml"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+
+        if not problems and 'send' in request.POST:
+            if environment == 'prod' and employee.is_deregistered_cssz:
+                messages.warning(request, f"{employee.full_name} už je z ČSSZ odhlášen(a). Podání se znovu neodeslalo.")
+                return redirect('employee_detail', employee_id=employee.id)
+            try:
+                submission = submit_deregistration(employee, data, user=request.user)
+            except RegzecDataError as e:
+                problems = e.problems
+            except IsdsError as e:
+                messages.error(request, f"Odeslání na ČSSZ se nepovedlo: {e}")
+            else:
+                if environment == 'prod':
+                    messages.success(request, f"Odhláška {employee.full_name} odeslána na ČSSZ (datová zpráva {submission.dm_id}). "
+                                              "Protokol od ČSSZ přijde do datové schránky.")
+                else:
+                    messages.success(request, f"TEST: odhláška odeslána do testovací schránky ČSSZ {submission.recipient_box} "
+                                              f"(datová zpráva {submission.dm_id}). Za pár minut zkontrolujte odpověď ČSSZ.")
+                return redirect('employee_detail', employee_id=employee.id)
+
+    return render(request, 'employees/employee_cssz_deregister.html', {
+        'employee': employee,
+        'form': form,
+        'problems': problems,
+        'status': employee.cssz_deregistration_status,
+        'suggestion': suggestion,
+        'isds_configured': isds_configured(),
+        'isds_environment': environment,
+        'cssz_databox': cssz_databox(environment),
+    })
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
 def archive_employee_view(request, employee_id):
     """
     Ukončení pracovního poměru: uloží způsob a datum ukončení, vygeneruje výpověď / dohodu
@@ -394,6 +464,12 @@ def archive_employee_view(request, employee_id):
                 f"Poměr zaměstnance {employee.full_name} končí dnem {employee.termination_date:%d.%m.%Y}. "
                 f"Přesunut do archivu."
             )
+            if employee.contract_type in ACTIVITY_CODES:
+                messages.warning(
+                    request,
+                    f"🏛️ Odhlaste zaměstnance z ČSSZ do {employee.cssz_deregistration_deadline:%d.%m.%Y} "
+                    f"(do 8 dnů od skončení) – na kartě zaměstnance v archivu."
+                )
             archive_url = reverse('employees_archive_list')
             if wants_json:
                 return JsonResponse({'ok': True, 'redirect': archive_url, 'document': document_url})

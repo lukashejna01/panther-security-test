@@ -3,11 +3,15 @@ Formuláře pro onboarding zaměstnanců z dokladů totožnosti,
 editaci profilů a archivaci ukončených pracovních poměrů.
 """
 
+import re
+from datetime import date
+
 from django import forms
 from django.utils import timezone
 
 from core.models import Employee
 from core.services.contract_pdf import compute_termination_date
+from core.services.cssz import TERMINATION_REASONS
 
 
 class IDCardUploadForm(forms.Form):
@@ -66,6 +70,90 @@ class EmployeeCsszDataForm(forms.ModelForm):
 
     def clean_citizenship(self):
         return (self.cleaned_data.get('citizenship') or 'CZ').upper()
+
+
+def format_periods(periods):
+    """Období pojištění [(od, do)] jako text do formuláře – jedno na řádek."""
+    return '\n'.join(f"{start:%d.%m.%Y} – {stop:%d.%m.%Y}" for start, stop in periods)
+
+
+class CsszDeregistrationForm(forms.Form):
+    """
+    Odhláška zaměstnance z ČSSZ (REGZEC akce 2) včetně podkladů pro úřad práce.
+    Kontrolu podmínek ČSSZ dělá check_deregistration_data(); tady jen převod vstupů.
+    """
+    SEVERANCE_BELONGS_CHOICES = [('', '– neuvádí se –'), ('N', 'Nenáleží'), ('A', 'Náleží')]
+    YES_NO_CHOICES = [('', '–'), ('A', 'Ano'), ('N', 'Ne')]
+    SEVERANCE_TYPE_CHOICES = [
+        ('severance', 'Odstupné podle § 67 odst. 1 ZP'),
+        ('replacement', 'Jednorázová náhrada při skončení PP (§ 271ca ZP)'),
+    ]
+
+    ikmpsv = forms.CharField(
+        label="OIČ (IK MPSV)", max_length=10, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'inputmode': 'numeric', 'placeholder': '10 číslic'}),
+    )
+    job_id = forms.CharField(
+        label="ID zaměstnání (ID PPV)", max_length=22, required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'inputmode': 'numeric'}),
+    )
+    no_insurance = forms.BooleanField(
+        label="Zaměstnání nezaložilo účast na pojištění (např. DPP pod limitem) nebo pobírá starobní důchod",
+        required=False,
+    )
+    reason = forms.ChoiceField(
+        label="Důvod ukončení pracovněprávního vztahu", required=False,
+        choices=[('', '– vyberte –')] + TERMINATION_REASONS,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    avg_net = forms.IntegerField(
+        label="Průměrný měsíční čistý (pravděpodobný) výdělek (Kč)", required=False, min_value=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': 1}),
+    )
+    periods = forms.CharField(
+        label="Doby důchodového pojištění za posledních 24 měsíců", required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 3, 'placeholder': '01.04.2026 – 31.10.2026'}),
+        help_text="Jedno období na řádek ve tvaru 01.04.2026 – 31.10.2026.",
+    )
+    severance_belongs = forms.ChoiceField(
+        label="Odchodné / odstupné", required=False, choices=SEVERANCE_BELONGS_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    severance_type = forms.ChoiceField(
+        label="Druh", required=False, choices=SEVERANCE_TYPE_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+    severance_amount = forms.IntegerField(
+        label="Částka zúčtovaná k výplatě (Kč)", required=False, min_value=0,
+        widget=forms.NumberInput(attrs={'class': 'form-control', 'step': 1}),
+    )
+    severance_paid_full = forms.ChoiceField(
+        label="Vyplaceno v plné výši", required=False, choices=YES_NO_CHOICES,
+        widget=forms.Select(attrs={'class': 'form-control'}),
+    )
+
+    _PERIOD = re.compile(r'^\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\s*[-–—]\s*(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\s*$')
+
+    def clean_ikmpsv(self):
+        return re.sub(r'\D', '', self.cleaned_data.get('ikmpsv') or '')
+
+    def clean_job_id(self):
+        return re.sub(r'\D', '', self.cleaned_data.get('job_id') or '')
+
+    def clean_periods(self):
+        periods = []
+        for line in (self.cleaned_data.get('periods') or '').splitlines():
+            if not line.strip():
+                continue
+            match = self._PERIOD.match(line)
+            if not match:
+                raise forms.ValidationError(f"Řádek „{line.strip()}“ není ve tvaru 01.04.2026 – 31.10.2026.")
+            d1, m1, y1, d2, m2, y2 = (int(x) for x in match.groups())
+            try:
+                periods.append((date(y1, m1, d1), date(y2, m2, d2)))
+            except ValueError:
+                raise forms.ValidationError(f"Řádek „{line.strip()}“ obsahuje neexistující datum.")
+        return periods
 
 
 class EmployeeOnboardingForm(forms.ModelForm):

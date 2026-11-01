@@ -5,6 +5,7 @@ Osobní údaje z OP, vazba na uživatelský účet, zdravotní pojišťovna,
 """
 
 import secrets
+from datetime import timedelta
 
 from django.db import models
 from django.contrib.auth.models import User
@@ -243,6 +244,27 @@ class Employee(models.Model):
         blank=True,
         verbose_name="Datum odeslání na ČSSZ"
     )
+    # Identifikátory, které ČSSZ přidělí při přihlášce (vrací je v protokolu) –
+    # bez nich nejde podat odhlášku ani změnu
+    cssz_ikmpsv = models.CharField(
+        max_length=10,
+        blank=True,
+        verbose_name="OIČ (IK MPSV)"
+    )
+    cssz_job_id = models.CharField(
+        max_length=22,
+        blank=True,
+        verbose_name="ID zaměstnání (ID PPV)"
+    )
+    is_deregistered_cssz = models.BooleanField(
+        default=False,
+        verbose_name="Odhlášeno z ČSSZ"
+    )
+    deregistered_cssz_date = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Datum odeslání odhlášky na ČSSZ"
+    )
 
     # Bankovní spojení pro výplaty
     bank_account = models.CharField(max_length=50, blank=True, verbose_name="Číslo bankovního účtu")
@@ -347,6 +369,42 @@ class Employee(models.Model):
         if days == 0:
             return {'state': 'today', 'text': "Nahlásit dnes – před nástupem do práce", 'days': 0}
         return {'state': 'late', 'text': f"Po lhůtě {-days} {_czech_days(-days)}", 'days': days}
+
+    @property
+    def cssz_deregistration_deadline(self):
+        """Odhláška z ČSSZ (REGZEC akce 2) do 8 dnů ode dne skončení zaměstnání."""
+        return self.termination_date + timedelta(days=8) if self.termination_date else None
+
+    @property
+    def cssz_deregistration_status(self):
+        """
+        Stav odhlášky z ČSSZ. state: done, wait (zaměstnání ještě neskončilo – odhlásit
+        lze až po skončení), ok, warn, today, late, none (poměr není ukončený)
+        """
+        if self.is_deregistered_cssz:
+            when = timezone.localtime(self.deregistered_cssz_date).strftime('%d.%m.%Y') if self.deregistered_cssz_date else ''
+            return {'state': 'done', 'text': f"Odhlášeno {when}".strip(), 'days': None}
+        if not self.termination_date:
+            return {'state': 'none', 'text': "Poměr není ukončený", 'days': None}
+
+        today = timezone.localdate()
+        deadline = self.cssz_deregistration_deadline
+        if today < self.termination_date:
+            return {
+                'state': 'wait',
+                'text': f"Odhlásit od {self.termination_date:%d.%m.%Y} do {deadline:%d.%m.%Y}",
+                'days': (deadline - today).days,
+            }
+        days = (deadline - today).days
+        if days > 0:
+            return {
+                'state': 'ok' if days > 3 else 'warn',
+                'text': f"Odhlásit do {deadline:%d.%m.%Y} (zbývá {days} {_czech_days(days)})",
+                'days': days,
+            }
+        if days == 0:
+            return {'state': 'today', 'text': "Odhlásit dnes – poslední den lhůty", 'days': 0}
+        return {'state': 'late', 'text': f"Odhláška po lhůtě {-days} {_czech_days(-days)}", 'days': days}
 
     def save(self, *args, **kwargs):
         if not self.personal_number:

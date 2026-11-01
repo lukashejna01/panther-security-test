@@ -1,5 +1,6 @@
 """
-Registrace zaměstnance na ČSSZ – podání REGZEC (akce 1 = nástup do zaměstnání).
+Registrace zaměstnance na ČSSZ – podání REGZEC (akce 1 = nástup do zaměstnání,
+akce 2 = skončení zaměstnání / odhláška).
 
 Od 1. 4. 2026 nahradilo podání REGZEC tiskopis ONZ. Podle data nástupu se použije:
 - REGZEC 2025 (namespace .../REGZEC/2025) pro nástupy do 31. 12. 2026,
@@ -254,3 +255,186 @@ def validate_regzec_xml(xml_bytes, year):
     if schema.validate(document):
         return []
     return [f"řádek {err.line}: {err.message}" for err in schema.error_log]
+
+# ---------------------------------------------------------------------------
+# Odhláška zaměstnance – REGZEC akce 2 (skončení zaměstnání)
+# Zdroj: Všeobecné zásady pro vyplňování Registrace zaměstnance (od 1. 7. 2026)
+# a vzory REGZEC_Akce2_*.xml z developers.mpsv.cz.
+# ---------------------------------------------------------------------------
+
+DEREGISTRATION_DAYS = 8         # odhlásit do 8 dnů ode dne skončení zaměstnání
+
+# Číselník C_DUVUKPRACVZT – důvod ukončení pracovněprávního vztahu (pro úřad práce)
+TERMINATION_REASONS = [
+    ('1', 'Ukončení PP cizince či osoby bez státní příslušnosti (§ 48 odst. 3 ZP)'),
+    ('2', 'Dohodou se zaměstnavatelem (§ 49 ZP)'),
+    ('3', 'Výpověď ze strany zaměstnance (§ 50 odst. 3 ZP)'),
+    ('4', 'Organizační důvod (§ 52 písm. a–c ZP)'),
+    ('5', 'Zdravotní důvody (§ 52 písm. d, e, § 56 odst. 1 písm. a ZP)'),
+    ('6', 'Nesplňuje předpoklady nebo požadavky pro výkon práce (§ 52 písm. f ZP)'),
+    ('7', 'Porušení povinností zvlášť hrubým způsobem (§ 52 písm. g, § 55 odst. 1 písm. b ZP)'),
+    ('8', 'Soustavné méně závažné porušování povinností (§ 52 písm. g ZP)'),
+    ('9', 'Porušení režimu dočasně práce neschopného zvlášť hrubým způsobem (§ 52 písm. h ZP)'),
+    ('10', 'Okamžité zrušení – pravomocné odsouzení za úmyslný trestný čin (§ 55 odst. 1 písm. a ZP)'),
+    ('11', 'Porušení podstatné povinnosti zaměstnavatelem (§ 56 odst. 1 písm. b ZP)'),
+    ('12', 'Uplynutí doby určité (§ 65 ZP)'),
+    ('13', 'Ve zkušební době zaměstnavatelem (§ 66 ZP)'),
+    ('14', 'Ve zkušební době zaměstnancem (§ 66 ZP)'),
+    ('15', 'Ostatní'),
+]
+# U organizačních a zdravotních důvodů je povinný údaj, zda náleží odstupné
+SEVERANCE_REQUIRED_REASONS = {'4', '5'}
+# Druh odstupného – atribut v XML podle verze schématu (2027 přejmenovalo odstupné)
+SEVERANCE_ATTRS = {
+    2025: {'severance': 'goldenhandshake', 'replacement': 'replacement'},
+    2027: {'severance': 'severencebenefit', 'replacement': 'replacement'},
+}
+
+_PROTOCOL_ITEM = re.compile(r'<Item\b[^>]*\bsqnr="1"[^>]*>')
+_PROTOCOL_IDENTIFIER = re.compile(r'\bidentifier="(\d*);(\d*);(\d*)"')
+
+
+def parse_protocol_identifiers(protocol_xml):
+    """
+    Z protokolu ČSSZ k podání REGZEC vytáhne identifikátory zaměstnance.
+    Položka Item má atribut identifier ve tvaru „rodné_číslo;IK_MPSV;ID_PPV“.
+    Vrací {'birth_number', 'ikmpsv', 'job_id'} (prázdné řetězce, když chybí).
+    """
+    empty = {'birth_number': '', 'ikmpsv': '', 'job_id': ''}
+    item = _PROTOCOL_ITEM.search(protocol_xml or '')
+    match = _PROTOCOL_IDENTIFIER.search(item.group(0)) if item else None
+    if not match:
+        return empty
+    return {'birth_number': match.group(1), 'ikmpsv': match.group(2), 'job_id': match.group(3)}
+
+
+def check_deregistration_data(employee, data, test=False, today=None):
+    """
+    Kontrola údajů pro odhlášku. `data` je slovník z formuláře odhlášky:
+    ikmpsv, job_id, no_insurance, reason, avg_net, periods [(od, do)],
+    severance_belongs ('A'/'N'/''), severance_type, severance_amount, severance_paid_full ('A'/'N'/'').
+    Vrací seznam problémů česky (prázdný = lze podat).
+    """
+    from django.utils import timezone
+
+    today = today or timezone.localdate()
+    company = employer_values(test)
+    problems = []
+
+    if len(company['vs']) != 10:
+        problems.append("Testovací variabilní symbol není nastavený (CSSZ_TEST_VS)." if test
+                        else "Variabilní symbol zaměstnavatele musí mít 10 číslic (COMPANY_CSSZ_VS).")
+    if len(company['dep']) != 3:
+        problems.append("Kód okresní správy sociálního zabezpečení musí mít 3 číslice (COMPANY_CSSZ_DEP).")
+    if employee.contract_type not in ACTIVITY_CODES:
+        problems.append(f"Typ smlouvy {employee.get_contract_type_display()} se na ČSSZ nehlásí jako zaměstnanec.")
+
+    if len(_digits(data.get('ikmpsv'))) != 10:
+        problems.append("OIČ (IK MPSV) musí mít 10 číslic – najdete ho v protokolu ČSSZ k přihlášce.")
+    if not 1 <= len(_digits(data.get('job_id'))) <= 22:
+        problems.append("Chybí ID zaměstnání (ID PPV) – najdete ho v protokolu ČSSZ k přihlášce.")
+
+    end = employee.termination_date
+    if not end:
+        problems.append("Zaměstnanec nemá zadané datum skončení zaměstnání.")
+    elif end > today:
+        problems.append(f"Odhlášku lze podat až po skončení zaměstnání, tedy od {end:%d.%m.%Y}.")
+    elif employee.start_employment_date and end < employee.start_employment_date:
+        problems.append("Datum skončení je dřív než datum nástupu.")
+
+    if data.get('no_insurance'):
+        return problems  # jen důvod neposkytnutí podkladů 2, nic dalšího se nevyplňuje
+
+    reason = str(data.get('reason') or '')
+    if reason not in dict(TERMINATION_REASONS):
+        problems.append("Vyberte důvod ukončení pracovněprávního vztahu.")
+    avg_net = data.get('avg_net')
+    if avg_net in (None, '') or int(avg_net) <= 0:
+        problems.append("Zadejte průměrný měsíční čistý (pravděpodobný) výdělek v celých korunách.")
+
+    periods = data.get('periods') or []
+    if not periods:
+        problems.append("Zadejte aspoň jedno období důchodového pojištění (za posledních 24 měsíců).")
+    for start, stop in periods:
+        if start > stop:
+            problems.append(f"Období {start:%d.%m.%Y} – {stop:%d.%m.%Y} má začátek po konci.")
+        elif end and stop > end:
+            problems.append(f"Období {start:%d.%m.%Y} – {stop:%d.%m.%Y} končí až po skončení zaměstnání.")
+        elif employee.start_employment_date and start < employee.start_employment_date:
+            problems.append(f"Období od {start:%d.%m.%Y} začíná před nástupem do zaměstnání.")
+
+    belongs = data.get('severance_belongs') or ''
+    if reason in SEVERANCE_REQUIRED_REASONS and belongs not in ('A', 'N'):
+        problems.append("U organizačních a zdravotních důvodů vyberte, zda náleží odstupné.")
+    if belongs == 'A':
+        if data.get('severance_paid_full') not in ('A', 'N'):
+            problems.append("Vyberte, zda bylo odstupné vyplaceno v plné výši.")
+        amount = data.get('severance_amount')
+        if amount in (None, '') or int(amount) <= 0:
+            problems.append("Zadejte částku odstupného (zúčtovanou k výplatě) v celých korunách.")
+    return problems
+
+
+def build_deregistration_xml(employee, data, test=False, today=None):
+    """
+    Sestaví odhlášku (REGZEC akce 2) a ověří ji proti XSD.
+    Vrací (xml_bytes, rok_schematu). Při chybějících údajích vyhodí RegzecDataError.
+    """
+    from django.utils import timezone
+
+    today = today or timezone.localdate()
+    problems = check_deregistration_data(employee, data, test=test, today=today)
+    if problems:
+        raise RegzecDataError(problems)
+
+    company = employer_values(test)
+    year = schema_year_for(employee.termination_date)
+    ns = SCHEMAS[year]['ns']
+
+    def el(parent, tag, **attrs):
+        node = SubElement(parent, tag)
+        for key, value in attrs.items():
+            if value not in (None, ''):
+                node.set(key, str(value))
+        return node
+
+    root = Element('REGZEC', {'xmlns': ns, 'version': DATA_VERSION})
+    el(root, 'VENDOR', productName='Panther Security IS', productVersion='1.0')
+    el(root, 'SENDER', VerzeProtokolu='2.0')
+    employees = SubElement(root, 'employees')
+    employee_node = el(employees, 'employee', sqnr=1, dep=company['dep'], act=2, dat=today.isoformat())
+
+    el(employee_node, 'client', ikmpsv=_digits(data['ikmpsv']))
+    el(employee_node, 'comp', vs=company['vs'], nam=company['name'])
+    el(employee_node, 'job',
+       oid=_digits(data['job_id']),
+       rel=ACTIVITY_CODES[employee.contract_type],
+       relDetail=1,
+       to=employee.termination_date.isoformat(),
+       endbydeath='N')
+
+    if data.get('no_insurance'):
+        # Zaměstnání nezaložilo účast na pojištění (např. DPP pod limitem) – jen důvod 2
+        el(employee_node, 'unemplcomp', rsn=2)
+    else:
+        attrs = {
+            'typeempl': 1,  # pracovněprávní vztah (ne služební poměr)
+            'avgmonear': int(data['avg_net']),
+            'rsnterempl': data['reason'],
+        }
+        if data.get('severance_belongs') in ('A', 'N'):
+            attrs['belong'] = data['severance_belongs']
+        if data.get('severance_belongs') == 'A':
+            attrs['fullpay'] = data['severance_paid_full']
+            attr_name = SEVERANCE_ATTRS[year][data.get('severance_type') or 'severance']
+            attrs[attr_name] = int(data['severance_amount'])
+        unemployment = el(employee_node, 'unemplcomp', **attrs)
+        for start, stop in data['periods']:
+            el(unemployment, 'pensionperiod', fro=start.isoformat(), to=stop.isoformat())
+
+    xml_bytes = b'<?xml version="1.0" encoding="UTF-8"?>\n' + tostring(root, encoding='utf-8')
+
+    errors = validate_regzec_xml(xml_bytes, year)
+    if errors:
+        raise RegzecDataError(["XML neprošlo kontrolou schématu ČSSZ: " + e for e in errors])
+    return xml_bytes, year

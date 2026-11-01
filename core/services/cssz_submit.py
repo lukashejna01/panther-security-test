@@ -1,5 +1,5 @@
 """
-Odeslání podání REGZEC na ČSSZ datovou schránkou a dohledání protokolu, který ČSSZ vrátí.
+Odeslání podání REGZEC (přihláška i odhláška) na ČSSZ datovou schránkou a dohledání protokolu, který ČSSZ vrátí.
 
 Protokol přichází jako nová datová zpráva od ČSSZ (ze stejné schránky, kam jsme podání poslali)
 s přílohami XML a HTML. Přiřadíme ho k podání podle ID naší zprávy, pokud ho protokol obsahuje,
@@ -8,7 +8,7 @@ jinak k nejstaršímu podání téže schránky, které na odpověď ještě če
 
 from datetime import datetime, timedelta
 
-from .cssz import build_regzec_xml
+from .cssz import build_deregistration_xml, build_regzec_xml, parse_protocol_identifiers
 from .isds import IsdsError, client_from_settings
 
 
@@ -76,6 +76,70 @@ def submit_regzec(employee, user=None):
     return submission
 
 
+def submit_deregistration(employee, data, user=None):
+    """
+    Odešle odhlášku zaměstnance (REGZEC akce 2) na ČSSZ a uloží záznam o podání.
+    V ostrém prostředí označí zaměstnance jako odhlášeného. `data` viz check_deregistration_data.
+    Vyhazuje RegzecDataError (chybějící údaje) nebo IsdsError (datová schránka).
+    """
+    from django.utils import timezone
+    from core.models import CsszSubmission
+
+    environment = isds_environment()
+    use_test_vs = environment == 'test' and bool(getattr(_settings(), 'CSSZ_TEST_VS', ''))
+    xml_bytes, year = build_deregistration_xml(employee, data, test=use_test_vs)
+
+    recipient = cssz_databox(environment)
+    filename = f"REGZEC{year % 100}_odhlaska_{employee.personal_number or employee.id}.xml"
+    annotation = f"Odhláška zaměstnance – {employee.last_name} {employee.first_name}"
+
+    client = client_from_settings()
+    dm_id = client.send_message(
+        recipient_id=recipient,
+        annotation=annotation,
+        filename=filename,
+        content=xml_bytes,
+        sender_ref=employee.personal_number or '',
+    )
+
+    submission = CsszSubmission.objects.create(
+        employee=employee,
+        kind=CsszSubmission.KIND_DEREGISTRATION,
+        environment=environment,
+        recipient_box=recipient,
+        dm_id=dm_id,
+        filename=filename,
+        xml_content=xml_bytes.decode('utf-8'),
+        sent_by=user if getattr(user, 'is_authenticated', False) else None,
+    )
+
+    if environment == 'prod':
+        employee.is_deregistered_cssz = True
+        employee.deregistered_cssz_date = timezone.now()
+        employee.save(update_fields=['is_deregistered_cssz', 'deregistered_cssz_date'])
+    return submission
+
+
+def remember_identifiers(submission):
+    """
+    Z protokolu k ostré přihlášce uloží zaměstnanci OIČ a ID zaměstnání –
+    jsou potřeba pro odhlášku. Už vyplněné hodnoty nepřepisuje.
+    """
+    if submission.kind != submission.KIND_REGISTRATION or submission.environment != 'prod':
+        return
+    ids = parse_protocol_identifiers(submission.protocol_xml)
+    employee = submission.employee
+    changed = []
+    if ids['ikmpsv'] and not employee.cssz_ikmpsv:
+        employee.cssz_ikmpsv = ids['ikmpsv']
+        changed.append('cssz_ikmpsv')
+    if ids['job_id'] and not employee.cssz_job_id:
+        employee.cssz_job_id = ids['job_id']
+        changed.append('cssz_job_id')
+    if changed:
+        employee.save(update_fields=changed)
+
+
 def _parse_isds_time(value):
     if not value:
         return None
@@ -141,9 +205,13 @@ def check_protocols(employee=None):
         match.protocol_html = html
         match.protocol_xml = xml
         match.save()
+        remember_identifiers(match)
         pending.remove(match)
         assigned += 1
     return assigned
 
 
-__all__ = ['IsdsError', 'check_protocols', 'cssz_databox', 'isds_configured', 'isds_environment', 'submit_regzec']
+__all__ = [
+    'IsdsError', 'check_protocols', 'cssz_databox', 'isds_configured', 'isds_environment',
+    'remember_identifiers', 'submit_deregistration', 'submit_regzec',
+]

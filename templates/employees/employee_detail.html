@@ -169,6 +169,38 @@
 </div>
 {% endif %}
 
+{% if show_cssz_deregistration %}
+<!-- ODHLÁŠKA Z ČSSZ (REGZEC akce 2) -->
+{% with dereg=employee.cssz_deregistration_status %}
+<div class="card" style="margin-bottom: 24px; border-left: 4px solid {% if dereg.state == 'done' %}#10b981{% elif dereg.state == 'ok' or dereg.state == 'wait' %}#3b82f6{% elif dereg.state == 'warn' %}#f59e0b{% else %}#ef4444{% endif %};">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
+        <div>
+            <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 6px;">🏛️ Odhláška z ČSSZ (skončení zaměstnání)</h2>
+            <div style="font-size: 13px; color: var(--text-muted);">
+                Zaměstnání skončilo {{ employee.termination_date|date:"d.m.Y" }}. Odhlásit je třeba do 8 dnů od skončení.
+            </div>
+            <div style="margin-top: 8px;">
+                {% if dereg.state == 'done' %}<span class="badge-tag green">✅ {{ dereg.text }}</span>
+                {% elif dereg.state == 'ok' or dereg.state == 'wait' %}<span class="badge-tag blue">⏳ {{ dereg.text }}</span>
+                {% elif dereg.state == 'warn' %}<span class="badge-tag yellow">⚠️ {{ dereg.text }}</span>
+                {% else %}<span class="badge-tag red">🚨 {{ dereg.text }}</span>{% endif %}
+            </div>
+            {% if not employee.is_reported_cssz and not employee.cssz_job_id %}
+            <div style="margin-top: 8px; font-size: 12px; color: #fca5a5;">
+                Zaměstnanec není v aplikaci veden jako přihlášený na ČSSZ – bez přihlášky nejde odhlásit.
+            </div>
+            {% endif %}
+        </div>
+        {% if dereg.state != 'done' %}
+        <a href="{% url 'employee_cssz_deregister' employee.id %}" class="btn btn-primary" style="font-size: 13px;">
+            📤 Připravit odhlášku
+        </a>
+        {% endif %}
+    </div>
+</div>
+{% endwith %}
+{% endif %}
+
 {% if cssz_submissions %}
 <!-- HISTORIE PODÁNÍ NA ČSSZ -->
 <div class="card" style="margin-bottom: 24px;">
@@ -184,6 +216,7 @@
             <thead>
                 <tr style="text-align: left; color: var(--text-muted); font-size: 11px; text-transform: uppercase;">
                     <th style="padding: 6px 8px;">Odesláno</th>
+                    <th style="padding: 6px 8px;">Podání</th>
                     <th style="padding: 6px 8px;">Prostředí</th>
                     <th style="padding: 6px 8px;">Datová zpráva</th>
                     <th style="padding: 6px 8px;">Stav</th>
@@ -194,6 +227,7 @@
                 {% for sub in cssz_submissions %}
                 <tr style="border-top: 1px solid var(--border-color);">
                     <td style="padding: 8px;">{{ sub.sent_at|date:"d.m.Y H:i" }}{% if sub.sent_by %}<br><span style="color: var(--text-muted); font-size: 11px;">{{ sub.sent_by.get_full_name|default:sub.sent_by.username }}</span>{% endif %}</td>
+                    <td style="padding: 8px;">{{ sub.get_kind_display }}</td>
                     <td style="padding: 8px;">
                         {% if sub.environment == 'prod' %}<span class="badge-tag green">Ostré</span>{% else %}<span class="badge-tag yellow">Test</span>{% endif %}
                     </td>

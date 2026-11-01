@@ -26,7 +26,14 @@ class CsszSubmission(models.Model):
         related_name='cssz_submissions',
         verbose_name="Zaměstnanec"
     )
-    kind = models.CharField(max_length=20, default='REGZEC', verbose_name="Druh podání")
+    KIND_REGISTRATION = 'REGZEC'
+    KIND_DEREGISTRATION = 'REGZEC_A2'
+    KIND_CHOICES = [
+        (KIND_REGISTRATION, 'Přihláška (nástup)'),
+        (KIND_DEREGISTRATION, 'Odhláška (skončení)'),
+    ]
+
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES, default=KIND_REGISTRATION, verbose_name="Druh podání")
     environment = models.CharField(max_length=4, choices=ENVIRONMENT_CHOICES, verbose_name="Prostředí")
     recipient_box = models.CharField(max_length=10, verbose_name="Datová schránka ČSSZ")
     dm_id = models.CharField(max_length=20, verbose_name="ID odeslané datové zprávy")

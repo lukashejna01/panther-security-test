@@ -49,6 +49,7 @@ urlpatterns = [
     path('dispecink/zamestnanec/<int:employee_id>/cssz/odeslat/', employee_views.employee_cssz_send_view, name='employee_cssz_send'),
     path('dispecink/zamestnanec/<int:employee_id>/cssz/odpoved/', employee_views.employee_cssz_protocol_check_view, name='employee_cssz_protocol_check'),
     path('dispecink/zamestnanec/<int:employee_id>/cssz/protokol/<int:submission_id>/', employee_views.employee_cssz_protocol_view, name='employee_cssz_protocol'),
+    path('dispecink/zamestnanec/<int:employee_id>/cssz/odhlaska/', employee_views.employee_cssz_deregister_view, name='employee_cssz_deregister'),
 
     # Modul Zálohy a Výdajové doklady (VPD)
     path('dispecink/zalohy/', advance_views.advance_list_view, name='advance_list'),
