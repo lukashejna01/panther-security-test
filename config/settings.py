@@ -80,6 +80,8 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
             ],
+            # Filtr |kc pro částky (1 234,50) dostupný ve všech šablonách
+            'builtins': ['core.templatetags.money'],
         },
     },
 ]

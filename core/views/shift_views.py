@@ -11,6 +11,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from core.decorators import role_required
+from core.money import format_amount
 from core.models import GuardObject, Shift, ShiftStatus, SystemRole, Candidate, Employee
 from core.forms import ShiftCreateForm
 
@@ -297,7 +298,7 @@ def approve_shift_view(request, shift_id):
 
     messages.success(
         request,
-        f"Směna #{shift.id} ({shift.employee.full_name}) byla schválena. {shift.total_cost} Kč bylo připsáno do mezd."
+        f"Směna #{shift.id} ({shift.employee.full_name}) byla schválena. {format_amount(shift.total_cost)} Kč bylo připsáno do mezd."
     )
     return redirect('manager_dashboard')
 

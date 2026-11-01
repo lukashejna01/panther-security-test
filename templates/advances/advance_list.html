@@ -20,15 +20,15 @@
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px;">
     <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid var(--panther-yellow);">
         <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Celkem zálohy za období</div>
-        <div style="font-size: 22px; font-weight: 800; color: #facc15; margin-top: 4px;">{{ total_amount }} Kč</div>
+        <div style="font-size: 22px; font-weight: 800; color: #facc15; margin-top: 4px;">{{ total_amount|kc }} Kč</div>
     </div>
     <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #10b981;">
         <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Vyplaceno v hotovosti (VPD)</div>
-        <div style="font-size: 20px; font-weight: 800; color: #10b981; margin-top: 4px;">{{ total_cash }} Kč</div>
+        <div style="font-size: 20px; font-weight: 800; color: #10b981; margin-top: 4px;">{{ total_cash|kc }} Kč</div>
     </div>
     <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #3b82f6;">
         <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700;">Odesláno na účet (Banka)</div>
-        <div style="font-size: 20px; font-weight: 800; color: #60a5fa; margin-top: 4px;">{{ total_bank }} Kč</div>
+        <div style="font-size: 20px; font-weight: 800; color: #60a5fa; margin-top: 4px;">{{ total_bank|kc }} Kč</div>
     </div>
 </div>
 
@@ -105,7 +105,7 @@
                         <div style="font-size: 11px; color: var(--text-muted);">{{ adv.employee.personal_number|default:"" }}</div>
                     </td>
                     <td style="font-weight: 800; color: #facc15; font-size: 15px; white-space: nowrap;">
-                        {{ adv.amount }} Kč
+                        {{ adv.amount|kc }} Kč
                     </td>
                     <td>
                         {% if adv.payment_method == 'CASH' %}

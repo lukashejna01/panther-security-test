@@ -57,7 +57,7 @@
                     <td><span class="badge-tag blue">{{ emp.get_system_role_display }}</span></td>
                     <td>{{ emp.position.title|default:"Strážný" }}</td>
                     <td><span class="badge-tag yellow">{{ emp.contract_type }}</span></td>
-                    <td style="font-weight: 700; color: #fff;">{{ emp.hourly_rate }} Kč/h</td>
+                    <td style="font-weight: 700; color: #fff;">{{ emp.hourly_rate|kc }} Kč/h</td>
                     <td>{{ emp.health_insurance_code }}</td>
                     <td>
                         {% with cssz=emp.cssz_status %}

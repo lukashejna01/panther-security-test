@@ -21,7 +21,7 @@
     <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid var(--panther-yellow);">
         <div style="font-size: 12px; color: var(--text-muted); text-transform: uppercase;">Schválený výdělek tento měsíc</div>
         <div style="font-size: 26px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
-            {{ month_earned }} <span style="font-size: 14px; font-weight: 400; color: var(--text-muted);">Kč</span>
+            {{ month_earned|kc }} <span style="font-size: 14px; font-weight: 400; color: var(--text-muted);">Kč</span>
         </div>
     </div>
     <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid #3b82f6;">
@@ -87,7 +87,7 @@
                     <tr>
                         <td><strong style="color: #fff;">{{ s.guard_object.name }}</strong></td>
                         <td>{{ s.start_time|date:"d.m. H:i" }} – {{ s.end_time|date:"H:i" }} ({{ s.planned_hours }}h)</td>
-                        <td style="font-weight: 700; color: #fff;">{{ s.total_cost }} Kč</td>
+                        <td style="font-weight: 700; color: #fff;">{{ s.total_cost|kc }} Kč</td>
                         <td><span class="badge-tag yellow">Čeká na podpis</span></td>
                     </tr>
                     {% empty %}
@@ -122,8 +122,8 @@
                     <td><strong style="color: #fff;">{{ s.guard_object.name }}</strong></td>
                     <td>{{ s.start_time|date:"d.m.Y H:i" }} – {{ s.end_time|date:"H:i" }}</td>
                     <td>{{ s.planned_hours }} hod</td>
-                    <td>{{ s.hourly_rate }} Kč/h</td>
-                    <td style="font-weight: 700; color: var(--panther-yellow);">{{ s.total_cost }} Kč</td>
+                    <td>{{ s.hourly_rate|kc }} Kč/h</td>
+                    <td style="font-weight: 700; color: var(--panther-yellow);">{{ s.total_cost|kc }} Kč</td>
                     <td style="text-align: right;">
                         <a href="{% url 'claim_shift' s.id %}" class="btn btn-primary" style="padding: 5px 12px; font-size: 12px;" onclick="return confirm('Opravdu chcete tuto směnu převzít?');">
                             Převzít směnu

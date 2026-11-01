@@ -14,7 +14,7 @@
         <div style="background: rgba(0,0,0,0.3); border-radius: 8px; padding: 16px; margin-bottom: 20px; font-size: 14px;">
             <p><strong>Plánovaný čas:</strong> {{ shift.start_time|date:"d.m.Y H:i" }} – {{ shift.end_time|date:"H:i" }}</p>
             <p><strong>Délka:</strong> {{ shift.planned_hours }} hod</p>
-            <p><strong>Sazba:</strong> {{ shift.hourly_rate }} Kč/h (Celkem: {{ shift.total_cost }} Kč)</p>
+            <p><strong>Sazba:</strong> {{ shift.hourly_rate|kc }} Kč/h (Celkem: {{ shift.total_cost|kc }} Kč)</p>
             <p><strong>Instrukce ze stanoviště:</strong> {{ shift.guard_object.instructions|default:"Dle běžného režimu" }}</p>
         </div>
 

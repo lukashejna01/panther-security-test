@@ -277,32 +277,21 @@
                         </tr>
                     </thead>
                     <tbody>
-                        {% if formatted_items %}
-                            {% for item in formatted_items %}
-                            <tr style="border-bottom: 1px solid #e2e8f0;">
-                                <td style="font-weight: 600; color: #0f172a;">{{ item.description }}</td>
-                                <td style="text-align: center; color: #475569;">{{ item.quantity }}</td>
-                                <td style="text-align: right; color: #475569;">{{ item.unit_price }} Kč</td>
-                                <td style="text-align: right; font-weight: 800; color: #0f172a;">{{ item.total_price }} Kč</td>
-                            </tr>
-                            {% endfor %}
-                        {% else %}
-                            {% for item in invoice.items.all %}
-                            <tr style="border-bottom: 1px solid #e2e8f0;">
-                                <td style="font-weight: 600; color: #0f172a;">{{ item.description }}</td>
-                                <td style="text-align: center; color: #475569;">{{ item.quantity }}</td>
-                                <td style="text-align: right; color: #475569;">{{ item.unit_price }} Kč</td>
-                                <td style="text-align: right; font-weight: 800; color: #0f172a;">{{ item.total_price }} Kč</td>
-                            </tr>
-                            {% empty %}
-                            <tr style="border-bottom: 1px solid #e2e8f0;">
-                                <td style="font-weight: 600; color: #0f172a;">Fyzická ostraha a bezpečnostní dohled</td>
-                                <td style="text-align: center; color: #475569;">1</td>
-                                <td style="text-align: right; color: #475569;">{{ invoice.amount_without_vat }} Kč</td>
-                                <td style="text-align: right; font-weight: 800; color: #0f172a;">{{ invoice.amount_without_vat }} Kč</td>
-                            </tr>
-                            {% endfor %}
-                        {% endif %}
+                        {% for item in invoice.items.all %}
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="font-weight: 600; color: #0f172a;">{{ item.description }}</td>
+                            <td style="text-align: center; color: #475569;">{{ item.quantity|kc }}</td>
+                            <td style="text-align: right; color: #475569;">{{ item.unit_price|kc }} Kč</td>
+                            <td style="text-align: right; font-weight: 800; color: #0f172a;">{{ item.total_price|kc }} Kč</td>
+                        </tr>
+                        {% empty %}
+                        <tr style="border-bottom: 1px solid #e2e8f0;">
+                            <td style="font-weight: 600; color: #0f172a;">Fyzická ostraha a bezpečnostní dohled</td>
+                            <td style="text-align: center; color: #475569;">1</td>
+                            <td style="text-align: right; color: #475569;">{{ invoice.amount_without_vat|kc }} Kč</td>
+                            <td style="text-align: right; font-weight: 800; color: #0f172a;">{{ invoice.amount_without_vat|kc }} Kč</td>
+                        </tr>
+                        {% endfor %}
                     </tbody>
                 </table>
             </div>
@@ -335,15 +324,15 @@
             <div class="invoice-summary-box" style="text-align: right; min-width: 270px; font-size: 13px;">
                 <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #64748b;">
                     <span>Základ daně (0 % / bez DPH):</span>
-                    <strong style="color: #0f172a;">{% if formatted_totals %}{{ formatted_totals.amount_without_vat }}{% else %}{{ invoice.amount_without_vat }}{% endif %} Kč</strong>
+                    <strong style="color: #0f172a;">{{ invoice.amount_without_vat|kc }} Kč</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; margin-bottom: 8px; color: #64748b;">
                     <span>DPH ({{ invoice.vat_rate|default:"21" }} %):</span>
-                    <strong style="color: #0f172a;">{% if formatted_totals %}{{ formatted_totals.vat_amount }}{% else %}{{ invoice.vat_amount }}{% endif %} Kč</strong>
+                    <strong style="color: #0f172a;">{{ invoice.vat_amount|kc }} Kč</strong>
                 </div>
                 <div style="display: flex; justify-content: space-between; border-top: 2px solid #0f172a; padding-top: 8px; margin-top: 8px; font-size: 19px; font-weight: 900; color: #0f172a;">
                     <span>CELKEM K ÚHRADĚ:</span>
-                    <span>{% if formatted_totals %}{{ formatted_totals.total_amount }}{% else %}{{ invoice.total_amount }}{% endif %} Kč</span>
+                    <span>{{ invoice.total_amount|kc }} Kč</span>
                 </div>
             </div>
 

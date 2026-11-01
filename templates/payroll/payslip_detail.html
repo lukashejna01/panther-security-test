@@ -124,13 +124,13 @@
             {% if employee.hourly_rate %}
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 13px; margin-bottom: 12px; color: #94a3b8;">
                 <span>Základní hodinová sazba:</span>
-                <strong style="color: #cbd5e1;">{{ employee.hourly_rate }} Kč/h</strong>
+                <strong style="color: #cbd5e1;">{{ employee.hourly_rate|kc }} Kč/h</strong>
             </div>
             {% endif %}
 
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 15px; margin-bottom: 14px; border-top: 1px solid #243044; border-bottom: 1px solid #243044; padding: 10px 0;">
                 <span style="color: #ffffff; font-weight: 700;">Hrubá odměna:</span>
-                <strong style="color: #ffffff; font-size: 17px;">{{ gross_pay }} Kč</strong>
+                <strong style="color: #ffffff; font-size: 17px;">{{ gross_pay|kc }} Kč</strong>
             </div>
 
             <!-- ZÁKONNÉ SRÁŽKY ZAMĚSTNANEC -->
@@ -140,21 +140,21 @@
             
             <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #cbd5e1;">
                 <span>Sociální pojištění (7,1 %):</span>
-                <span>{% if emp_sp > 0 %}- {{ emp_sp }} Kč{% else %}0 Kč{% endif %}</span>
+                <span>{% if emp_sp > 0 %}- {{ emp_sp|kc }} Kč{% else %}0 Kč{% endif %}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; color: #cbd5e1;">
                 <span>Zdravotní pojištění (4,5 %):</span>
-                <span>{% if emp_zp > 0 %}- {{ emp_zp }} Kč{% else %}0 Kč{% endif %}</span>
+                <span>{% if emp_zp > 0 %}- {{ emp_zp|kc }} Kč{% else %}0 Kč{% endif %}</span>
             </div>
             <div style="display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 14px; color: #cbd5e1;">
                 <span>Daň z příjmu (15 %):</span>
-                <span>{% if tax > 0 %}- {{ tax }} Kč{% else %}0 Kč{% endif %}</span>
+                <span>{% if tax > 0 %}- {{ tax|kc }} Kč{% else %}0 Kč{% endif %}</span>
             </div>
 
             <!-- ČISTÁ MZDA PŘED ZÁLOHAMI -->
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 16px; font-weight: 700; color: #cbd5e1; border-top: 1px solid #243044; padding-top: 10px; margin-bottom: 14px;">
                 <span>Čistá mzda celkem:</span>
-                <span>{{ net_pay }} Kč</span>
+                <span>{{ net_pay|kc }} Kč</span>
             </div>
 
             <!-- ODEČET VYPLACENÝCH ZÁLOH -->
@@ -164,7 +164,7 @@
                         Čerpané zálohy za výplatní cyklus ({{ advance_period_start|date:"d.m." }} – {{ advance_period_end|date:"d.m.Y" }}):
                     </span>
                     <strong style="color: #f87171; font-size: 15px;">
-                        {% if total_advances > 0 %}- {{ total_advances }} Kč{% else %}0 Kč{% endif %}
+                        {% if total_advances > 0 %}- {{ total_advances|kc }} Kč{% else %}0 Kč{% endif %}
                     </strong>
                 </div>
 
@@ -178,7 +178,7 @@
                             {% if adv.note %}<span style="color: #64748b;">({{ adv.note }})</span>{% endif %}
                         </span>
                         <div style="display: flex; align-items: center; gap: 10px;">
-                            <strong style="color: #fca5a5;">{{ adv.amount }} Kč</strong>
+                            <strong style="color: #fca5a5;">{{ adv.amount|kc }} Kč</strong>
                             {% if adv.payment_method == 'CASH' and adv.receipt_pdf %}
                                 <a href="{% url 'advance_download_vpd' adv.id %}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 11px;">📄 VPD</a>
                             {% elif adv.payment_method == 'BANK' and adv.bank_confirmation %}
@@ -194,17 +194,17 @@
             <!-- DOPLATEK K VÝPLATĚ -->
             <div style="display: flex; justify-content: space-between; align-items: center; font-size: 21px; font-weight: 900; color: #10b981; border-top: 2px solid #243044; padding-top: 14px; margin-bottom: 14px; background: rgba(16, 185, 129, 0.08); padding: 12px; border-radius: 6px;">
                 <span>DOPLATEK K VÝPLATĚ:</span>
-                <span>{{ net_payout }} Kč</span>
+                <span>{{ net_payout|kc }} Kč</span>
             </div>
 
             <!-- ODVODY ZAMĚSTNAVATELE -->
             <div style="border-top: 1px dashed #243044; padding-top: 10px; font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between;">
                 <span>Odvody zaměstnavatele (SP 24,8 % + ZP 9 %):</span>
-                <span>+ {{ comp_total_insurance }} Kč</span>
+                <span>+ {{ comp_total_insurance|kc }} Kč</span>
             </div>
             <div style="font-size: 11px; color: #94a3b8; display: flex; justify-content: space-between; margin-top: 3px;">
                 <span>Celkový mzdový náklad agentury:</span>
-                <strong style="color: #cbd5e1;">{{ total_company_cost }} Kč</strong>
+                <strong style="color: #cbd5e1;">{{ total_company_cost|kc }} Kč</strong>
             </div>
 
         </div>

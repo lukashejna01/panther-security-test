@@ -329,7 +329,7 @@
                         </div>
                         <div>
                             {% if s.status == 'APPROVED' %}
-                                <span class="badge-tag green">Schváleno ({{ s.total_cost }} Kč)</span>
+                                <span class="badge-tag green">Schváleno ({{ s.total_cost|kc }} Kč)</span>
                             {% elif s.status == 'COMPLETED' %}
                                 <a href="{% url 'approve_shift' s.id %}" class="btn btn-primary" style="padding: 5px 12px; font-size: 11px;">✅ Schválit</a>
                             {% else %}

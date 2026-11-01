@@ -71,7 +71,7 @@
             Vydané tržby (Klienti)
         </div>
         <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 4px;">
-            + {{ total_revenue }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+            + {{ total_revenue|kc }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
         </div>
     </div>
 
@@ -80,7 +80,7 @@
             Náklady (Dodavatelé)
         </div>
         <div style="font-size: 24px; font-weight: 800; color: #ef4444; margin-top: 4px;">
-            - {{ total_supplier_costs }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+            - {{ total_supplier_costs|kc }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
         </div>
     </div>
 
@@ -89,7 +89,7 @@
             Schválené mzdy strážných
         </div>
         <div style="font-size: 24px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
-            - {{ total_payroll }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+            - {{ total_payroll|kc }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
         </div>
     </div>
 
@@ -98,7 +98,7 @@
             Čistý hospodářský zisk
         </div>
         <div style="font-size: 24px; font-weight: 800; color: {% if net_profit >= 0 %}#60a5fa{% else %}#ef4444{% endif %}; margin-top: 4px;">
-            {{ net_profit }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+            {{ net_profit|kc }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
         </div>
         {% if margin_percent %}
         <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 600;">
@@ -119,7 +119,7 @@
         <div>
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
                 <span style="color: #10b981; font-weight: 600;">Tržby od klientů</span>
-                <strong style="color: #fff;">{{ total_revenue }} Kč</strong>
+                <strong style="color: #fff;">{{ total_revenue|kc }} Kč</strong>
             </div>
             <div style="background: rgba(255,255,255,0.06); height: 8px; border-radius: 4px; overflow: hidden;">
                 <div style="background: #10b981; height: 100%; width: 100%;"></div>
@@ -129,7 +129,7 @@
         <div>
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
                 <span style="color: #ef4444; font-weight: 600;">Náklady na dodavatele</span>
-                <strong style="color: #fff;">{{ total_supplier_costs }} Kč</strong>
+                <strong style="color: #fff;">{{ total_supplier_costs|kc }} Kč</strong>
             </div>
             <div style="background: rgba(255,255,255,0.06); height: 8px; border-radius: 4px; overflow: hidden;">
                 <div style="background: #ef4444; height: 100%; width: {% if total_revenue > 0 %}{% widthratio total_supplier_costs total_revenue 100 %}{% else %}0{% endif %}%;"></div>
@@ -139,7 +139,7 @@
         <div>
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 4px;">
                 <span style="color: var(--panther-yellow); font-weight: 600;">Mzdy strážných</span>
-                <strong style="color: #fff;">{{ total_payroll }} Kč</strong>
+                <strong style="color: #fff;">{{ total_payroll|kc }} Kč</strong>
             </div>
             <div style="background: rgba(255,255,255,0.06); height: 8px; border-radius: 4px; overflow: hidden;">
                 <div style="background: var(--panther-yellow); height: 100%; width: {% if total_revenue > 0 %}{% widthratio total_payroll total_revenue 100 %}{% else %}0{% endif %}%;"></div>

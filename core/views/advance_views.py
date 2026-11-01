@@ -19,6 +19,7 @@ from django.utils import timezone
 
 from core.decorators import role_required
 from core.private_files import serve_private_file
+from core.money import format_amount
 from core.forms import AdvancePaymentForm
 from core.models import AdvancePayment, Employee, SystemRole
 
@@ -164,7 +165,8 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
 
     # 3. Podrobnosti o vyplacené částce
     note_txt = advance.note or 'Bez doplňující poznámky'
-    amount_czk = f"{advance.amount:,.2f} Kč".replace(',', ' ')
+    # Běžná mezera – vložené písmo v PDF nemusí mít nezalomitelnou mezeru
+    amount_czk = f"{format_amount(advance.amount, separator=' ')} Kč"
 
     details_data = [
         [Paragraph("Účel platby:", bold_style), Paragraph(f"Záloha na mzdu – {note_txt}", header_style)],
@@ -344,7 +346,7 @@ def advance_create_view(request, employee_id=None):
 
             messages.success(
                 request,
-                f"Záloha ve výši {advance.amount} Kč pro zaměstnance {advance.employee.full_name} byla úspěšně zaevidována."
+                f"Záloha ve výši {format_amount(advance.amount)} Kč pro zaměstnance {advance.employee.full_name} byla úspěšně zaevidována."
             )
             return redirect('advance_list')
         else:

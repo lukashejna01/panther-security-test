@@ -68,21 +68,21 @@
         <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid var(--panther-yellow);">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Hrubé mzdy celkem</div>
             <div style="font-size: 24px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
-                {{ grand_gross }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+                {{ grand_gross|kc }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
             </div>
         </div>
 
         <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #10b981;">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Čistá výplata lidem</div>
             <div style="font-size: 24px; font-weight: 800; color: #10b981; margin-top: 4px;">
-                {{ grand_net }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+                {{ grand_net|kc }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
             </div>
         </div>
 
         <div class="card" style="margin: 0; padding: 16px; border-left: 4px solid #ef4444;">
             <div style="font-size: 11px; color: var(--text-muted); text-transform: uppercase; font-weight: 700;">Celkový náklad firmy</div>
             <div style="font-size: 24px; font-weight: 800; color: #ef4444; margin-top: 4px;">
-                {{ grand_comp_costs }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
+                {{ grand_comp_costs|kc }} <span style="font-size: 13px; color: var(--text-muted); font-weight: 500;">Kč</span>
             </div>
         </div>
     </div>
@@ -120,7 +120,7 @@
                                     {{ row.employee.personal_number }}
                                 </span>
                             {% endif %}
-                            <div style="font-size: 11px; color: var(--text-muted);">Sazba: {{ row.employee.hourly_rate }} Kč/h</div>
+                            <div style="font-size: 11px; color: var(--text-muted);">Sazba: {{ row.employee.hourly_rate|kc }} Kč/h</div>
                         </td>
                         <td>
                             <span class="badge-tag yellow" style="font-size: 11px; font-weight: 800;">
@@ -132,30 +132,30 @@
                             <div style="font-size: 11px; color: var(--text-muted);">({{ row.shifts_count }} směn)</div>
                         </td>
                         <td style="text-align: right; font-weight: 700; color: #fff;">
-                            {{ row.calc.gross }} Kč
+                            {{ row.calc.gross|kc }} Kč
                         </td>
                         <td style="text-align: right; font-size: 12px;">
                             {% if row.calc.is_exempt %}
                                 {% if row.calc.emp_tax > 0 %}
-                                    <span style="color: #f87171;">- {{ row.calc.emp_tax }} Kč</span>
+                                    <span style="color: #f87171;">- {{ row.calc.emp_tax|kc }} Kč</span>
                                     <div style="font-size: 10px; color: var(--text-muted);">(Daň 15 %)</div>
                                 {% else %}
                                     <span style="color: #10b981;">0 Kč</span>
                                 {% endif %}
                             {% else %}
                                 <span style="color: #f87171; font-weight: 600;">
-                                    - {{ row.calc.emp_sp|add:row.calc.emp_zp|add:row.calc.emp_tax }} Kč
+                                    - {{ row.calc.emp_deductions|kc }} Kč
                                 </span>
                                 <div style="font-size: 10px; color: var(--text-muted);">
-                                    SP: {{ row.calc.emp_sp }} | ZP: {{ row.calc.emp_zp }} | Daň: {{ row.calc.emp_tax }}
+                                    SP: {{ row.calc.emp_sp|kc }} | ZP: {{ row.calc.emp_zp|kc }} | Daň: {{ row.calc.emp_tax|kc }}
                                 </div>
                             {% endif %}
                         </td>
                         <td style="text-align: right; font-weight: 800; color: #10b981; font-size: 15px;">
-                            {{ row.calc.net }} Kč
+                            {{ row.calc.net|kc }} Kč
                         </td>
                         <td style="text-align: right; font-weight: 700; color: #e2e8f0;">
-                            {{ row.calc.total_cost }} Kč
+                            {{ row.calc.total_cost|kc }} Kč
                         </td>
                         <td style="font-size: 12px; color: var(--text-secondary); white-space: nowrap;">
                             {{ row.employee.bank_account|default:"Hotovost" }}

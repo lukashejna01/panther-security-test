@@ -89,15 +89,6 @@ def _safe_return_url(request, candidate, default):
     return default
 
 
-def _format_price(val):
-    """Zformátuje číslo/Decimal na český formát s mezerami (např. 125 400,00)."""
-    try:
-        d = Decimal(str(val))
-        return f"{d:,.2f}".replace(",", " ").replace(".", ",")
-    except Exception:
-        return str(val)
-
-
 @login_required
 @role_required([SystemRole.OWNER])
 def invoice_list_view(request):
@@ -183,9 +174,9 @@ def invoice_list_view(request):
     context = {
         'outgoing_invoices': outgoing,
         'incoming_invoices': incoming,
-        'total_outgoing': _format_price(sum_outgoing),
-        'total_incoming': _format_price(sum_incoming),
-        'net_profit': _format_price(sum_profit),
+        'total_outgoing': sum_outgoing,
+        'total_incoming': sum_incoming,
+        'net_profit': sum_profit,
         'is_profit_positive': sum_profit >= 0,
         'year_param': year_param,
         'month_param': month_param,
@@ -252,27 +243,10 @@ def invoice_detail_view(request, variable_symbol):
     ]
     qr_code_url = qr_code_data_uri("*".join(spayd_parts)) if iban else None
 
-    formatted_items = []
-    for it in invoice.items.all():
-        formatted_items.append({
-            'description': it.description,
-            'quantity': it.quantity,
-            'unit_price': _format_price(it.unit_price),
-            'total_price': _format_price(it.total_price),
-        })
-
-    formatted_totals = {
-        'amount_without_vat': _format_price(invoice.amount_without_vat),
-        'vat_amount': _format_price(invoice.vat_amount),
-        'total_amount': _format_price(invoice.total_amount),
-    }
-
     context = {
         'invoice': invoice,
         'company': company,
         'qr_code_url': qr_code_url,
-        'formatted_items': formatted_items,
-        'formatted_totals': formatted_totals,
     }
     return render(request, 'billing/invoice_detail.html', context)
 

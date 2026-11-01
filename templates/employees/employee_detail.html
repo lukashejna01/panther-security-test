@@ -55,7 +55,7 @@
     <div class="card" style="margin: 0; padding: 18px; border-left: 4px solid var(--panther-yellow);">
         <div style="font-size: 11px; text-transform: uppercase; color: var(--text-muted); font-weight: 700; letter-spacing: 0.5px;">Hodinová sazba</div>
         <div style="font-size: 24px; font-weight: 800; color: var(--panther-yellow); margin-top: 4px;">
-            {{ employee.hourly_rate }} <span style="font-size: 13px; font-weight: 400; color: var(--text-muted);">Kč/h</span>
+            {{ employee.hourly_rate|kc }} <span style="font-size: 13px; font-weight: 400; color: var(--text-muted);">Kč/h</span>
         </div>
     </div>
 
@@ -283,7 +283,7 @@
 
             <div style="display: flex; justify-content: space-between; align-items: center;">
                 <span style="color: var(--text-muted); font-size: 13px;">Sjednaná hodinová odměna:</span>
-                <strong style="color: var(--panther-yellow); font-size: 15px;">{{ employee.hourly_rate }} Kč / hod</strong>
+                <strong style="color: var(--panther-yellow); font-size: 15px;">{{ employee.hourly_rate|kc }} Kč / hod</strong>
             </div>
 
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -494,7 +494,7 @@
                         {% endif %}
                     </td>
                     <td style="text-align: right; font-weight: 700; color: #fff;">
-                        {{ s.total_cost }} Kč
+                        {{ s.total_cost|kc }} Kč
                     </td>
                 </tr>
                 {% empty %}
