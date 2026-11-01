@@ -10,6 +10,8 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 
+from core.money import format_amount
+
 from .organization import Department, Position, SystemRole
 
 
@@ -452,4 +454,4 @@ class AdvancePayment(models.Model):
 
     def __str__(self):
         method_str = "Hotovost" if self.payment_method == 'CASH' else "Banka"
-        return f"Záloha {self.amount} Kč – {self.employee.full_name} ({method_str}, {self.created_at.strftime('%d.%m.%Y %H:%M')})"
+        return f"Záloha {format_amount(self.amount)} Kč – {self.employee.full_name} ({method_str}, {self.created_at.strftime('%d.%m.%Y %H:%M')})"

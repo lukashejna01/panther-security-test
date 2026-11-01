@@ -6,7 +6,9 @@ Pohledy pro modul záloh na mzdu Panther Security:
 """
 
 import os
+import re
 import base64
+import unicodedata
 from io import BytesIO
 from decimal import Decimal
 from django.conf import settings
@@ -78,6 +80,27 @@ def _register_czech_font():
     return reg_name, (bold_name or reg_name)
 
 
+_ASCII_EXTRA = str.maketrans({'Ł': 'L', 'ł': 'l', 'Đ': 'D', 'đ': 'd', 'Ø': 'O', 'ø': 'o', 'ß': 'ss', 'Æ': 'AE', 'æ': 'ae', 'Œ': 'OE', 'œ': 'oe'})
+
+
+def _vpd_number(advance: AdvancePayment) -> str:
+    """Číslo výdajového pokladního dokladu, např. VPD-2026-0001."""
+    return f"VPD-{advance.created_at.strftime('%Y')}-{advance.id:04d}"
+
+
+def _vpd_filename(advance: AdvancePayment) -> str:
+    """Název PDF souboru: VPD-2026-0001_Novak_Jan.pdf (bez diakritiky, ať funguje všude)."""
+    def ascii_part(text):
+        # Písmena bez rozkladu na základ + diakritiku (Ł, Đ, ß …) převedeme ručně
+        text = (text or '').translate(_ASCII_EXTRA)
+        text = unicodedata.normalize('NFKD', text)
+        text = ''.join(c for c in text if not unicodedata.combining(c))
+        return re.sub(r'[^A-Za-z0-9]+', '-', text).strip('-')
+
+    name = '_'.join(p for p in (ascii_part(advance.employee.last_name), ascii_part(advance.employee.first_name)) if p)
+    return f"{_vpd_number(advance)}_{name}.pdf" if name else f"{_vpd_number(advance)}.pdf"
+
+
 def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     """Vygeneruje PDF výdajový pokladní doklad přes ReportLab s plnou podporou české diakritiky a razítkem."""
     from reportlab.lib.pagesizes import A4
@@ -91,6 +114,10 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     doc = SimpleDocTemplate(
         buffer,
         pagesize=A4,
+        # Titulek dokumentu – zobrazí se v záložce prohlížeče a ve vlastnostech PDF
+        title=f"Výdajový pokladní doklad {_vpd_number(advance)} – {advance.employee.full_name}",
+        author=getattr(settings, 'COMPANY_NAME', ''),
+        subject="Výdajový pokladní doklad – záloha na mzdu",
         rightMargin=36,
         leftMargin=36,
         topMargin=36,
@@ -128,7 +155,7 @@ def _generate_vpd_pdf(advance: AdvancePayment) -> bytes:
     elements = []
 
     # 1. Název dokladu
-    doc_num = f"VPD-{advance.created_at.strftime('%Y')}-{advance.id:04d}"
+    doc_num = _vpd_number(advance)
     elements.append(Paragraph(f"VÝDAJOVÝ POKLADNÍ DOKLAD č. {doc_num}", title_style))
     elements.append(Spacer(1, 10))
 
@@ -340,7 +367,7 @@ def advance_create_view(request, employee_id=None):
             if advance.payment_method == 'CASH':
                 try:
                     pdf_bytes = _generate_vpd_pdf(advance)
-                    advance.receipt_pdf.save(f"VPD_{advance.id}.pdf", ContentFile(pdf_bytes), save=True)
+                    advance.receipt_pdf.save(_vpd_filename(advance), ContentFile(pdf_bytes), save=True)
                 except Exception as e:
                     messages.warning(request, f"Záloha byla uložena, ale PDF doklad se nepodařilo vygenerovat: {e}")
 
@@ -393,7 +420,6 @@ def advance_download_vpd_view(request, advance_id):
         messages.error(request, f"Chyba při generování PDF výdajového dokladu: {e}")
         return redirect('advance_list')
 
-    filename = f"VPD_{advance.created_at.strftime('%Y')}_{advance.id:04d}.pdf"
     response = HttpResponse(pdf_bytes, content_type='application/pdf')
-    response['Content-Disposition'] = f'inline; filename="{filename}"'
+    response['Content-Disposition'] = f'inline; filename="{_vpd_filename(advance)}"'
     return response
