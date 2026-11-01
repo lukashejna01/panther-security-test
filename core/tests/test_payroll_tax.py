@@ -4,6 +4,7 @@ from django.test import SimpleTestCase, TestCase
 
 from core.models import TaxDeclaration, TaxDeclarationChild
 from core.money import format_amount
+from core.services.insurance import insurance_contributions
 from core.services.tax import MonthlyCredits, advance_tax, monthly_credits, withholding_tax
 from core.views.payroll_views import calculate_czech_payroll_2026 as calc
 
@@ -20,6 +21,15 @@ class AdvanceTaxTests(SimpleTestCase):
         self.assertEqual(advance_tax(99.4), 15)      # do 100 Kč na koruny
         self.assertEqual(advance_tax(200000), 34248)  # 23 % nad 146 901 Kč
         self.assertEqual(withholding_tax(10000.9), 1500)
+
+
+class InsuranceTests(SimpleTestCase):
+    def test_statutory_rounding(self):
+        # Zdravotní: 13,5 % nahoru, zaměstnanec třetina nahoru, zbytek zaměstnavatel
+        self.assertEqual(insurance_contributions(46520), (3303, 2094, 11537, 4187))
+        self.assertEqual(insurance_contributions(32000), (2272, 1440, 7936, 2880))
+        self.assertEqual(insurance_contributions(25001), (1776, 1126, 6201, 2250))
+        self.assertEqual(insurance_contributions(0), (0, 0, 0, 0))
 
 
 class PayrollCalculationTests(SimpleTestCase):

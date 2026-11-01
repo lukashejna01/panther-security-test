@@ -16,6 +16,7 @@ from django.db.models import Sum
 
 from core.decorators import role_required
 from core.models import Employee, Shift, ShiftStatus, SystemRole, AdvancePayment
+from core.services.insurance import insurance_contributions
 from core.services.tax import (
     MONTHLY_BASIC_CREDIT,
     MonthlyCredits,
@@ -96,27 +97,18 @@ def calculate_czech_payroll_2026(gross_amount: float, contract_type: str, has_ta
             is_exempt = True
         else:
             is_exempt = False
-            emp_sp = round(gross * 0.071, 2)
-            emp_zp = round(gross * 0.045, 2)
-            comp_sp = round(gross * 0.248, 2)
-            comp_zp = round(gross * 0.090, 2)
+            emp_sp, emp_zp, comp_sp, comp_zp = insurance_contributions(gross)
 
     elif 'DPČ' in contract or 'DPC' in contract:
         if gross < 4500:
             is_exempt = True
         else:
             is_exempt = False
-            emp_sp = round(gross * 0.071, 2)
-            emp_zp = round(gross * 0.045, 2)
-            comp_sp = round(gross * 0.248, 2)
-            comp_zp = round(gross * 0.090, 2)
+            emp_sp, emp_zp, comp_sp, comp_zp = insurance_contributions(gross)
 
     else:
         is_exempt = False
-        emp_sp = round(gross * 0.071, 2)
-        emp_zp = round(gross * 0.045, 2)
-        comp_sp = round(gross * 0.248, 2)
-        comp_zp = round(gross * 0.090, 2)
+        emp_sp, emp_zp, comp_sp, comp_zp = insurance_contributions(gross)
 
     # Bez prohlášení se z dohody pod limitem (bez účasti na pojištění) sráží srážková daň
     withholding = not credits.has_declaration and is_exempt and ('DPP' in contract or 'DPČ' in contract or 'DPC' in contract)
