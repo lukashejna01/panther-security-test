@@ -55,6 +55,12 @@ class CsszSubmission(models.Model):
     protocol_annotation = models.CharField(max_length=255, blank=True, verbose_name="Věc zprávy s protokolem")
     protocol_html = models.TextField(blank=True, verbose_name="Protokol (HTML)")
     protocol_xml = models.TextField(blank=True, verbose_name="Protokol (XML)")
+    protocol_result = models.CharField(
+        max_length=5, blank=True,
+        choices=[('OK', 'Přijato'), ('ERROR', 'Odmítnuto')],
+        verbose_name="Výsledek zpracování"
+    )
+    protocol_error = models.TextField(blank=True, verbose_name="Chyba podle protokolu")
 
     class Meta:
         verbose_name = "Podání na ČSSZ"

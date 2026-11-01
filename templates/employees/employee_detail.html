@@ -233,7 +233,16 @@
                     </td>
                     <td style="padding: 8px;">{{ sub.dm_id }}<br><span style="color: var(--text-muted); font-size: 11px;">{{ sub.filename }}</span></td>
                     <td style="padding: 8px;">
-                        {% if sub.status == 'ANSWERED' %}
+                        {% if sub.status == 'ANSWERED' and sub.protocol_result == 'ERROR' %}
+                            <span class="badge-tag red">❌ ČSSZ podání odmítla</span>
+                            <div style="color: #fca5a5; font-size: 12px; margin-top: 4px; max-width: 360px;">{{ sub.protocol_error }}</div>
+                            <span style="color: var(--text-muted); font-size: 11px;">protokol {{ sub.protocol_received_at|date:"d.m.Y H:i" }}</span>
+                        {% elif sub.status == 'ANSWERED' and sub.protocol_result == 'OK' %}
+                            <span class="badge-tag green">✅ Přijato ČSSZ {{ sub.protocol_received_at|date:"d.m.Y H:i" }}</span>
+                            {% if sub.kind == 'REGZEC' and sub.environment == 'prod' and not employee.cssz_job_id %}
+                            <div style="color: #fde68a; font-size: 12px; margin-top: 4px; max-width: 360px;">ČSSZ zatím nepřidělila ID zaměstnání (přidělí ho dodatečně). Pro odhlášku ho pak doplňte ručně.</div>
+                            {% endif %}
+                        {% elif sub.status == 'ANSWERED' %}
                             <span class="badge-tag green">✅ Protokol přijat {{ sub.protocol_received_at|date:"d.m.Y H:i" }}</span>
                             {% if sub.protocol_annotation %}<br><span style="color: var(--text-muted); font-size: 11px;">{{ sub.protocol_annotation }}</span>{% endif %}
                         {% else %}

@@ -8,7 +8,7 @@ jinak k nejstaršímu podání téže schránky, které na odpověď ještě če
 
 from datetime import datetime, timedelta
 
-from .cssz import build_deregistration_xml, build_regzec_xml, parse_protocol_identifiers
+from .cssz import build_deregistration_xml, build_regzec_xml, parse_protocol_identifiers, parse_protocol_result
 from .isds import IsdsError, client_from_settings
 
 
@@ -120,6 +120,39 @@ def submit_deregistration(employee, data, user=None):
     return submission
 
 
+def apply_protocol_result(submission):
+    """
+    Zapíše k podání výsledek z protokolu ČSSZ. Když ČSSZ ostré podání odmítla,
+    vrátí zaměstnance mezi nenahlášené (přihláška) / neodhlášené (odhláška),
+    aby lhůta v aplikaci znovu svítila – pokud mezitím neodešlo novější podání.
+    """
+    outcome = parse_protocol_result(submission.protocol_xml)
+    submission.protocol_result = outcome['result']
+    submission.protocol_error = (f"[{outcome['number']}] " if outcome['number'] else '') + outcome['message']
+    submission.save(update_fields=['protocol_result', 'protocol_error'])
+
+    if outcome['result'] == 'OK':
+        remember_identifiers(submission)
+        return
+    if outcome['result'] != 'ERROR' or submission.environment != 'prod':
+        return
+
+    newer = submission.employee.cssz_submissions.filter(
+        kind=submission.kind, environment='prod', sent_at__gt=submission.sent_at
+    ).exists()
+    if newer:
+        return
+    employee = submission.employee
+    if submission.kind == submission.KIND_REGISTRATION:
+        employee.is_reported_cssz = False
+        employee.reported_cssz_date = None
+        employee.save(update_fields=['is_reported_cssz', 'reported_cssz_date'])
+    elif submission.kind == submission.KIND_DEREGISTRATION:
+        employee.is_deregistered_cssz = False
+        employee.deregistered_cssz_date = None
+        employee.save(update_fields=['is_deregistered_cssz', 'deregistered_cssz_date'])
+
+
 def remember_identifiers(submission):
     """
     Z protokolu k ostré přihlášce uloží zaměstnanci OIČ a ID zaměstnání –
@@ -205,7 +238,7 @@ def check_protocols(employee=None):
         match.protocol_html = html
         match.protocol_xml = xml
         match.save()
-        remember_identifiers(match)
+        apply_protocol_result(match)
         pending.remove(match)
         assigned += 1
     return assigned
@@ -213,5 +246,5 @@ def check_protocols(employee=None):
 
 __all__ = [
     'IsdsError', 'check_protocols', 'cssz_databox', 'isds_configured', 'isds_environment',
-    'remember_identifiers', 'submit_deregistration', 'submit_regzec',
+    'apply_protocol_result', 'remember_identifiers', 'submit_deregistration', 'submit_regzec',
 ]

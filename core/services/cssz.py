@@ -308,6 +308,37 @@ def parse_protocol_identifiers(protocol_xml):
     return {'birth_number': match.group(1), 'ikmpsv': match.group(2), 'job_id': match.group(3)}
 
 
+_PROCESSING_RESULT = re.compile(r'<ProcessingResult\b[^>]*>')
+_ATTR = re.compile(r'\b(\w+)="([^"]*)"')
+
+
+def _attrs(tag):
+    from html import unescape
+    return {key: unescape(value) for key, value in _ATTR.findall(tag or '')}
+
+
+def parse_protocol_result(protocol_xml):
+    """
+    Výsledek zpracování podání podle protokolu ČSSZ (ProcessingResult):
+    {'result': 'OK' | 'ERROR' | '', 'number': kód chyby, 'message': text chyby}.
+    Podáváme vždy jen jednoho zaměstnance, takže o přijetí rozhoduje celkový result;
+    text chyby bereme z položky formuláře (sqnr=1), jinak z celkového výsledku.
+    """
+    top = _PROCESSING_RESULT.search(protocol_xml or '')
+    if not top:
+        return {'result': '', 'number': '', 'message': ''}
+    overall = _attrs(top.group(0))
+    item = _PROTOCOL_ITEM.search(protocol_xml)
+    item = _attrs(item.group(0)) if item else {}
+
+    result = 'OK' if overall.get('result', '').upper() == 'OK' else 'ERROR'
+    if result == 'OK':
+        return {'result': 'OK', 'number': '', 'message': ''}
+    message = item.get('errMsg') or overall.get('errMsg') or 'ČSSZ podání odmítla bez udání důvodu.'
+    number = item.get('errNum') or overall.get('errNumber') or ''
+    return {'result': 'ERROR', 'number': number, 'message': message}
+
+
 def check_deregistration_data(employee, data, test=False, today=None):
     """
     Kontrola údajů pro odhlášku. `data` je slovník z formuláře odhlášky:
