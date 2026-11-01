@@ -10,7 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 
-    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.5">
+    <link rel="stylesheet" href="{% static 'css/style.css' %}?v=3.6">
     <script defer src="{% static 'js/app.js' %}"></script>
 </head>
 <body>
@@ -23,7 +23,7 @@
         </a>
 
         <!-- Hamburger tlačítko pro mobilní telefony -->
-        <button class="hamburger-btn" id="mobileMenuToggle" aria-label="Otevřít menu">
+        <button class="hamburger-btn" id="mobileMenuToggle" aria-label="Otevřít menu" aria-expanded="false" aria-controls="navbarMenu">
             <span></span>
             <span></span>
             <span></span>
@@ -82,11 +82,25 @@
         document.addEventListener('DOMContentLoaded', function () {
             const toggleBtn = document.getElementById('mobileMenuToggle');
             const menu = document.getElementById('navbarMenu');
+            const navbar = document.querySelector('.top-navbar');
 
             if (toggleBtn && menu) {
+                function setMenu(open) {
+                    // Menu začíná přesně pod hlavičkou (její výška se liší podle zařízení)
+                    document.documentElement.style.setProperty('--navbar-height', navbar.getBoundingClientRect().bottom + 'px');
+                    menu.classList.toggle('active', open);
+                    toggleBtn.classList.toggle('is-open', open);
+                    toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    document.body.classList.toggle('menu-open', open);
+                }
                 toggleBtn.addEventListener('click', function () {
-                    menu.classList.toggle('active');
-                    toggleBtn.classList.toggle('is-open');
+                    setMenu(!menu.classList.contains('active'));
+                });
+                menu.addEventListener('click', function (e) {
+                    if (e.target.closest('a')) setMenu(false);
+                });
+                document.addEventListener('keydown', function (e) {
+                    if (e.key === 'Escape') setMenu(false);
                 });
             }
         });

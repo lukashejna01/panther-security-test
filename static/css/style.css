@@ -52,9 +52,6 @@ body {
 
 /* Glassmorphism Topbar */
 .top-navbar {
-    background: rgba(15, 23, 42, 0.92);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
     border-bottom: 2px solid var(--panther-yellow);
     padding: 12px 24px;
     display: flex;
@@ -63,6 +60,18 @@ body {
     position: sticky;
     top: 0;
     z-index: 1000;
+}
+
+/* Rozmazané pozadí je na samostatné vrstvě: backdrop-filter přímo na hlavičce by z ní
+   udělal „obal“ pro position: fixed a mobilní menu by se useklo na výšku hlavičky. */
+.top-navbar::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
 }
 
 .brand-logo {
@@ -378,7 +387,7 @@ footer {
 
     .nav-collapse {
         position: fixed;
-        top: 60px;
+        top: var(--navbar-height, 60px);
         left: 0;
         right: 0;
         bottom: 0;
@@ -399,6 +408,11 @@ footer {
 
     .nav-collapse.active {
         transform: translateX(0);
+    }
+
+    /* Otevřené menu – stránka pod ním se neposouvá */
+    body.menu-open {
+        overflow: hidden;
     }
 
     .nav-menu {
