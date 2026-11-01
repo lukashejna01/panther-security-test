@@ -182,7 +182,7 @@
                             {% if adv.payment_method == 'CASH' and adv.receipt_pdf %}
                                 <a href="{% url 'advance_download_vpd' adv.id %}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 11px;">📄 VPD</a>
                             {% elif adv.payment_method == 'BANK' and adv.bank_confirmation %}
-                                <a href="{{ adv.bank_confirmation.url }}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 11px;">📄 Potvrzení</a>
+                                <a href="{% url 'advance_download_vpd' adv.id %}" target="_blank" style="color: #38bdf8; text-decoration: none; font-size: 11px;">📄 Potvrzení</a>
                             {% endif %}
                         </div>
                     </div>

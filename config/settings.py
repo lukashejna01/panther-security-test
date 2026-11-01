@@ -1,14 +1,24 @@
 import os
 from pathlib import Path
+from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
-
-# Načtení proměnných z .env
-load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = os.getenv('SECRET_KEY', 'panther-security-default-dev-key')
+# Načtení proměnných z .env (vedle manage.py, nezávisle na pracovním adresáři)
+load_dotenv(BASE_DIR / '.env')
+
+# Bez tajného klíče aplikace nenaběhne – žádný výchozí klíč v kódu,
+# jinak by šlo podvrhnout session i odkazy pro reset hesla.
+SECRET_KEY = os.getenv('SECRET_KEY', '')
+if len(SECRET_KEY) < 50:
+    raise ImproperlyConfigured("V .env chybí SECRET_KEY (aspoň 50 znaků).")
+
 DEBUG = False
+
+# Lokální vývoj přes http://127.0.0.1 – v .env nastavit LOCAL_DEV=1.
+# Na serveru nikdy, jinak se vypne přesměrování na HTTPS a HSTS.
+LOCAL_DEV = os.getenv('LOCAL_DEV') == '1'
 
 ALLOWED_HOSTS = ['www.panther-security.cz', 'panther-security.cz', 'webapp-3258159.pythonanywhere.com', 'localhost', '127.0.0.1']
 
@@ -94,6 +104,32 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'login'
+
+# Pravidla pro hesla (uplatní se při změně hesla v profilu a v administraci)
+AUTH_PASSWORD_VALIDATORS = [
+    {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 10}},
+    {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
+    {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
+]
+
+# Zabezpečení HTTPS, cookies a hlaviček
+# PythonAnywhere ukončuje HTTPS na svém proxy a předává X-Forwarded-Proto.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SECURE_SSL_REDIRECT = not LOCAL_DEV
+SECURE_HSTS_SECONDS = 0 if LOCAL_DEV else 60 * 60 * 24 * 365
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'same-origin'
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin'
+X_FRAME_OPTIONS = 'DENY'
+
+SESSION_COOKIE_SECURE = not LOCAL_DEV
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_AGE = 60 * 60 * 10  # odhlášení po 10 hodinách (jedna směna dispečera)
+CSRF_COOKIE_SECURE = not LOCAL_DEV
+CSRF_COOKIE_HTTPONLY = True
+CSRF_TRUSTED_ORIGINS = ['https://www.panther-security.cz', 'https://panther-security.cz']
 
 # Konfigurace externích API a firemní údaje
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')

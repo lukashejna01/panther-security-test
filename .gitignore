@@ -1,5 +1,6 @@
 myenv/
 venv/
+venv-py39/
 env/
 __pycache__/
 *.pyc

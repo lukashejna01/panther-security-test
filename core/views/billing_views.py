@@ -19,6 +19,7 @@ from django.http import Http404
 from django.core.files.base import ContentFile
 
 from core.decorators import role_required
+from core.private_files import serve_private_file
 from core.models import (
     Invoice,
     InvoiceItem,
@@ -534,7 +535,15 @@ def invoice_delete_view(request, invoice_id):
         'return_url': return_url,
     }
     return render(request, 'billing/invoice_confirm_delete.html', context)
- 
+
+
+@login_required
+@role_required([SystemRole.OWNER])
+def invoice_document_view(request, invoice_id):
+    """Naskenovaný originál faktury – jen pro majitele, ne přímým odkazem do /media/."""
+    invoice = get_object_or_404(Invoice, id=invoice_id)
+    return serve_private_file(invoice.document_file)
+
 
 
 @login_required

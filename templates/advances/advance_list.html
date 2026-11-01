@@ -127,7 +127,7 @@
                             {% endif %}
                         {% else %}
                             {% if adv.bank_confirmation %}
-                                <a href="{{ adv.bank_confirmation.url }}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; border-color: #3b82f6; color: #93c5fd;">
+                                <a href="{% url 'advance_download_vpd' adv.id %}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; border-color: #3b82f6; color: #93c5fd;">
                                     📄 Potvrzení banky
                                 </a>
                             {% else %}

@@ -18,6 +18,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from core.decorators import role_required
+from core.private_files import serve_private_file
 from core.forms import AdvancePaymentForm
 from core.models import AdvancePayment, Employee, SystemRole
 
@@ -380,7 +381,7 @@ def advance_download_vpd_view(request, advance_id):
 
     if advance.payment_method == 'BANK':
         if advance.bank_confirmation:
-            return redirect(advance.bank_confirmation.url)
+            return serve_private_file(advance.bank_confirmation)
         messages.warning(request, "Tato záloha byla vyplacena převodem na účet a nemá VPD doklad.")
         return redirect('advance_list')
 

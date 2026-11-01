@@ -204,7 +204,7 @@
                     </td>
                     <td>
                         {% if inv.document_file %}
-                            <a href="{{ inv.document_file.url }}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; border-color: rgba(250, 204, 21, 0.4);" title="Zobrazit originální nahraný dokument">
+                            <a href="{% url 'invoice_document' inv.id %}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px; border-color: rgba(250, 204, 21, 0.4);" title="Zobrazit originální nahraný dokument">
                                 📎 PDF faktury
                             </a>
                         {% else %}
