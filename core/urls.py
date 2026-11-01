@@ -38,6 +38,8 @@ urlpatterns = [
     path('dispecink/zamestnanec/<int:employee_id>/ukonceni/', employee_views.employee_termination_view, name='employee_termination'),
     path('dispecink/zamestnanec/<int:employee_id>/ukonceni/vygenerovat/', employee_views.employee_termination_regenerate_view, name='employee_termination_regenerate'),
     path('dispecink/zamestnanec/<int:employee_id>/cssz/', employee_views.employee_cssz_mark_view, name='employee_cssz_mark'),
+    path('dispecink/zamestnanec/<int:employee_id>/cssz/xml/', employee_views.employee_cssz_xml_view, name='employee_cssz_xml'),
+    path('dispecink/zamestnanec/<int:employee_id>/cssz/udaje/', employee_views.employee_cssz_data_view, name='employee_cssz_data'),
 
     # Modul Zálohy a Výdajové doklady (VPD)
     path('dispecink/zalohy/', advance_views.advance_list_view, name='advance_list'),

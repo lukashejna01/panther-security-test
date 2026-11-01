@@ -19,6 +19,55 @@ class IDCardUploadForm(forms.Form):
     )
 
 
+CSSZ_WIDGETS = {
+    'birth_surname': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'U vdaných žen často jiné než současné'}),
+    'birth_place': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Např. Praha'}),
+    'birth_country': forms.TextInput(attrs={'class': 'form-control', 'maxlength': 2, 'placeholder': 'CZ'}),
+    'citizenship': forms.TextInput(attrs={'class': 'form-control', 'maxlength': 2, 'placeholder': 'CZ'}),
+    'education': forms.Select(attrs={'class': 'form-control'}),
+    'work_municipality': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Praha'}),
+    'work_municipality_code': forms.TextInput(attrs={'class': 'form-control', 'maxlength': 6, 'placeholder': '554782'}),
+}
+
+
+class EmployeeCsszDataForm(forms.ModelForm):
+    """Doplnění údajů potřebných pro přihlášku zaměstnance na ČSSZ (REGZEC)."""
+    class Meta:
+        model = Employee
+        fields = [
+            'birth_number',
+            'birth_date',
+            'birth_surname',
+            'birth_place',
+            'birth_country',
+            'citizenship',
+            'education',
+            'street',
+            'house_number',
+            'orientation_number',
+            'city',
+            'zip_code',
+            'work_municipality',
+            'work_municipality_code',
+        ]
+        widgets = {
+            'birth_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'RRMMDD/XXXX'}),
+            'birth_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'}),
+            'street': forms.TextInput(attrs={'class': 'form-control'}),
+            'house_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'č.p.'}),
+            'orientation_number': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'č.o.'}),
+            'city': forms.TextInput(attrs={'class': 'form-control'}),
+            'zip_code': forms.TextInput(attrs={'class': 'form-control', 'placeholder': '12000'}),
+            **CSSZ_WIDGETS,
+        }
+
+    def clean_birth_country(self):
+        return (self.cleaned_data.get('birth_country') or 'CZ').upper()
+
+    def clean_citizenship(self):
+        return (self.cleaned_data.get('citizenship') or 'CZ').upper()
+
+
 class EmployeeOnboardingForm(forms.ModelForm):
     """
     Kompletní formulář pro kontrolu vytěžených dat z OP,
@@ -47,7 +96,14 @@ class EmployeeOnboardingForm(forms.ModelForm):
             'start_employment_date',
             'contract_end_date',
             'work_location',
+            'work_municipality',
+            'work_municipality_code',
             'health_insurance_code',
+            'birth_surname',
+            'birth_place',
+            'birth_country',
+            'citizenship',
+            'education',
         ]
         widgets = {
             'first_name': forms.TextInput(attrs={'class': 'form-control'}),
@@ -71,6 +127,7 @@ class EmployeeOnboardingForm(forms.ModelForm):
             'contract_end_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date', 'class': 'form-control'}),
             'work_location': forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Např. Praha – objekty dle rozpisu směn'}),
             'health_insurance_code': forms.Select(attrs={'class': 'form-control'}),
+            **CSSZ_WIDGETS,
         }
 
     def clean(self):

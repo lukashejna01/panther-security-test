@@ -110,3 +110,16 @@ COMPANY_CSSZ_DEP = os.getenv('COMPANY_CSSZ_DEP', '886')
 
 # Místo podpisu ve smlouvách ("V Praze dne ...") – v 6. pádě
 CONTRACT_SIGN_PLACE = os.getenv('CONTRACT_SIGN_PLACE', 'Praze')
+
+# ČSSZ – registrace zaměstnance (REGZEC)
+# Kód profese podle CZ-ISCO (5 číslic) pro strážného – nutno doplnit
+CSSZ_PROFESSION_CODE = os.getenv('CSSZ_PROFESSION_CODE', '')
+# Pracovní režim: 1 jednosměnný, 2 dvousměnný, 3 vícesměnný, 4 neuvedeno
+CSSZ_WORK_MODE = os.getenv('CSSZ_WORK_MODE', '3')
+# Nepřetržitý provoz: A / N
+CSSZ_CONTINUOUS_OPERATION = os.getenv('CSSZ_CONTINUOUS_OPERATION', 'A')
+# Výchozí obec výkonu práce (název a šestimístný kód obce ZÚJ)
+CSSZ_DEFAULT_MUNICIPALITY = os.getenv('CSSZ_DEFAULT_MUNICIPALITY', 'Praha')
+CSSZ_DEFAULT_MUNICIPALITY_CODE = os.getenv('CSSZ_DEFAULT_MUNICIPALITY_CODE', '554782')
+# Fiktivní VS od ČSSZ pro testovací prostředí (začíná 999) – prázdné = testovací XML vypnuté
+CSSZ_TEST_VS = os.getenv('CSSZ_TEST_VS', '')

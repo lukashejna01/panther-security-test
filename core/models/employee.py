@@ -71,6 +71,24 @@ class Employee(models.Model):
         ('213', '213 - Revírní bratrská pokladna (RBP)'),
     ]
 
+    EDUCATION_CHOICES = [
+        ('A', 'Bez vzdělání'),
+        ('B', 'Neúplné základní vzdělání'),
+        ('C', 'Základní vzdělání'),
+        ('D', 'Nižší střední vzdělání'),
+        ('E', 'Nižší střední odborné vzdělání'),
+        ('H', 'Střední odborné s výučním listem'),
+        ('J', 'Střední bez maturity i výučního listu'),
+        ('K', 'Úplné střední všeobecné (gymnázium)'),
+        ('L', 'Úplné střední odborné s vyučením i maturitou'),
+        ('M', 'Úplné střední odborné s maturitou'),
+        ('N', 'Vyšší odborné'),
+        ('P', 'Vyšší odborné v konzervatoři'),
+        ('R', 'Vysokoškolské bakalářské'),
+        ('T', 'Vysokoškolské magisterské'),
+        ('V', 'Vysokoškolské doktorské'),
+    ]
+
     TERMINATION_TYPE_CHOICES = [
         ('AGREEMENT', 'Dohoda o ukončení'),
         ('EMPLOYER_NOTICE', 'Výpověď ze strany zaměstnavatele'),
@@ -116,6 +134,18 @@ class Employee(models.Model):
     birth_date = models.DateField(null=True, blank=True, verbose_name="Datum narození")
     birth_number = models.CharField(max_length=15, blank=True, verbose_name="Rodné číslo")
     id_card_number = models.CharField(max_length=50, blank=True, verbose_name="Číslo OP / pasu")
+
+    # Údaje vyžadované ČSSZ pro registraci zaměstnance (REGZEC)
+    birth_surname = models.CharField(max_length=50, blank=True, verbose_name="Rodné příjmení")
+    birth_place = models.CharField(max_length=100, blank=True, verbose_name="Místo narození")
+    birth_country = models.CharField(max_length=2, default='CZ', verbose_name="Stát narození (kód)")
+    citizenship = models.CharField(max_length=2, default='CZ', verbose_name="Státní občanství (kód)")
+    education = models.CharField(
+        max_length=1,
+        choices=EDUCATION_CHOICES,
+        blank=True,
+        verbose_name="Nejvyšší dosažené vzdělání"
+    )
 
     # Kontakty
     phone = models.CharField(max_length=25, blank=True, verbose_name="Telefon")
@@ -168,6 +198,16 @@ class Employee(models.Model):
         max_length=255,
         blank=True,
         verbose_name="Místo výkonu práce"
+    )
+    work_municipality = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Obec výkonu práce"
+    )
+    work_municipality_code = models.CharField(
+        max_length=6,
+        blank=True,
+        verbose_name="Kód obce výkonu práce (ZÚJ)"
     )
     contract_end_date = models.DateField(
         null=True,
@@ -265,6 +305,14 @@ class Employee(models.Model):
         city_part = f"{self.zip_code} {self.city}".strip()
         parts = [p for p in [street_part, city_part] if p]
         return ", ".join(parts) or "Adresa neuvedena"
+
+    @property
+    def sex_from_birth_number(self):
+        """Pohlaví podle rodného čísla: u žen je k měsíci připočteno 50 (případně 70)."""
+        digits = (self.birth_number or '').replace('/', '').strip()
+        if len(digits) < 4 or not digits[:4].isdigit():
+            return ''
+        return 'Ž' if int(digits[2:4]) > 50 else 'M'
 
     @property
     def cssz_deadline(self):

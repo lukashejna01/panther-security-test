@@ -131,6 +131,41 @@
             📄 U typu smlouvy DPP se po potvrzení automaticky vygeneruje dohoda v PDF s razítkem firmy a uloží se na kartu zaměstnance.
         </p>
 
+        <!-- ÚDAJE PRO PŘIHLÁŠKU NA ČSSZ (REGZEC) -->
+        <h3 style="font-size: 14px; color: var(--panther-yellow); margin: 0 0 10px;">🏛️ Údaje pro přihlášku na ČSSZ</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
+            <div class="form-group">
+                <label>Rodné příjmení</label>
+                {{ employee_form.birth_surname }}
+            </div>
+            <div class="form-group">
+                <label>Místo narození</label>
+                {{ employee_form.birth_place }}
+            </div>
+            <div class="form-group">
+                <label>Stát narození (kód)</label>
+                {{ employee_form.birth_country }}
+            </div>
+            <div class="form-group">
+                <label>Státní občanství (kód)</label>
+                {{ employee_form.citizenship }}
+            </div>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 24px;">
+            <div class="form-group">
+                <label>Nejvyšší dosažené vzdělání</label>
+                {{ employee_form.education }}
+            </div>
+            <div class="form-group">
+                <label>Obec výkonu práce</label>
+                {{ employee_form.work_municipality }}
+            </div>
+            <div class="form-group">
+                <label>Kód obce výkonu práce</label>
+                {{ employee_form.work_municipality_code }}
+            </div>
+        </div>
+
         <button type="submit" name="save_employee" class="btn btn-primary" style="padding: 12px 28px; font-size: 15px;">
             ✅ Potvrdit nástup, vytvořit účet &amp; zařadit do kmene
         </button>

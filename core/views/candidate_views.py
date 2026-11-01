@@ -5,6 +5,7 @@ samostatný archiv zájemců a převod zájemce na kmenového zaměstnance (OCR 
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.conf import settings
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
@@ -21,6 +22,16 @@ from core.forms import (
 )
 from core.services import extract_data_from_id, has_contract_template, store_contract_pdf
 from .auth_views import generate_credentials
+
+
+def _cssz_defaults():
+    """Výchozí hodnoty údajů pro ČSSZ ve formuláři nástupu."""
+    return {
+        'birth_country': 'CZ',
+        'citizenship': 'CZ',
+        'work_municipality': getattr(settings, 'CSSZ_DEFAULT_MUNICIPALITY', ''),
+        'work_municipality_code': getattr(settings, 'CSSZ_DEFAULT_MUNICIPALITY_CODE', ''),
+    }
 
 
 def _default_contract_end():
@@ -139,6 +150,8 @@ def candidate_onboard_view(request, candidate_id):
         'email': candidate.email,
         'start_employment_date': timezone.now().date(),
         'contract_end_date': _default_contract_end(),
+        'birth_surname': candidate.last_name,
+        **_cssz_defaults(),
     }
     employee_form = EmployeeOnboardingForm(initial=initial_employee_data)
 
@@ -166,6 +179,9 @@ def candidate_onboard_view(request, candidate_id):
                         'email': candidate.email,
                         'start_employment_date': timezone.now().date(),
                         'contract_end_date': _default_contract_end(),
+                        'birth_place': data.get('birth_place', ''),
+                        'birth_surname': data.get('birth_surname') or data.get('last_name') or candidate.last_name,
+                        **_cssz_defaults(),
                     }
                     employee_form = EmployeeOnboardingForm(initial=extracted_data)
                     messages.success(request, "Doklad totožnosti byl úspěšně vytěžen přes Claude AI. Zkontrolujte formulář a potvrďte nástup.")

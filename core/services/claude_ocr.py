@@ -67,12 +67,16 @@ Vytáhni údaje a vrať VÝHRADNĚ validní JSON bez jakéhokoliv dalšího text
     "house_number": "číslo popisné",
     "orientation_number": "číslo orientační",
     "city": "Město",
-    "zip_code": "11000"
+    "zip_code": "11000",
+    "birth_place": "Místo narození",
+    "birth_surname": "Rodné příjmení"
 }
 Pravidla:
 - "street": Pouze název ulice bez čísla. Pokud obec nemá ulice, uveď název obce.
 - "birth_number": Uveď s lomítkem.
 - "orientation_number": Pokud na dokladu není, nech prázdný řetězec "".
+- "birth_place": Místo narození přesně jak je na dokladu (obec, případně okres). Pokud není, "".
+- "birth_surname": Rodné příjmení, jen pokud je na dokladu výslovně uvedeno, jinak "".
 """
 
     models_to_try = [

@@ -88,30 +88,67 @@
             {% endif %}
         </div>
 
-        {% if employee.is_active or employee.is_reported_cssz %}
+        {% if employee.is_reported_cssz %}
         <form method="post" action="{% url 'employee_cssz_mark' employee.id %}" style="margin-top: 10px;">
             {% csrf_token %}
-            {% if employee.is_reported_cssz %}
-                <input type="hidden" name="action" value="undo">
-                <button type="submit" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;"
-                        onclick="return confirm('Opravdu zrušit označení, že přihláška byla odeslána na ČSSZ?');">
-                    ↩️ Zrušit označení
-                </button>
-            {% else %}
-                <input type="hidden" name="action" value="sent">
-                <button type="submit" class="btn btn-secondary" style="padding: 4px 10px; font-size: 12px; border-color: #10b981; color: #34d399; font-weight: 700;"
-                        onclick="return confirm('Potvrzujete, že přihláška (REGZEC) byla odeslána na ČSSZ datovou schránkou?');">
-                    ✅ Označit jako odesláno
-                </button>
-                <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px;">
-                    Lhůta: nejpozději v den nástupu, před začátkem práce. Generování XML pro datovou schránku připravujeme.
-                </div>
-            {% endif %}
+            <input type="hidden" name="action" value="undo">
+            <button type="submit" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;"
+                    onclick="return confirm('Opravdu zrušit označení, že přihláška byla odeslána na ČSSZ?');">
+                ↩️ Zrušit označení
+            </button>
         </form>
         {% endif %}
     </div>
     {% endwith %}
 </div>
+
+{% if show_cssz %}
+<!-- PŘIHLÁŠKA NA ČSSZ (REGZEC) -->
+<div class="card" style="margin-bottom: 24px; border-color: rgba(250, 204, 21, 0.4);">
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;">
+        <div style="flex: 1; min-width: 260px;">
+            <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 6px;">🏛️ Přihláška na ČSSZ (registrace zaměstnance)</h2>
+            <p style="color: var(--text-muted); font-size: 12px; margin: 0;">
+                Odešlete XML z datové schránky na ČSSZ nejpozději v den nástupu, před začátkem práce
+                (nejdřív 8 dní předem). Pak klikněte na „Označit jako odesláno“.
+            </p>
+
+            {% if cssz_problems %}
+            <div style="margin-top: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 10px 12px;">
+                <strong style="color: #f87171; font-size: 13px;">Před podáním je potřeba:</strong>
+                <ul style="margin: 6px 0 0; padding-left: 18px; font-size: 13px; color: #fff;">
+                    {% for problem in cssz_problems %}<li>{{ problem }}</li>{% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px; align-items: stretch; min-width: 220px;">
+            <a href="{% url 'employee_cssz_data' employee.id %}" class="btn btn-secondary" style="font-size: 12px; text-align: center;">
+                ✏️ Doplnit údaje pro ČSSZ
+            </a>
+            {% if not cssz_problems %}
+            <a href="{% url 'employee_cssz_xml' employee.id %}" class="btn btn-primary" style="font-size: 12px; text-align: center;">
+                ⬇️ Stáhnout XML pro ČSSZ
+            </a>
+            {% endif %}
+            {% if cssz_test_enabled %}
+            <a href="{% url 'employee_cssz_xml' employee.id %}?test=1" class="btn btn-secondary" style="font-size: 12px; text-align: center; border-style: dashed;">
+                🧪 Testovací XML (schránka 9tsaf6s)
+            </a>
+            {% endif %}
+            <form method="post" action="{% url 'employee_cssz_mark' employee.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="sent">
+                <button type="submit" class="btn btn-secondary" style="width: 100%; font-size: 12px; border-color: #10b981; color: #34d399; font-weight: 700;"
+                        onclick="return confirm('Potvrzujete, že přihláška byla odeslána na ČSSZ datovou schránkou?');">
+                    ✅ Označit jako odesláno
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <!-- DETAILNÍ KARTY: IDENTITA, SMLOUVA A KONTAKTY -->
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 24px; margin-bottom: 24px;">

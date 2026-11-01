@@ -3,9 +3,12 @@ Pohledy pro kmenové zaměstnance Panther Security a samostatný archiv zaměstn
 (ukončené pracovní poměry) včetně smluv a dokumentů o ukončení v PDF.
 """
 
+import unicodedata
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import FileResponse, JsonResponse
+from django.conf import settings
+from django.http import FileResponse, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -14,7 +17,11 @@ from django.views.decorators.http import require_POST
 from core.decorators import role_required
 from core.models import Employee, SystemRole
 from core.forms import EmployeeArchiveForm
+from core.forms.employee_forms import EmployeeCsszDataForm
 from core.services import (
+    RegzecDataError,
+    build_regzec_xml,
+    check_regzec_data,
     has_contract_template,
     has_termination_template,
     store_contract_pdf,
@@ -58,11 +65,15 @@ def employee_detail_view(request, employee_id):
     employee = get_object_or_404(Employee, id=employee_id)
     shifts = employee.shifts.select_related('guard_object').order_by('-start_time')[:10]
 
+    show_cssz = employee.is_active and not employee.is_reported_cssz
     context = {
         'employee': employee,
         'shifts': shifts,
         'has_contract_template': has_contract_template(employee.contract_type),
         'has_termination_template': has_termination_template(employee.contract_type, employee.termination_type),
+        'show_cssz': show_cssz,
+        'cssz_problems': check_regzec_data(employee) if show_cssz else [],
+        'cssz_test_enabled': bool(getattr(settings, 'CSSZ_TEST_VS', '')),
     }
     return render(request, 'employees/employee_detail.html', context)
 
@@ -118,6 +129,57 @@ def employee_termination_regenerate_view(request, employee_id):
     except Exception as e:
         messages.error(request, f"Dokument o ukončení se nepodařilo vygenerovat: {e}")
     return redirect('employee_detail', employee_id=employee.id)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+def employee_cssz_xml_view(request, employee_id):
+    """
+    Stažení přihlášky zaměstnance na ČSSZ (REGZEC, akce 1 – nástup) jako XML pro datovou schránku.
+    ?test=1 použije fiktivní VS pro testovací prostředí ČSSZ (schránka 9tsaf6s).
+    """
+    employee = get_object_or_404(Employee, id=employee_id)
+    test = request.GET.get('test') == '1'
+
+    try:
+        xml_bytes, year = build_regzec_xml(employee, test=test)
+    except RegzecDataError as e:
+        for problem in e.problems:
+            messages.error(request, problem)
+        return redirect('employee_detail', employee_id=employee.id)
+
+    prefix = 'TEST_' if test else ''
+    surname = unicodedata.normalize('NFKD', employee.last_name).encode('ascii', 'ignore').decode() or 'zamestnanec'
+    filename = f"{prefix}REGZEC{year % 100}_{surname}_{employee.start_employment_date:%Y%m%d}.xml"
+    response = HttpResponse(xml_bytes, content_type='application/xml; charset=utf-8')
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+def employee_cssz_data_view(request, employee_id):
+    """Doplnění údajů, které ČSSZ vyžaduje pro přihlášku zaměstnance."""
+    employee = get_object_or_404(Employee, id=employee_id)
+    initial = {}
+    if not employee.work_municipality:
+        initial['work_municipality'] = getattr(settings, 'CSSZ_DEFAULT_MUNICIPALITY', '')
+    if not employee.work_municipality_code:
+        initial['work_municipality_code'] = getattr(settings, 'CSSZ_DEFAULT_MUNICIPALITY_CODE', '')
+    if not employee.birth_surname:
+        initial['birth_surname'] = employee.last_name
+
+    form = EmployeeCsszDataForm(request.POST or None, instance=employee, initial=initial)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        problems = check_regzec_data(employee)
+        if problems:
+            messages.warning(request, "Údaje uloženy. Pro podání ještě chybí: " + " ".join(problems))
+        else:
+            messages.success(request, "Údaje uloženy. Přihlášku na ČSSZ lze stáhnout.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    return render(request, 'employees/employee_cssz_data.html', {'employee': employee, 'form': form})
 
 
 @login_required
