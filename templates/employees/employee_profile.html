@@ -36,5 +36,19 @@
             </button>
         </form>
     </div>
+
+    {% if two_factor_required %}
+    <div class="card" style="margin-top: 24px;">
+        <h2 style="font-size: 20px; color: #fff; margin-bottom: 8px;">📲 Dvoufázové ověření</h2>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 14px; line-height: 1.5;">
+            ✅ Zapnuto – při přihlášení se kromě hesla zadává kód z Google Authenticatoru.
+            Při výměně nebo ztrátě telefonu spárujte novou aplikaci. Stará aplikace i záložní kódy tím přestanou platit.
+        </p>
+        <form method="post" action="{% url 'two_factor_reset' %}" onsubmit="return confirm('Spárovat novou aplikaci? Stará aplikace i záložní kódy okamžitě přestanou platit.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary" style="width: 100%;">🔄 Spárovat nový telefon</button>
+        </form>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

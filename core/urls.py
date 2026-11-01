@@ -1,6 +1,6 @@
 from django.urls import path
 from . import views
-from core.views import billing_views, payroll_views, advance_views, employee_views
+from core.views import billing_views, payroll_views, advance_views, employee_views, two_factor_views
 
 urlpatterns = [
     # Veřejné stránky a autentizace
@@ -8,6 +8,11 @@ urlpatterns = [
     path('prihlaseni/', views.login_view, name='login'),
     path('odhlaseni/', views.logout_view, name='logout'),
     path('profil/', views.profile_view, name='user_profile'),
+
+    # Dvoufázové ověření majitele
+    path('overeni/', two_factor_views.two_factor_verify_view, name='two_factor_verify'),
+    path('overeni/sparovat/', two_factor_views.two_factor_setup_view, name='two_factor_setup'),
+    path('overeni/znovu-sparovat/', two_factor_views.two_factor_reset_view, name='two_factor_reset'),
     
     # Portály po přihlášení
     path('portal/', views.employee_portal_view, name='employee_portal'),

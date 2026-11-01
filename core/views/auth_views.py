@@ -14,6 +14,7 @@ from django.shortcuts import redirect, render
 
 from core.models import SystemRole
 from core.forms import EmployeeProfileUpdateForm
+from core.two_factor import requires_two_factor
 
 
 def remove_accents(input_str: str) -> str:
@@ -153,5 +154,6 @@ def profile_view(request):
         'profile': profile,
         'profile_form': profile_form,
         'password_form': password_form,
+        'two_factor_required': requires_two_factor(request.user),
     }
     return render(request, 'employees/employee_profile.html', context)

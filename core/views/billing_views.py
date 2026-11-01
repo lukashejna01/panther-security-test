@@ -8,7 +8,6 @@ from datetime import timedelta, date, datetime
 from decimal import Decimal, InvalidOperation
 import os
 import shutil
-import base64
 import logging
 from django.conf import settings
 from django.contrib import messages
@@ -17,13 +16,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
-from reportlab.graphics.barcode import qrencoder
 from django.db import models, transaction
 from django.http import Http404
 from django.core.files.base import ContentFile
 
 from core.decorators import role_required
 from core.private_files import serve_private_file
+from core.qr import qr_code_data_uri
 from core.models import (
     Invoice,
     InvoiceItem,
@@ -79,23 +78,6 @@ def _format_iban(account_number_str, bank_code_str):
     bban = f"{bank_code}{int(prefix):06d}{int(body):010d}"
     checksum = 98 - int(f"{bban}123500") % 97
     return f"CZ{checksum:02d}{bban}"
-
-
-def _qr_code_data_uri(text):
-    """
-    QR kód (QR Platba / SPAYD) jako SVG v data URI. Generuje se lokálně,
-    aby číslo účtu, částka a VS neodcházely na cizí službu.
-    """
-    qr = qrencoder.QRCode(None, qrencoder.QRErrorCorrectLevel.M)
-    qr.addData(text)
-    qr.make()
-    n = qr.getModuleCount()
-    path = ''.join(f'M{c},{r}h1v1h-1z' for r in range(n) for c in range(n) if qr.isDark(r, c))
-    svg = (
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="-4 -4 {n + 8} {n + 8}" shape-rendering="crispEdges">'
-        f'<rect x="-4" y="-4" width="{n + 8}" height="{n + 8}" fill="#fff"/><path d="{path}" fill="#000"/></svg>'
-    )
-    return 'data:image/svg+xml;base64,' + base64.b64encode(svg.encode()).decode()
 
 
 def _safe_return_url(request, candidate, default):
@@ -268,7 +250,7 @@ def invoice_detail_view(request, variable_symbol):
         f"X-VS:{invoice.variable_symbol or invoice.invoice_number}",
         f"MSG:Faktura {invoice.invoice_number}",
     ]
-    qr_code_url = _qr_code_data_uri("*".join(spayd_parts)) if iban else None
+    qr_code_url = qr_code_data_uri("*".join(spayd_parts)) if iban else None
 
     formatted_items = []
     for it in invoice.items.all():

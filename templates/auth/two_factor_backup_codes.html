@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Záložní kódy - Panther Security{% endblock %}
+
+{% block content %}
+<div style="max-width: 480px; margin: 40px auto 0;">
+    <div class="card" style="padding: 32px 28px;">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <span class="brand-badge" style="margin-bottom: 12px; display: inline-block;">HOTOVO</span>
+            <h2 style="font-size: 22px; color: #fff; margin: 0;">✅ Aplikace je spárovaná</h2>
+            <p style="color: var(--text-muted); font-size: 13px; margin-top: 6px; line-height: 1.5;">
+                Uložte si záložní kódy. Když ztratíte telefon, přihlásíte se jedním z nich.
+                Každý kód platí jen jednou.
+            </p>
+        </div>
+
+        <div id="backup-codes" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-family: monospace; font-size: 16px; color: #facc15; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; text-align: center; margin-bottom: 14px;">
+            {% for code in codes %}<div>{{ code }}</div>{% endfor %}
+        </div>
+
+        <button type="button" id="copy-codes" class="btn btn-secondary" style="width: 100%; margin-bottom: 10px;">📋 Zkopírovat kódy</button>
+
+        <div style="padding: 10px 14px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; font-size: 12px; color: #fca5a5; line-height: 1.5; margin-bottom: 18px;">
+            ⚠️ Kódy se zobrazují jen teď. Uložte je do správce hesel nebo vytiskněte a schovejte mimo telefon.
+        </div>
+
+        <a href="{{ continue_url }}" class="btn btn-primary" style="display: block; text-align: center; padding: 12px; font-size: 14px;">
+            Mám uloženo, pokračovat
+        </a>
+    </div>
+</div>
+
+<script>
+document.getElementById('copy-codes').addEventListener('click', function () {
+    const text = Array.from(document.querySelectorAll('#backup-codes div')).map(function (el) { return el.textContent; }).join('\n');
+    navigator.clipboard.writeText('Panther Security – záložní kódy 2FA:\n' + text).then(function () {
+        alert('Záložní kódy jsou ve schránce.');
+    }).catch(function () {
+        prompt('Zkopírujte kódy ručně:', text);
+    });
+});
+</script>
+{% endblock %}

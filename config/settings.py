@@ -34,6 +34,10 @@ INSTALLED_APPS = [
     # Zabezpečení: blokace hádání hesel a Content-Security-Policy
     'axes',
     'csp',
+    # Dvoufázové ověření majitele (Google Authenticator) + záložní kódy
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
 
     # Naše aplikace
     'core',
@@ -47,6 +51,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'django_otp.middleware.OTPMiddleware',
+    'core.middleware.TwoFactorRequiredMiddleware',
     'core.middleware.ForcePasswordChangeMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'csp.middleware.CSPMiddleware',
@@ -153,6 +159,9 @@ AXES_LOCKOUT_PARAMETERS = [['username', 'ip_address']]
 AXES_RESET_ON_SUCCESS = True
 AXES_CLIENT_IP_CALLABLE = 'core.client_ip.get_client_ip'
 AXES_LOCKOUT_TEMPLATE = 'auth/locked_out.html'
+
+# Dvoufázové ověření: název účtu v aplikaci Google Authenticator
+OTP_TOTP_ISSUER = 'Panther Security'
 
 # Administrace na nenápadné adrese – v .env nastavit např. ADMIN_URL=sprava-7f3k9/
 ADMIN_URL = os.getenv('ADMIN_URL', 'admin/')
