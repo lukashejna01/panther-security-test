@@ -125,9 +125,9 @@
                     <td>{{ s.hourly_rate|kc }} Kč/h</td>
                     <td style="font-weight: 700; color: var(--panther-yellow);">{{ s.total_cost|kc }} Kč</td>
                     <td style="text-align: right;">
-                        <a href="{% url 'claim_shift' s.id %}" class="btn btn-primary" style="padding: 5px 12px; font-size: 12px;" onclick="return confirm('Opravdu chcete tuto směnu převzít?');">
+                        <form method="post" action="{% url 'claim_shift' s.id %}" style="display: inline; margin: 0;" onsubmit="return confirm('Opravdu chcete tuto směnu převzít?');">{% csrf_token %}<button type="submit" class="btn btn-primary" style="padding: 5px 12px; font-size: 12px;">
                             Převzít směnu
-                        </a>
+                        </button></form>
                     </td>
                 </tr>
                 {% empty %}

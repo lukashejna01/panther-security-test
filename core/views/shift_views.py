@@ -9,6 +9,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 
 from core.decorators import role_required
 from core.money import format_amount
@@ -278,8 +279,9 @@ def shift_planner_calendar_view(request):
 
 @login_required
 @role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
 def approve_shift_view(request, shift_id):
-    """Schválení směny manažerem/majitelem po jejím uplynutí."""
+    """Schválení směny manažerem/majitelem po jejím uplynutí (jen POST – připisuje do mezd)."""
     _auto_complete_expired_shifts()
     shift = get_object_or_404(Shift, id=shift_id)
 
@@ -313,7 +315,9 @@ def shift_detail_view(request, shift_id):
         id=shift_id
     )
 
-    if profile.system_role == SystemRole.STAFF and shift.employee != profile and shift.status != ShiftStatus.OPEN:
+    # Účet bez karty zaměstnance (superuživatel) prošel kontrolou role – vidí vše
+    is_staff_guard = profile is not None and profile.system_role == SystemRole.STAFF
+    if is_staff_guard and shift.employee != profile and shift.status != ShiftStatus.OPEN:
         messages.error(request, "K této směně nemáte přístup.")
         return redirect('employee_portal')
 
@@ -322,17 +326,23 @@ def shift_detail_view(request, shift_id):
 
 @login_required
 @role_required([SystemRole.STAFF, SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
 def claim_shift_view(request, shift_id):
     """Převzetí volné směny z burzy strážným."""
     profile = getattr(request.user, 'employee_profile', None)
     shift = get_object_or_404(Shift, id=shift_id)
 
-    if shift.status != ShiftStatus.OPEN:
+    if profile is None:
+        messages.error(request, "Směnu může převzít jen účet s kartou zaměstnance.")
+        return redirect('employee_portal')
+
+    # Podmíněný update: když dva strážní kliknou naráz, směnu dostane jen první
+    claimed = Shift.objects.filter(id=shift.id, status=ShiftStatus.OPEN).update(
+        employee=profile, status=ShiftStatus.ASSIGNED
+    )
+    if not claimed:
         messages.error(request, "Tato směna již není volná k převzetí.")
         return redirect('employee_portal')
 
-    shift.employee = profile
-    shift.status = ShiftStatus.ASSIGNED
-    shift.save()
     messages.success(request, f"Směna na stanovišti {shift.guard_object.name} byla zařazena do vašeho rozpisu.")
     return redirect('employee_portal')
