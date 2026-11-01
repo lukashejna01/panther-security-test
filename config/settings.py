@@ -123,3 +123,14 @@ CSSZ_DEFAULT_MUNICIPALITY = os.getenv('CSSZ_DEFAULT_MUNICIPALITY', 'Praha')
 CSSZ_DEFAULT_MUNICIPALITY_CODE = os.getenv('CSSZ_DEFAULT_MUNICIPALITY_CODE', '554782')
 # Fiktivní VS od ČSSZ pro testovací prostředí (začíná 999) – prázdné = testovací XML vypnuté
 CSSZ_TEST_VS = os.getenv('CSSZ_TEST_VS', '')
+
+# Datová schránka (ISDS) pro odesílání podání na ČSSZ přímo z aplikace
+# ISDS_ENVIRONMENT: "test" = testovací datovky, "prod" = ostré
+ISDS_ENVIRONMENT = os.getenv('ISDS_ENVIRONMENT', 'test')
+ISDS_USERNAME = os.getenv('ISDS_USERNAME', '')
+ISDS_PASSWORD = os.getenv('ISDS_PASSWORD', '')
+# Volitelně jiná adresa služeb (jinak ws1.datovka.gov.cz / ws1.datovka-test.gov.cz)
+ISDS_HOST = os.getenv('ISDS_HOST', '')
+# Datové schránky ČSSZ pro registraci zaměstnance: ostrá 5ffu6xk, testovací 9tsaf6s
+CSSZ_DATABOX_PROD = os.getenv('CSSZ_DATABOX_PROD', '5ffu6xk')
+CSSZ_DATABOX_TEST = os.getenv('CSSZ_DATABOX_TEST', '9tsaf6s')

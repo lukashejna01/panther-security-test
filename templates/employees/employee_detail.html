@@ -109,9 +109,19 @@
         <div style="flex: 1; min-width: 260px;">
             <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 6px;">🏛️ Přihláška na ČSSZ (registrace zaměstnance)</h2>
             <p style="color: var(--text-muted); font-size: 12px; margin: 0;">
-                Odešlete XML z datové schránky na ČSSZ nejpozději v den nástupu, před začátkem práce
-                (nejdřív 8 dní předem). Pak klikněte na „Označit jako odesláno“.
+                Přihlášku je potřeba podat nejpozději v den nástupu, před začátkem práce (nejdřív 8 dní předem).
+                {% if isds_configured %}Odešlete ji přímo odsud datovou schránkou.{% else %}Odešlete XML z datové schránky a pak klikněte na „Označit jako odesláno“.{% endif %}
             </p>
+            <div style="margin-top: 8px;">
+                {% if isds_environment == 'prod' %}
+                    <span class="badge-tag green">Datová schránka: OSTRÉ prostředí (ČSSZ {{ cssz_databox }})</span>
+                {% else %}
+                    <span class="badge-tag yellow">🧪 Datová schránka: TESTOVACÍ prostředí (ČSSZ {{ cssz_databox }})</span>
+                {% endif %}
+                {% if not isds_configured %}
+                    <span class="badge-tag red">Přihlášení do datové schránky není nastavené (.env)</span>
+                {% endif %}
+            </div>
 
             {% if cssz_problems %}
             <div style="margin-top: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 8px; padding: 10px 12px;">
@@ -127,8 +137,17 @@
             <a href="{% url 'employee_cssz_data' employee.id %}" class="btn btn-secondary" style="font-size: 12px; text-align: center;">
                 ✏️ Doplnit údaje pro ČSSZ
             </a>
+            {% if not cssz_problems and isds_configured %}
+            <form method="post" action="{% url 'employee_cssz_send' employee.id %}"
+                  onsubmit="{% if isds_environment == 'prod' %}if (!confirm('Odeslat přihlášku {{ employee.full_name|escapejs }} na ČSSZ (OSTRÉ podání)?')) return false; {% endif %}var b = this.querySelector('button'); b.disabled = true; b.innerText = 'Odesílám…'; return true;">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-primary" style="width: 100%; font-size: 12px; font-weight: 700;">
+                    📤 {% if isds_environment == 'prod' %}Odeslat na ČSSZ datovou schránkou{% else %}Odeslat TEST na ČSSZ{% endif %}
+                </button>
+            </form>
+            {% endif %}
             {% if not cssz_problems %}
-            <a href="{% url 'employee_cssz_xml' employee.id %}" class="btn btn-primary" style="font-size: 12px; text-align: center;">
+            <a href="{% url 'employee_cssz_xml' employee.id %}" class="btn btn-secondary" style="font-size: 12px; text-align: center;">
                 ⬇️ Stáhnout XML pro ČSSZ
             </a>
             {% endif %}
@@ -146,6 +165,60 @@
                 </button>
             </form>
         </div>
+    </div>
+</div>
+{% endif %}
+
+{% if cssz_submissions %}
+<!-- HISTORIE PODÁNÍ NA ČSSZ -->
+<div class="card" style="margin-bottom: 24px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px;">
+        <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0;">📨 Podání na ČSSZ datovou schránkou</h2>
+        <form method="post" action="{% url 'employee_cssz_protocol_check' employee.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary" style="font-size: 12px;">🔄 Zkontrolovat odpověď ČSSZ</button>
+        </form>
+    </div>
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+                <tr style="text-align: left; color: var(--text-muted); font-size: 11px; text-transform: uppercase;">
+                    <th style="padding: 6px 8px;">Odesláno</th>
+                    <th style="padding: 6px 8px;">Prostředí</th>
+                    <th style="padding: 6px 8px;">Datová zpráva</th>
+                    <th style="padding: 6px 8px;">Stav</th>
+                    <th style="padding: 6px 8px;"></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for sub in cssz_submissions %}
+                <tr style="border-top: 1px solid var(--border-color);">
+                    <td style="padding: 8px;">{{ sub.sent_at|date:"d.m.Y H:i" }}{% if sub.sent_by %}<br><span style="color: var(--text-muted); font-size: 11px;">{{ sub.sent_by.get_full_name|default:sub.sent_by.username }}</span>{% endif %}</td>
+                    <td style="padding: 8px;">
+                        {% if sub.environment == 'prod' %}<span class="badge-tag green">Ostré</span>{% else %}<span class="badge-tag yellow">Test</span>{% endif %}
+                    </td>
+                    <td style="padding: 8px;">{{ sub.dm_id }}<br><span style="color: var(--text-muted); font-size: 11px;">{{ sub.filename }}</span></td>
+                    <td style="padding: 8px;">
+                        {% if sub.status == 'ANSWERED' %}
+                            <span class="badge-tag green">✅ Protokol přijat {{ sub.protocol_received_at|date:"d.m.Y H:i" }}</span>
+                            {% if sub.protocol_annotation %}<br><span style="color: var(--text-muted); font-size: 11px;">{{ sub.protocol_annotation }}</span>{% endif %}
+                        {% else %}
+                            <span class="badge-tag blue">⏳ Čeká na odpověď ČSSZ</span>
+                        {% endif %}
+                    </td>
+                    <td style="padding: 8px; white-space: nowrap;">
+                        {% if sub.protocol_html or sub.protocol_xml %}
+                        <a href="{% url 'employee_cssz_protocol' employee.id sub.id %}" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;">📄 Protokol</a>
+                        {% endif %}
+                        {% if sub.protocol_xml and sub.protocol_html %}
+                        <a href="{% url 'employee_cssz_protocol' employee.id sub.id %}?format=xml" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;">XML</a>
+                        {% endif %}
+                        <a href="{% url 'employee_cssz_protocol' employee.id sub.id %}?format=sent" target="_blank" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;">Odeslané XML</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 {% endif %}

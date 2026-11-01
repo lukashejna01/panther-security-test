@@ -28,6 +28,14 @@ from core.services import (
     store_termination_pdf,
 )
 from core.services.contract_pdf import NOTICE_PERIOD_DAYS
+from core.services.cssz_submit import (
+    IsdsError,
+    check_protocols,
+    cssz_databox,
+    isds_configured,
+    isds_environment,
+    submit_regzec,
+)
 
 
 def _serve_employee_pdf(request, employee, file_field, label):
@@ -74,6 +82,10 @@ def employee_detail_view(request, employee_id):
         'show_cssz': show_cssz,
         'cssz_problems': check_regzec_data(employee) if show_cssz else [],
         'cssz_test_enabled': bool(getattr(settings, 'CSSZ_TEST_VS', '')),
+        'cssz_submissions': employee.cssz_submissions.select_related('sent_by')[:10],
+        'isds_configured': isds_configured(),
+        'isds_environment': isds_environment(),
+        'cssz_databox': cssz_databox(isds_environment()),
     }
     return render(request, 'employees/employee_detail.html', context)
 
@@ -207,6 +219,86 @@ def employee_cssz_mark_view(request, employee_id):
 
     employee.save(update_fields=['is_reported_cssz', 'reported_cssz_date'])
     return redirect('employee_detail', employee_id=employee.id)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
+def employee_cssz_send_view(request, employee_id):
+    """
+    Odeslání přihlášky (REGZEC) na ČSSZ přímo z aplikace datovou schránkou (ISDS).
+    V testovacím prostředí jde do testovací schránky ČSSZ a zaměstnance neoznačí jako nahlášeného.
+    """
+    employee = get_object_or_404(Employee, id=employee_id)
+    environment = isds_environment()
+
+    if environment == 'prod' and employee.is_reported_cssz:
+        messages.warning(request, f"{employee.full_name} už je na ČSSZ nahlášen(a). Podání se znovu neodeslalo.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    try:
+        submission = submit_regzec(employee, user=request.user)
+    except RegzecDataError as e:
+        for problem in e.problems:
+            messages.error(request, problem)
+        return redirect('employee_detail', employee_id=employee.id)
+    except IsdsError as e:
+        messages.error(request, f"Odeslání na ČSSZ se nepovedlo: {e}")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    if environment == 'prod':
+        messages.success(request, f"Přihláška {employee.full_name} odeslána na ČSSZ (datová zpráva {submission.dm_id}). "
+                                  "Zaměstnanec je označen jako nahlášený. Protokol od ČSSZ přijde do datové schránky.")
+    else:
+        messages.success(request, f"TEST: přihláška odeslána do testovací schránky ČSSZ {submission.recipient_box} "
+                                  f"(datová zpráva {submission.dm_id}). Za pár minut zkontrolujte odpověď ČSSZ.")
+    return redirect('employee_detail', employee_id=employee.id)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
+def employee_cssz_protocol_check_view(request, employee_id):
+    """Stáhne z datové schránky odpovědi ČSSZ (protokoly) k podáním zaměstnance."""
+    employee = get_object_or_404(Employee, id=employee_id)
+    try:
+        found = check_protocols(employee)
+    except IsdsError as e:
+        messages.error(request, f"Kontrola odpovědi ČSSZ se nepovedla: {e}")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    if found:
+        messages.success(request, f"Přijato protokolů od ČSSZ: {found}. Otevřete je v historii podání.")
+    else:
+        messages.info(request, "ČSSZ zatím neodpověděla. Protokol obvykle přijde do několika minut až hodin, zkuste to později.")
+    return redirect('employee_detail', employee_id=employee.id)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+def employee_cssz_protocol_view(request, employee_id, submission_id):
+    """
+    Zobrazí protokol ČSSZ k podání. HTML protokol běží v sandboxu (bez skriptů),
+    ?format=xml vrátí strojový protokol, ?format=sent odeslané XML.
+    """
+    employee = get_object_or_404(Employee, id=employee_id)
+    submission = get_object_or_404(employee.cssz_submissions, id=submission_id)
+    fmt = request.GET.get('format')
+
+    if fmt == 'sent':
+        return HttpResponse(submission.xml_content, content_type='text/plain; charset=utf-8')
+    if fmt == 'xml' or (not submission.protocol_html and submission.protocol_xml):
+        if not submission.protocol_xml:
+            messages.error(request, "K tomuto podání zatím není protokol.")
+            return redirect('employee_detail', employee_id=employee.id)
+        return HttpResponse(submission.protocol_xml, content_type='text/plain; charset=utf-8')
+    if not submission.protocol_html:
+        messages.error(request, "K tomuto podání zatím není protokol.")
+        return redirect('employee_detail', employee_id=employee.id)
+
+    response = HttpResponse(submission.protocol_html, content_type='text/html; charset=utf-8')
+    response['Content-Security-Policy'] = "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:"
+    return response
 
 
 @login_required
