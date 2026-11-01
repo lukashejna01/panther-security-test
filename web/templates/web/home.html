@@ -1,326 +1,306 @@
 {% extends 'web/base_public.html' %}
 
 {% block content %}
-<!-- 1. HERO SEKCE -->
-<section class="hero-section">
-    <div class="hero-pill">
-        🛡️ Komplexní fyzická ostraha &amp; bezpečnostní technologie
-    </div>
-    <h1 class="hero-title">
-        Bezpečnost vašeho objektu bez kompromisů a lidských chyb.
-    </h1>
-    <p class="hero-desc">
-        Garantujeme prověřené strážné, GPS a QR elektronickou kontrolu obchůzek v reálném čase a přímé napojení na náš nonstop operační velín.
-    </p>
-    <div class="hero-actions">
-        <a href="#kalkulacka" class="btn-primary-action">
-            ⚡ Spočítat orientační cenu ostrahy
-        </a>
-        <a href="#sluzby" class="btn-secondary-action">
-            Přehled služeb
-        </a>
-    </div>
-</section>
-
-<!-- 2. KLÍČOVÉ SLUŽBY - INTERAKTIVNÍ BĚŽÍCÍ PÁS V JEDNOM ŘÁDKU -->
-<section id="sluzby" style="margin-bottom: 40px;">
-    <div style="text-align: center; margin-bottom: 16px;">
-        <div class="calc-badge">⚡ Komplexní bezpečnostní portfolio</div>
-        <h2 class="section-title" style="margin-bottom: 6px;">Naše klíčové bezpečnostní pilíře</h2>
+<!-- 1. HERO -->
+<section class="hero">
+    <div class="hero-bg" aria-hidden="true">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="hero-grid"></div>
     </div>
 
-    <div class="ticker-wrapper" id="services-ticker">
-        <div class="ticker-track" id="ticker-track">
-            
-            <!-- SADA 1 -->
-            <div class="ticker-card border-yellow">
-                <div>
-                    <div class="service-icon">🕴️</div>
-                    <h3 class="service-heading">Osobní doprovody &amp; Eskorty</h3>
-                    <p class="service-text">Diskrétní ochrana osob (Close Protection), ozbrojený doprovod finanční hotovosti, cenných zásilek a asistence při rizikových jednáních.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--panther-yellow); font-weight: 700;">Ozbrojená ochrana &bull; 24/7</div>
-            </div>
-
-            <div class="ticker-card border-yellow">
-                <div>
-                    <div class="service-icon">🏢</div>
-                    <h3 class="service-heading">Fyzická ostraha budov</h3>
-                    <p class="service-text">Recepční a strážní služba pro administrativní centra, logistické parky, retail a průmyslové areály s GPS kontrolou.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--panther-yellow); font-weight: 700;">Recepce &bull; Vrátnice &bull; Areály</div>
-            </div>
-
-            <div class="ticker-card border-blue">
-                <div>
-                    <div class="service-icon">🚨</div>
-                    <h3 class="service-heading">PCO &amp; Kamerový dohled</h3>
-                    <p class="service-text">Dálkové střežení 24/7 s okamžitou reakcí a výjezdem motorizované zásahové jednotky po celé ČR.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-blue); font-weight: 700;">Reakční dojezd do minut</div>
-            </div>
-
-            <div class="ticker-card border-emerald">
-                <div>
-                    <div class="service-icon">🎪</div>
-                    <h3 class="service-heading">Pořadatelská služba</h3>
-                    <p class="service-text">Koordinace davu, VIP ochrana, kontrola vstupů a turnikety na koncertech, festivalech a sportovních událostech.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-emerald); font-weight: 700;">Eventy &bull; VIP zóny</div>
-            </div>
-
-            <div class="ticker-card border-rose">
-                <div>
-                    <div class="service-icon">🔍</div>
-                    <h3 class="service-heading">Bezpečnostní audity</h3>
-                    <p class="service-text">Penetrační testování fyzické bezpečnosti, analýza rizik a optimalizace nákladů na stávající ostrahu budovy.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-rose); font-weight: 700;">Risk management</div>
-            </div>
-
-            <!-- SADA 2 (DUPLIKACE PRO NEKONEČNÝ SMYČKOVÝ EFEKT) -->
-            <div class="ticker-card border-yellow" aria-hidden="true">
-                <div>
-                    <div class="service-icon">🕴️</div>
-                    <h3 class="service-heading">Osobní doprovody &amp; Eskorty</h3>
-                    <p class="service-text">Diskrétní ochrana osob (Close Protection), ozbrojený doprovod finanční hotovosti, cenných zásilek a asistence při rizikových jednáních.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--panther-yellow); font-weight: 700;">Ozbrojená ochrana &bull; 24/7</div>
-            </div>
-
-            <div class="ticker-card border-yellow" aria-hidden="true">
-                <div>
-                    <div class="service-icon">🏢</div>
-                    <h3 class="service-heading">Fyzická ostraha budov</h3>
-                    <p class="service-text">Recepční a strážní služba pro administrativní centra, logistické parky, retail a průmyslové areály s GPS kontrolou.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--panther-yellow); font-weight: 700;">Recepce &bull; Vrátnice &bull; Areály</div>
-            </div>
-
-            <div class="ticker-card border-blue" aria-hidden="true">
-                <div>
-                    <div class="service-icon">🚨</div>
-                    <h3 class="service-heading">PCO &amp; Kamerový dohled</h3>
-                    <p class="service-text">Dálkové střežení 24/7 s okamžitou reakcí a výjezdem motorizované zásahové jednotky po celé ČR.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-blue); font-weight: 700;">Reakční dojezd do minut</div>
-            </div>
-
-            <div class="ticker-card border-emerald" aria-hidden="true">
-                <div>
-                    <div class="service-icon">🎪</div>
-                    <h3 class="service-heading">Pořadatelská služba</h3>
-                    <p class="service-text">Koordinace davu, VIP ochrana, kontrola vstupů a turnikety na koncertech, festivalech a sportovních událostech.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-emerald); font-weight: 700;">Eventy &bull; VIP zóny</div>
-            </div>
-
-            <div class="ticker-card border-rose" aria-hidden="true">
-                <div>
-                    <div class="service-icon">🔍</div>
-                    <h3 class="service-heading">Bezpečnostní audity</h3>
-                    <p class="service-text">Penetrační testování fyzické bezpečnosti, analýza rizik a optimalizace nákladů na stávající ostrahu budovy.</p>
-                </div>
-                <div style="margin-top: 14px; font-size: 11px; color: var(--accent-rose); font-weight: 700;">Risk management</div>
-            </div>
-
-        </div>
-    </div>
-</section>
-
-
-<!-- 3. INTERAKTIVNÍ KALKULAČKA & POPTÁVKOVÝ FORMULÁŘ -->
-<section id="kalkulacka" class="calc-container">
-    <div class="calc-grid">
-        <!-- Levá strana: Slidery a interakce -->
+    <div class="container hero-inner">
         <div>
-            <div class="calc-badge">⚡ Transparentní cenotvorba</div>
-            <h2 class="calc-title">Spočítejte si náklady na ostrahu</h2>
-            <p class="calc-desc">
-                Posuňte posuvník a zjistěte orientační měsíční rozpočet včetně kompletní výstroje a pojištění odpovědnosti do 50 mil. Kč.
+            <div class="hero-pill" data-reveal>
+                <span class="tag">24/7</span> Fyzická ostraha &amp; bezpečnostní technologie
+            </div>
+            <h1 class="display h-xl hero-title" data-split>
+                Bezpečnost <span class="text-gradient">bez&nbsp;kompromisů</span> a lidských chyb.
+            </h1>
+            <p class="lead hero-desc" data-reveal style="--i:2">
+                Prověření strážní, GPS a QR elektronická kontrola obchůzek v reálném čase
+                a přímé napojení na náš nonstop operační velín.
             </p>
-
-            <div class="calc-group">
-                <div class="calc-label-flex">
-                    <span>Počet střežených hodin týdně:</span>
-                    <span id="hours-val" style="color: var(--panther-yellow); font-size: 16px;">168 hod (Nonstop 24/7)</span>
+            <div class="hero-actions" data-reveal style="--i:3">
+                <a href="#kalkulacka" class="btn btn-primary" data-magnetic>
+                    Spočítat cenu ostrahy <span class="arrow">→</span>
+                </a>
+                <a href="#sluzby" class="btn" data-magnetic>Přehled služeb</a>
+            </div>
+            <div class="hero-stats" data-reveal style="--i:4">
+                <div>
+                    <div class="stat-value">24/7</div>
+                    <div class="stat-label">nonstop operační velín</div>
                 </div>
-                <input type="range" id="hours-range" min="20" max="336" step="10" value="168" class="calc-range">
-            </div>
-
-            <div class="calc-group">
-                <label class="calc-label-flex">Požadovaný režim stanoviště:</label>
-                <select id="guard-type" class="calc-select">
-                    <option value="260">Standardní denní/noční ostraha (od 260 Kč/h)</option>
-                    <option value="310">Recepční služba s AJ (od 310 Kč/h)</option>
-                    <option value="360">Ozbrojená / Certifikovaná ostraha VIP (od 360 Kč/h)</option>
-                </select>
-            </div>
-
-            <div class="calc-result-box">
-                <div class="calc-result-label">Orientační měsíční rozpočet bez DPH</div>
-                <div id="total-price" class="calc-price">189 280 Kč</div>
-                <div class="calc-subnote">Přesnou kalkulaci připravíme po bezpečnostním posouzení objektu.</div>
+                <div>
+                    <div class="stat-value"><span data-count="50">50</span><small>mil. Kč</small></div>
+                    <div class="stat-label">pojištění odpovědnosti</div>
+                </div>
+                <div>
+                    <div class="stat-value"><span data-count="30">30</span><small>min</small></div>
+                    <div class="stat-label">odpověď na poptávku</div>
+                </div>
             </div>
         </div>
 
-        <!-- Pravá strana: Asynchronní formulář -->
-        <div class="inquiry-card">
-            <h3 class="inquiry-title">Získejte nezávaznou nabídku na míru</h3>
-            
-            <form id="inquiry-form" method="post" action="{% url 'web:submit_inquiry' %}">
-                {% csrf_token %}
-                <input type="hidden" name="service_type" value="PHYSICAL">
-                <input type="hidden" id="form-hours" name="estimated_hours_weekly" value="168">
-                <input type="hidden" id="form-estimate" name="calculated_estimate_czk" value="189280">
-                <!-- Past na roboty: člověk pole nevidí ani do něj neskočí tabulátorem -->
-                <div style="position: absolute; left: -10000px; width: 1px; height: 1px; overflow: hidden;" aria-hidden="true">
-                    <input type="text" name="website" tabindex="-1" autocomplete="off">
-                </div>
-
-                <div class="form-row">
-                    <input type="text" name="contact_name" placeholder="Vaše jméno *" required class="inquiry-input">
-                    <input type="tel" name="phone" placeholder="Telefonní číslo *" required class="inquiry-input">
-                </div>
-
-                <div style="margin-bottom: 12px;">
-                    <input type="email" name="email" placeholder="E-mailová adresa" class="inquiry-input">
-                </div>
-
-                <div style="margin-bottom: 16px;">
-                    <input type="text" name="object_location" placeholder="Město / Lokalita objektu" class="inquiry-input">
-                </div>
-
-                <button type="submit" id="submit-btn" class="btn-submit-inquiry">
-                    ✉️ Odeslat poptávku dispečinku
-                </button>
-
-                <div id="form-feedback" class="feedback-msg"></div>
-            </form>
+        <div class="radar-card glass glow-border" data-reveal="right" style="--i:2">
+            <div class="radar-head">
+                <span>Operační velín</span>
+                <span class="nav-status"><span class="live-dot"></span> online</span>
+            </div>
+            <div class="radar" aria-hidden="true">
+                <div class="radar-sweep"></div>
+                <span class="blip" style="left:32%; top:28%; animation-delay:0.35s"></span>
+                <span class="blip cyan" style="left:70%; top:40%; animation-delay:1.2s"></span>
+                <span class="blip green" style="left:58%; top:74%; animation-delay:2.4s"></span>
+                <span class="blip" style="left:24%; top:62%; animation-delay:3.1s"></span>
+            </div>
+            <div class="radar-legend">
+                <div class="legend-row"><span><i class="dot" style="background:var(--yellow)"></i> GPS kontrola obchůzek</span><span class="state">aktivní</span></div>
+                <div class="legend-row"><span><i class="dot" style="background:var(--cyan)"></i> Kamerový dohled &amp; PCO</span><span class="state">aktivní</span></div>
+                <div class="legend-row"><span><i class="dot" style="background:var(--emerald)"></i> Výjezdová jednotka</span><span class="state">v pohotovosti</span></div>
+            </div>
         </div>
     </div>
+    <div class="scroll-hint" aria-hidden="true"></div>
 </section>
 
-<!-- 4. MAGAZÍN A NOVINKY -->
-<section style="margin-bottom: 40px;">
-    <div class="articles-header-flex">
-        <div>
-            <div class="calc-badge">Panther Intel</div>
-            <h2 style="font-size: 26px; font-weight: 800; color: #fff; margin: 4px 0 0;">Zprávy a události z terénu</h2>
-        </div>
-        <a href="{% url 'web:article_list' %}" style="color: var(--accent-blue); text-decoration: none; font-size: 14px; font-weight: 700;">
-            Zobrazit všechny články →
-        </a>
-    </div>
-
-    <div class="services-grid">
-        {% for article in featured_articles %}
-        <a href="{% url 'web:article_detail' article.slug %}" class="article-card">
-            {% if article.featured_image %}
-                <img src="{{ article.featured_image.url }}" alt="{{ article.title }}" class="article-img">
-            {% else %}
-                <div class="article-img-placeholder">🛡️</div>
-            {% endif %}
-            <div class="article-body">
-                <div class="article-meta">
-                    <span>{{ article.category.name|default:"Bezpečnost" }}</span>
-                    <span>⏱️ {{ article.reading_time_minutes }} min čtení</span>
-                </div>
-                <h3 class="article-heading">{{ article.title }}</h3>
-                <p class="article-perex">{{ article.perex|truncatewords:20 }}</p>
-                <div class="article-link-text">Číst analýzu →</div>
-            </div>
-        </a>
-        {% empty %}
-        <div style="grid-column: 1 / -1; background: var(--bg-card); padding: 30px; border-radius: 12px; text-align: center; color: var(--text-muted); border: 1px solid var(--border-subtle);">
-            Zatím nebyly publikovány žádné veřejné články.
-        </div>
+<!-- 2. BĚŽÍCÍ PÁS -->
+<div class="marquee-wrap"><div class="marquee" aria-hidden="true">
+    <div class="marquee-track">
+        {% for _ in "12" %}
+        <span class="marquee-item">Fyzická ostraha <span class="marquee-star">✦</span></span>
+        <span class="marquee-item">PCO &amp; kamery <span class="marquee-star">✦</span></span>
+        <span class="marquee-item">Pořadatelská služba <span class="marquee-star">✦</span></span>
+        <span class="marquee-item">Eskorty <span class="marquee-star">✦</span></span>
+        <span class="marquee-item">Bezpečnostní audity <span class="marquee-star">✦</span></span>
+        <span class="marquee-item">Velín 24/7 <span class="marquee-star">✦</span></span>
         {% endfor %}
     </div>
+</div></div>
+
+<!-- 3. SLUŽBY -->
+<section class="section" id="sluzby">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow" data-reveal>Komplexní bezpečnostní portfolio</div>
+                <h2 class="display h-lg" data-reveal style="--i:1">Pět pilířů,<br><span class="text-outline">jeden partner.</span></h2>
+            </div>
+            <p class="lead" data-reveal style="--i:2">Od recepce v kancelářské budově po ozbrojenou eskortu. Všechno koordinuje jeden nonstop velín.</p>
+        </div>
+
+        <div class="bento">
+            <article class="bento-card feature wide tall spotlight glow-border" data-tilt data-reveal>
+                <span class="card-num">01</span>
+                <div>
+                    <div class="icon-tile">{% include 'web/_icon.html' with name='building' %}</div>
+                    <h3>Fyzická ostraha budov a areálů</h3>
+                    <p>Recepční a strážní služba pro administrativní centra, logistické parky, retail a průmyslové areály. Každou obchůzku potvrzuje GPS a QR kontrola.</p>
+                    <div class="chip-row"><span class="chip">Recepce</span><span class="chip">Vrátnice</span><span class="chip">Areály</span><span class="chip">GPS + QR</span></div>
+                </div>
+                <div class="patrol-map" aria-hidden="true">
+                    <svg viewBox="0 0 400 120" preserveAspectRatio="none">
+                        <path class="patrol-path" d="M20 90 C 80 20, 140 20, 180 60 S 280 110, 320 50 S 370 20, 385 30"/>
+                        <circle class="checkpoint" cx="20" cy="90" r="6"/>
+                        <circle class="checkpoint" cx="180" cy="60" r="6"/>
+                        <circle class="checkpoint" cx="320" cy="50" r="6"/>
+                        <circle class="checkpoint" cx="385" cy="30" r="6"/>
+                    </svg>
+                </div>
+            </article>
+
+            <article class="bento-card spotlight glow-border" data-tilt data-reveal style="--i:1">
+                <span class="card-num">02</span>
+                <div>
+                    <div class="icon-tile" style="--tone: var(--cyan)">{% include 'web/_icon.html' with name='camera' %}</div>
+                    <h3>PCO &amp; kamerový dohled</h3>
+                    <p>Dálkové střežení 24/7 s okamžitou reakcí a výjezdem zásahové jednotky.</p>
+                </div>
+            </article>
+
+            <article class="bento-card spotlight glow-border" data-tilt data-reveal style="--i:2">
+                <span class="card-num">03</span>
+                <div>
+                    <div class="icon-tile">{% include 'web/_icon.html' with name='escort' %}</div>
+                    <h3>Osobní doprovody &amp; eskorty</h3>
+                    <p>Ochrana osob, ozbrojený doprovod hotovosti a cenných zásilek.</p>
+                </div>
+            </article>
+
+            <article class="bento-card spotlight glow-border" data-tilt data-reveal>
+                <span class="card-num">04</span>
+                <div>
+                    <div class="icon-tile" style="--tone: var(--emerald)">{% include 'web/_icon.html' with name='users' %}</div>
+                    <h3>Pořadatelská služba</h3>
+                    <p>Koordinace davu, kontrola vstupů a VIP zóny na koncertech, festivalech a sportu.</p>
+                </div>
+            </article>
+
+            <article class="bento-card spotlight glow-border" data-tilt data-reveal style="--i:1">
+                <span class="card-num">05</span>
+                <div>
+                    <div class="icon-tile" style="--tone: var(--rose)">{% include 'web/_icon.html' with name='search' %}</div>
+                    <h3>Bezpečnostní audity</h3>
+                    <p>Testování fyzické bezpečnosti, analýza rizik a optimalizace nákladů na ostrahu.</p>
+                </div>
+            </article>
+
+            <article class="bento-card cta" data-reveal style="--i:2">
+                <div>
+                    <h3>Potřebujete kombinaci služeb?</h3>
+                    <p>Sestavíme řešení na míru vašemu objektu. Orientační cenu máte za pár vteřin.</p>
+                </div>
+                <a href="#kalkulacka" class="btn btn-sm">Do kalkulačky <span class="arrow">→</span></a>
+            </article>
+        </div>
+    </div>
 </section>
-{% endblock %}
 
-{% block extra_scripts %}
-<script>
-    // KALKULAČKA V REÁLNÉM ČASE
-    const hoursRange = document.getElementById('hours-range');
-    const hoursVal = document.getElementById('hours-val');
-    const guardType = document.getElementById('guard-type');
-    const totalPrice = document.getElementById('total-price');
-    const formHours = document.getElementById('form-hours');
-    const formEstimate = document.getElementById('form-estimate');
+<!-- 4. JAK TO FUNGUJE -->
+<section class="section" id="jak-to-funguje">
+    <div class="container process">
+        <div class="process-intro">
+            <div class="eyebrow" data-reveal>Jak to funguje</div>
+            <h2 class="display h-lg" data-reveal style="--i:1">Od poptávky ke&nbsp;<span class="text-gradient">střeženému objektu.</span></h2>
+            <p class="lead" data-reveal style="--i:2; margin-top:22px">Jasný postup bez zbytečné administrativy. O všem víte v každém okamžiku.</p>
+        </div>
+        <div class="steps">
+            <div class="steps-line" aria-hidden="true"></div>
+            <div class="step glass" data-reveal="right">
+                <span class="step-dot">1</span>
+                <h3>Poptávka a orientační cena</h3>
+                <p>Spočítáte si rozpočet v kalkulačce a necháte nám kontakt. Ozveme se do 30 minut.</p>
+            </div>
+            <div class="step glass" data-reveal="right">
+                <span class="step-dot">2</span>
+                <h3>Bezpečnostní posouzení objektu</h3>
+                <p>Projdeme objekt, rizika a režim stanoviště a připravíme přesnou kalkulaci.</p>
+            </div>
+            <div class="step glass" data-reveal="right">
+                <span class="step-dot">3</span>
+                <h3>Nasazení prověřených strážných</h3>
+                <p>Na stanoviště nastoupí prověření strážní s kompletní výstrojí a pojištěním odpovědnosti.</p>
+            </div>
+            <div class="step glass" data-reveal="right">
+                <span class="step-dot">4</span>
+                <h3>Kontrola a reporting z velínu</h3>
+                <p>GPS a QR kontrola obchůzek v reálném čase a nonstop napojení na operační velín.</p>
+            </div>
+        </div>
+    </div>
+</section>
 
-    function calculateEstimate() {
-        const hours = parseInt(hoursRange.value, 10);
-        const rate = parseInt(guardType.value, 10);
-        const monthlyHours = hours * 4.33;
-        const estimate = Math.round(monthlyHours * rate);
+<!-- 5. KALKULAČKA A POPTÁVKA -->
+<section class="section" id="kalkulacka">
+    <div class="container">
+        <div class="calc" data-reveal="scale">
+            <div class="calc-inner">
+                <div>
+                    <div class="eyebrow">Transparentní cenotvorba</div>
+                    <h2 class="display h-md" style="margin-bottom:14px">Spočítejte si náklady na ostrahu</h2>
+                    <p class="lead" style="font-size:15px; margin-bottom:34px">Orientační měsíční rozpočet včetně kompletní výstroje a pojištění odpovědnosti do 50 mil. Kč.</p>
 
-        hoursVal.textContent = (hours === 168) ? '168 hod (Nonstop 24/7)' : `${hours} hod / týdně`;
-        totalPrice.textContent = estimate.toLocaleString('cs-CZ') + ' Kč';
-        formHours.value = hours;
-        formEstimate.value = estimate;
-    }
+                    <label class="field-label" for="hours-range">
+                        Počet střežených hodin týdně
+                        <output id="hours-val" for="hours-range">168 h · nonstop 24/7</output>
+                    </label>
+                    <input type="range" id="hours-range" class="range" min="24" max="336" step="8" value="168">
 
-    hoursRange.addEventListener('input', calculateEstimate);
-    guardType.addEventListener('change', calculateEstimate);
+                    <fieldset class="segmented" style="border:0">
+                        <legend class="field-label" style="margin-bottom:12px">Režim stanoviště</legend>
+                        <input type="radio" name="guard-rate" id="rate-std" value="260" checked>
+                        <label for="rate-std"><strong>Standardní</strong><span>od 260 Kč/h</span></label>
+                        <input type="radio" name="guard-rate" id="rate-rec" value="310">
+                        <label for="rate-rec"><strong>Recepce s AJ</strong><span>od 310 Kč/h</span></label>
+                        <input type="radio" name="guard-rate" id="rate-vip" value="360">
+                        <label for="rate-vip"><strong>Ozbrojená / VIP</strong><span>od 360 Kč/h</span></label>
+                    </fieldset>
 
-    // ASYNCHRONNÍ ODESLÁNÍ BEZ PŘEČERPÁNÍ STRÁNKY
-    const form = document.getElementById('inquiry-form');
-    const feedback = document.getElementById('form-feedback');
-    const submitBtn = document.getElementById('submit-btn');
+                    <div class="price-box" aria-live="polite">
+                        <div class="price-label">Orientační měsíční rozpočet bez DPH</div>
+                        <div id="total-price" class="price text-gradient">189 280 Kč</div>
+                        <div class="price-note">Přesnou kalkulaci připravíme po bezpečnostním posouzení objektu.</div>
+                    </div>
+                </div>
 
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        submitBtn.disabled = true;
-        submitBtn.textContent = '⏳ Odesílám...';
+                <div class="form-card glass">
+                    <h3>Nezávazná nabídka na míru</h3>
+                    <p>Ozveme se vám do 30 minut s návrhem řešení.</p>
+                    <form id="inquiry-form" method="post" action="{% url 'web:submit_inquiry' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="service_type" value="PHYSICAL">
+                        <input type="hidden" id="form-hours" name="estimated_hours_weekly" value="168">
+                        <input type="hidden" id="form-estimate" name="calculated_estimate_czk" value="189280">
+                        <!-- Past na roboty: člověk pole nevidí ani do něj neskočí tabulátorem -->
+                        <div class="honeypot" aria-hidden="true">
+                            <input type="text" name="website" tabindex="-1" autocomplete="off">
+                        </div>
+                        <div class="field-row">
+                            <div class="field">
+                                <input type="text" id="f-name" name="contact_name" placeholder=" " required autocomplete="name">
+                                <label for="f-name">Vaše jméno *</label>
+                            </div>
+                            <div class="field">
+                                <input type="tel" id="f-phone" name="phone" placeholder=" " required autocomplete="tel">
+                                <label for="f-phone">Telefon *</label>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <input type="email" id="f-email" name="email" placeholder=" " autocomplete="email">
+                            <label for="f-email">E-mail</label>
+                        </div>
+                        <div class="field">
+                            <input type="text" id="f-city" name="object_location" placeholder=" " autocomplete="address-level2">
+                            <label for="f-city">Město / lokalita objektu</label>
+                        </div>
+                        <button type="submit" id="submit-btn" class="btn btn-primary btn-block" style="margin-top:6px">
+                            Odeslat poptávku dispečinku <span class="arrow">→</span>
+                        </button>
+                        <div id="form-feedback" class="feedback" role="status"></div>
+                    </form>
+                    <ul class="trust-list">
+                        <li>{% include 'web/_icon.html' with name='zap' %} Odpověď do 30 minut</li>
+                        <li>{% include 'web/_icon.html' with name='shield' %} Pojištění odpovědnosti do 50 mil. Kč</li>
+                        <li>{% include 'web/_icon.html' with name='radar' %} Napojení na nonstop velín</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-        const formData = new FormData(form);
+<!-- 6. MAGAZÍN -->
+<section class="section-tight">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow" data-reveal>Panther Intel</div>
+                <h2 class="display h-md" data-reveal style="--i:1">Zprávy a události z terénu</h2>
+            </div>
+            <a href="{% url 'web:article_list' %}" class="btn btn-sm" data-reveal style="--i:2">Všechny články <span class="arrow">→</span></a>
+        </div>
+        <div class="articles">
+            {% for article in featured_articles %}
+                {% include 'web/_article_card.html' with article=article delay=forloop.counter0 %}
+            {% empty %}
+                <div class="empty-state">Zatím nebyly publikovány žádné veřejné články.</div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
 
-        try {
-            const res = await fetch(form.action, {
-                method: 'POST',
-                body: formData,
-            });
-            const data = await res.json();
-
-            feedback.style.display = 'block';
-            if (data.status === 'success') {
-                feedback.style.background = 'rgba(16, 185, 129, 0.15)';
-                feedback.style.border = '1px solid rgba(16, 185, 129, 0.3)';
-                feedback.style.color = '#6ee7b7';
-                feedback.textContent = data.message;
-                form.reset();
-                calculateEstimate();
-            } else {
-                feedback.style.background = 'rgba(239, 68, 68, 0.15)';
-                feedback.style.border = '1px solid rgba(239, 68, 68, 0.3)';
-                feedback.style.color = '#fca5a5';
-                feedback.textContent = data.message;
-            }
-        } catch (err) {
-            feedback.style.display = 'block';
-            feedback.style.background = 'rgba(239, 68, 68, 0.15)';
-            feedback.style.color = '#fca5a5';
-            feedback.textContent = 'Spojení se nezdařilo. Zkuste to prosím znovu.';
-        } finally {
-            submitBtn.disabled = false;
-            submitBtn.textContent = '✉️ Odeslat poptávku dispečinku';
-        }
-    });
-    // INTERAKTIVNÍ OVLÁDÁNÍ BĚŽÍCÍHO PÁSU
-    const tickerTrack = document.getElementById('ticker-track');
-    let isDown = false;
-    let startX;
-    let scrollLeft;
-
-    // Dotyková podpora pro mobil (zastavení při tapnutí)
-    tickerTrack.addEventListener('touchstart', () => {
-        tickerTrack.style.animationPlayState = 'paused';
-    }, { passive: true });
-
-    tickerTrack.addEventListener('touchend', () => {
-        tickerTrack.style.animationPlayState = 'running';
-    }, { passive: true });
-</script>
+<!-- 7. VÝZVA K AKCI -->
+<section class="section">
+    <div class="container">
+        <div class="cta-band" data-reveal="scale">
+            <div class="eyebrow" style="justify-content:center">Nonstop operační velín</div>
+            <h2 class="display h-lg">Potřebujete ostrahu <span class="text-gradient">ještě dnes?</span></h2>
+            <p class="lead">Zavolejte na velín, který je na příjmu 24 hodin denně, 7 dní v týdnu.</p>
+            <a href="tel:+420608255197" class="cta-phone text-gradient">+420 608 255 197</a>
+            <div><a href="#kalkulacka" class="btn btn-primary" data-magnetic>Nebo pošlete poptávku <span class="arrow">→</span></a></div>
+        </div>
+    </div>
+</section>
 {% endblock %}

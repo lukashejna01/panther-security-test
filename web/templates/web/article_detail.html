@@ -1,0 +1,52 @@
+{% extends 'web/base_public.html' %}
+
+{% block title %}{{ article.title }} | Panther Intel{% endblock %}
+{% block description %}{{ article.perex|truncatechars:160 }}{% endblock %}
+
+{% block content %}
+<article>
+    <header class="article-hero">
+        <div class="hero-bg" aria-hidden="true"><div class="orb orb-1"></div><div class="orb orb-2"></div></div>
+        <div class="container" style="max-width:768px">
+            <a href="{% url 'web:article_list' %}" class="back" data-reveal>← Zpět do magazínu</a>
+            <div class="article-meta" data-reveal style="--i:1">
+                <span class="cat-chip">{{ article.category.name|default:"Bezpečnost" }}</span>
+                <span>{{ article.reading_time_minutes }} min čtení</span>
+                {% if article.published_at %}<span>{{ article.published_at|date:"j. n. Y" }}</span>{% endif %}
+            </div>
+            <h1 class="display h-lg" data-reveal style="--i:2; margin-top:12px">{{ article.title }}</h1>
+        </div>
+    </header>
+
+    <div class="container" style="max-width:1100px">
+        {% if article.featured_image %}
+        <div class="article-cover" data-reveal="scale">
+            <img src="{{ article.featured_image.url }}" alt="">
+        </div>
+        {% endif %}
+        <div class="prose" data-reveal>
+            <p class="lead-perex">{{ article.perex }}</p>
+            {# Obsah píše jen administrace webu (redakce) – HTML se proto vypisuje bez escapování #}
+            {{ article.content|safe }}
+        </div>
+    </div>
+</article>
+
+{% if related_articles %}
+<section class="section-tight">
+    <div class="container">
+        <div class="section-head">
+            <div>
+                <div class="eyebrow" data-reveal>Mohlo by vás zajímat</div>
+                <h2 class="display h-md" data-reveal style="--i:1">Další články z rubriky</h2>
+            </div>
+        </div>
+        <div class="articles">
+            {% for related in related_articles %}
+                {% include 'web/_article_card.html' with article=related delay=forloop.counter0 %}
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

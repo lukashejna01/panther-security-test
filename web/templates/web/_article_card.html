@@ -1,0 +1,26 @@
+{# Karta článku. Parametry: article, delay (pořadí pro postupné najetí), featured (velká karta) #}
+<a href="{% url 'web:article_detail' article.slug %}"
+   class="article-card article-item{% if featured %} featured{% endif %}"
+   data-search="{{ article.title|lower }} {{ article.perex|lower }}"
+   data-reveal style="--i:{{ delay|default:0 }}">
+    <div class="article-media">
+        {% if article.featured_image %}
+            <img src="{{ article.featured_image.url }}" alt="" loading="lazy">
+        {% else %}
+            <div class="article-art" aria-hidden="true"
+                 style="{% if article.id|divisibleby:3 %}--tone:var(--cyan); --ax:70%; --ay:25%{% elif article.id|divisibleby:2 %}--tone:var(--emerald); --ax:25%; --ay:70%{% else %}--tone:var(--yellow); --ax:30%; --ay:30%{% endif %}">
+                <span class="glyph">{{ article.category.name|default:"P"|first|upper }}</span>
+            </div>
+        {% endif %}
+    </div>
+    <div class="article-body">
+        <div class="article-meta">
+            <span class="cat-chip">{{ article.category.name|default:"Bezpečnost" }}</span>
+            <span>{{ article.reading_time_minutes }} min čtení</span>
+            {% if article.published_at %}<span>{{ article.published_at|date:"j. n. Y" }}</span>{% endif %}
+        </div>
+        <h3 class="article-title">{{ article.title }}</h3>
+        <p class="article-perex">{{ article.perex|truncatewords:28 }}</p>
+        <span class="read-more">Číst článek <span class="arrow">→</span></span>
+    </div>
+</a>

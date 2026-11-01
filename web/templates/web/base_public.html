@@ -1,80 +1,112 @@
 {% load static %}
 <!DOCTYPE html>
-<html lang="cs">
+<html lang="cs" class="no-js">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>{% block title %}Panther Security | Fyzická ostraha a bezpečnostní technologie{% endblock %}</title>
-    
-    <!-- Google Fonts -->
+    <meta name="description" content="{% block description %}Fyzická ostraha objektů, PCO a kamerový dohled, pořadatelská služba, eskorty a bezpečnostní audity. Nonstop operační velín 24/7.{% endblock %}">
+    <meta name="theme-color" content="#06080c">
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    
-    <!-- Statické CSS -->
-    <link rel="stylesheet" href="{% static 'css/public.css' %}">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{% static 'css/public.css' %}?v=2">
+    <script defer src="{% static 'js/public.js' %}?v=2"></script>
     {% block extra_head %}{% endblock %}
 </head>
 <body>
+    {% with page=request.resolver_match.url_name %}
+    <a href="#obsah" class="skip-link">Přeskočit na obsah</a>
+    <div class="scroll-progress" aria-hidden="true"></div>
 
-    <!-- NAVBAR -->
-    <header class="public-navbar">
-        <div class="nav-container">
-            <a href="{% url 'web:home' %}" class="brand-logo">
-                <span class="brand-badge">PANTHER</span>
-                <span class="brand-name">Security</span>
+    <!-- NAVIGACE -->
+    <header class="site-nav">
+        <div class="nav-inner">
+            <a href="{% url 'web:home' %}" class="brand" aria-label="Panther Security – úvod">
+                <span class="brand-mark">P</span>
+                <span class="brand-name">Panther <span>Security</span></span>
             </a>
 
-            <div class="status-dot">
-                <span class="pulse"></span> Velín 24/7 aktivní
-            </div>
+            <span class="nav-status"><span class="live-dot"></span> Velín 24/7 aktivní</span>
 
             <ul class="nav-links">
                 <li><a href="{% url 'web:home' %}#sluzby">Služby</a></li>
-                <li><a href="{% url 'web:home' %}#kalkulacka">Kalkulačka ostrahy</a></li>
-                <li><a href="{% url 'web:article_list' %}">Magazín &amp; Události</a></li>
-                <li><a href="{% url 'web:contact' %}">Kontakt</a></li>
-                <li><a href="{% url 'login' %}" class="btn-portal-entry">🔐 Vstup do portálu</a></li>
+                <li><a href="{% url 'web:home' %}#jak-to-funguje">Jak to funguje</a></li>
+                <li><a href="{% url 'web:home' %}#kalkulacka">Kalkulačka</a></li>
+                <li><a href="{% url 'web:article_list' %}" {% if page == 'article_list' or page == 'article_detail' %}aria-current="page"{% endif %}>Magazín</a></li>
+                <li><a href="{% url 'web:contact' %}" {% if page == 'contact' %}aria-current="page"{% endif %}>Kontakt</a></li>
+                <li class="nav-cta"><a href="{% url 'login' %}" class="btn btn-sm">Vstup do portálu</a></li>
             </ul>
+
+            <button type="button" class="menu-toggle" aria-label="Otevřít menu" aria-expanded="false" aria-controls="mobile-menu">
+                <span></span><span></span><span></span>
+            </button>
         </div>
     </header>
 
-    <!-- HLAVNÍ OBSAH -->
-    <main>
+    <!-- MOBILNÍ MENU -->
+    <nav class="mobile-menu" id="mobile-menu" aria-hidden="true" aria-label="Hlavní menu">
+        <a class="mobile-link" style="--i:0" href="{% url 'web:home' %}#sluzby">Služby</a>
+        <a class="mobile-link" style="--i:1" href="{% url 'web:home' %}#jak-to-funguje">Jak to funguje</a>
+        <a class="mobile-link" style="--i:2" href="{% url 'web:home' %}#kalkulacka">Kalkulačka</a>
+        <a class="mobile-link" style="--i:3" href="{% url 'web:article_list' %}">Magazín</a>
+        <a class="mobile-link" style="--i:4" href="{% url 'web:contact' %}">Kontakt</a>
+        <div class="mobile-menu-footer">
+            <a href="tel:+420608255197" class="btn btn-primary btn-block">Nonstop velín +420 608 255 197</a>
+            <a href="{% url 'login' %}" class="btn btn-block">Vstup do portálu</a>
+        </div>
+    </nav>
+
+    <main id="obsah">
         {% block content %}{% endblock %}
     </main>
 
-    <!-- MOBILNÍ BOTTOM BAR -->
-    <div class="mobile-bottom-bar">
-        <a href="tel:+420608255197" class="mobile-action-btn">
-            <span style="font-size: 18px;">📞</span>
-            <span>Nonstop velín</span>
-        </a>
-        <a href="{% url 'web:article_list' %}" class="mobile-action-btn">
-            <span style="font-size: 18px;">📰</span>
-            <span>Magazín</span>
-        </a>
-        <a href="{% url 'login' %}" class="mobile-action-btn">
-            <span style="font-size: 18px;">👤</span>
-            <span>Portál</span>
-        </a>
-        <a href="{% url 'web:home' %}#kalkulacka" class="mobile-cta">
-            ⚡ Poptat ostrahu
-        </a>
-    </div>
-
     <!-- PATIČKA -->
-    <footer id="kontakt">
-        <div class="footer-container">
-            <div>
-                <strong>Panther Security s.r.o.</strong> &bull; IČO: 22525882 &bull; Varšavská 715/36, Praha 2
+    <footer class="site-footer">
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <a href="{% url 'web:home' %}" class="brand">
+                        <span class="brand-mark">P</span>
+                        <span class="brand-name">Panther <span>Security</span></span>
+                    </a>
+                    <p>Fyzická ostraha, dálkový dohled a pořadatelská služba s nonstop operačním velínem.</p>
+                </div>
+                <div>
+                    <h4>Navigace</h4>
+                    <ul>
+                        <li><a href="{% url 'web:home' %}#sluzby">Služby</a></li>
+                        <li><a href="{% url 'web:home' %}#kalkulacka">Kalkulačka ostrahy</a></li>
+                        <li><a href="{% url 'web:article_list' %}">Magazín</a></li>
+                        <li><a href="{% url 'web:contact' %}">Kontakt</a></li>
+                        <li><a href="{% url 'login' %}">Portál pro zaměstnance</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4>Nonstop velín</h4>
+                    <ul>
+                        <li><a href="tel:+420608255197">+420 608 255 197</a></li>
+                        <li><a href="mailto:obchod@panther-security.cz">obchod@panther-security.cz</a></li>
+                        <li><a href="{% url 'web:contact' %}">Varšavská 715/36, Praha 2</a></li>
+                    </ul>
+                </div>
             </div>
-            <div>
-                Nonstop operační středisko &amp; výjezd: <strong style="color: #fff;">+420 608 255 197</strong>
+            <div class="footer-bottom">
+                <span>© {% now "Y" %} Panther Security s.r.o. · IČO 22525882</span>
+                <span>Varšavská 715/36, 120 00 Praha 2</span>
             </div>
+            <div class="footer-giant" aria-hidden="true">PANTHER</div>
         </div>
     </footer>
+
+    <!-- SPODNÍ LIŠTA NA MOBILU -->
+    <div class="mobile-bar">
+        <a href="tel:+420608255197">{% include 'web/_icon.html' with name='phone' %} Velín</a>
+        <a href="{% url 'web:home' %}#kalkulacka" class="primary">{% include 'web/_icon.html' with name='zap' %} Poptat ostrahu</a>
+    </div>
+    {% endwith %}
 
     {% block extra_scripts %}{% endblock %}
 </body>
