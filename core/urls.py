@@ -65,6 +65,7 @@ urlpatterns = [
     path('fakturace/<int:invoice_id>/zaplaceno/', billing_views.toggle_invoice_payment_status_view, name='invoice_toggle_payment'),
     path('fakturace/<int:invoice_id>/smazat/', billing_views.invoice_delete_view, name='invoice_delete'),
     path('fakturace/<int:invoice_id>/dokument/', billing_views.invoice_document_view, name='invoice_document'),
+    path('fakturace/<int:invoice_id>/upravit/', billing_views.invoice_edit_view, name='invoice_edit'),
 
     # Správa odběratelů (klientů) a střežených objektů
     path('klienti/', billing_views.client_list_view, name='client_list'),

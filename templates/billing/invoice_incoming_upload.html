@@ -48,71 +48,7 @@
             </div>
             {% endif %}
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 14px;">
-                <div class="form-group">
-                    <label>Dodavatel / Firma *</label>
-                    {{ invoice_form.supplier_name }}
-                </div>
-                <div class="form-group">
-                    <label>IČO dodavatele</label>
-                    {{ invoice_form.supplier_ico }}
-                </div>
-                <div class="form-group">
-                    <label>DIČ dodavatele</label>
-                    {{ invoice_form.supplier_dic }}
-                </div>
-                <div class="form-group">
-                    <label>Bankovní účet / IBAN</label>
-                    {{ invoice_form.supplier_bank_account }}
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 14px;">
-                <div class="form-group">
-                    <label>Číslo faktury *</label>
-                    {{ invoice_form.invoice_number }}
-                </div>
-                <div class="form-group">
-                    <label>Variabilní symbol</label>
-                    {{ invoice_form.variable_symbol }}
-                </div>
-                <div class="form-group">
-                    <label>Datum vystavení *</label>
-                    {{ invoice_form.issue_date }}
-                </div>
-                <div class="form-group">
-                    <label>DUZP (zdanitelné plnění) *</label>
-                    {{ invoice_form.tax_date }}
-                </div>
-                <div class="form-group">
-                    <label>Datum splatnosti *</label>
-                    {{ invoice_form.due_date }}
-                </div>
-            </div>
-
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 14px;">
-                <div class="form-group">
-                    <label>Základ bez DPH (Kč)</label>
-                    {{ invoice_form.amount_without_vat }}
-                </div>
-                <div class="form-group">
-                    <label>Sazba DPH (%)</label>
-                    {{ invoice_form.vat_rate }}
-                </div>
-                <div class="form-group">
-                    <label>Částka DPH (Kč)</label>
-                    {{ invoice_form.vat_amount }}
-                </div>
-                <div class="form-group">
-                    <label style="color: #ef4444; font-weight: 700;">Celkem s DPH (Kč) *</label>
-                    {{ invoice_form.total_amount }}
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom: 20px;">
-                <label>Popis / Poznámka k faktuře</label>
-                {{ invoice_form.notes }}
-            </div>
+            {% include 'billing/_incoming_invoice_fields.html' %}
 
             <button type="submit" name="save_invoice" id="saveInvoiceBtn" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px; font-weight: 800; width: 100%;">
                 💾 Zaevidovat přijatou fakturu do nákladů

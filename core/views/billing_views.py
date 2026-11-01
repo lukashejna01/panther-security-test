@@ -5,7 +5,7 @@ Přístup k financím má výhradně majitel (SystemRole.OWNER).
 """
 
 from datetime import timedelta, date, datetime
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 import os
 import shutil
 import base64
@@ -17,7 +17,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.http import url_has_allowed_host_and_scheme
 from reportlab.graphics.barcode import qrencoder
-from django.db import models
+from django.db import models, transaction
 from django.http import Http404
 from django.core.files.base import ContentFile
 
@@ -317,6 +317,37 @@ def toggle_invoice_payment_status_view(request, invoice_id):
     return redirect(next_url)
 
 
+def _parse_invoice_items(request):
+    """Položky vydané faktury z formuláře (řádky item_*[]). Vrací (položky, součet bez DPH)."""
+    items = []
+    subtotal = Decimal('0.00')
+    rows = zip(
+        request.POST.getlist('item_description[]'),
+        request.POST.getlist('item_quantity[]'),
+        request.POST.getlist('item_price[]'),
+    )
+    for desc, q_str, p_str in rows:
+        if not desc.strip():
+            continue
+        try:
+            qty = Decimal(str(q_str).replace(',', '.'))
+            price = Decimal(str(p_str).replace(',', '.'))
+        except InvalidOperation:
+            continue
+        # Mimo rozsah sloupců v databázi (max. 8 míst před desetinnou čárkou)
+        if not (qty.is_finite() and price.is_finite()) or abs(qty) >= 10**8 or abs(price) >= 10**8:
+            continue
+        total = round(qty * price, 2)
+        subtotal += total
+        items.append({
+            'description': desc.strip()[:255],
+            'quantity': qty,
+            'unit_price': price,
+            'total_price': total,
+        })
+    return items, subtotal
+
+
 @login_required
 @role_required([SystemRole.OWNER])
 def generate_client_invoice_view(request):
@@ -330,30 +361,7 @@ def generate_client_invoice_view(request):
         due_date = form.cleaned_data['due_date']
         notes = form.cleaned_data['notes']
 
-        item_descs = request.POST.getlist('item_description[]')
-        item_qtys = request.POST.getlist('item_quantity[]')
-        item_prices = request.POST.getlist('item_price[]')
-
-        items_to_create = []
-        subtotal = Decimal('0.00')
-
-        for desc, q_str, p_str in zip(item_descs, item_qtys, item_prices):
-            if not desc.strip():
-                continue
-            try:
-                qty = Decimal(str(q_str).replace(',', '.'))
-                price = Decimal(str(p_str).replace(',', '.'))
-                total = round(qty * price, 2)
-                subtotal += total
-                items_to_create.append({
-                    'description': desc.strip(),
-                    'quantity': qty,
-                    'unit_price': price,
-                    'total_price': total
-                })
-            except (ValueError, TypeError):
-                continue
-
+        items_to_create, subtotal = _parse_invoice_items(request)
         if not items_to_create:
             messages.error(request, "Zadejte alespoň jednu platnou položku faktury.")
             return render(request, 'billing/invoice_generate.html', {'form': form})
@@ -389,6 +397,75 @@ def generate_client_invoice_view(request):
         return redirect('invoice_detail', variable_symbol=invoice.variable_symbol)
 
     return render(request, 'billing/invoice_generate.html', {'form': form})
+
+
+@login_required
+@role_required([SystemRole.OWNER])
+def invoice_edit_view(request, invoice_id):
+    """
+    Úprava vydané nebo přijaté faktury. Číslo vydané faktury i VS zůstávají,
+    položky se přepíšou a částky přepočítají.
+    """
+    invoice = get_object_or_404(Invoice.objects.select_related('client'), id=invoice_id)
+    if invoice.invoice_type == InvoiceType.INCOMING:
+        return _edit_incoming_invoice(request, invoice)
+
+    initial = {
+        'client': invoice.client,
+        'issue_date': invoice.issue_date,
+        'tax_date': invoice.tax_date,
+        'due_date': invoice.due_date,
+        'notes': invoice.notes,
+    }
+    form = GenerateClientInvoiceForm(request.POST or None, initial=initial)
+    # Klient faktury musí jít vybrat, i když už mezitím není aktivní
+    form.fields['client'].queryset = Client.objects.filter(models.Q(is_active=True) | models.Q(pk=invoice.client_id))
+    items = list(invoice.items.order_by('id').values('description', 'quantity', 'unit_price'))
+
+    if request.method == 'POST':
+        new_items, subtotal = _parse_invoice_items(request)
+        items = new_items or items
+        if not new_items:
+            messages.error(request, "Zadejte alespoň jednu platnou položku faktury.")
+        elif form.is_valid():
+            vat_amount = round(subtotal * Decimal(invoice.vat_rate) / 100, 2)
+            with transaction.atomic():
+                invoice.client = form.cleaned_data['client']
+                invoice.issue_date = form.cleaned_data['issue_date']
+                invoice.tax_date = form.cleaned_data['tax_date']
+                invoice.due_date = form.cleaned_data['due_date']
+                invoice.notes = form.cleaned_data['notes']
+                invoice.amount_without_vat = subtotal
+                invoice.vat_amount = vat_amount
+                invoice.total_amount = subtotal + vat_amount
+                invoice.save()
+                invoice.items.all().delete()
+                InvoiceItem.objects.bulk_create(InvoiceItem(invoice=invoice, **it) for it in new_items)
+
+            messages.success(request, f"Faktura #{invoice.invoice_number} byla upravena.")
+            return redirect('invoice_detail', variable_symbol=invoice.variable_symbol or invoice.invoice_number)
+        else:
+            messages.error(request, "Zkontrolujte odběratele a termíny faktury.")
+
+    return render(request, 'billing/invoice_generate.html', {'form': form, 'invoice': invoice, 'items': items})
+
+
+def _edit_incoming_invoice(request, invoice):
+    """Úprava údajů přijaté faktury, případně výměna naskenovaného originálu."""
+    old_file_name = invoice.document_file.name if invoice.document_file else ''
+    form = IncomingInvoiceForm(request.POST or None, request.FILES or None, instance=invoice)
+
+    if request.method == 'POST':
+        if form.is_valid():
+            invoice = form.save()
+            # Nahraný nový originál nahradil starý – starý soubor smažeme z disku
+            if old_file_name and 'document_file' in request.FILES and invoice.document_file.name != old_file_name:
+                invoice.document_file.storage.delete(old_file_name)
+            messages.success(request, f"Přijatá faktura #{invoice.invoice_number} byla upravena.")
+            return redirect(_safe_return_url(request, request.GET.get('next'), 'invoice_list'))
+        messages.error(request, "Formulář obsahuje chyby, zkontrolujte zvýrazněná pole.")
+
+    return render(request, 'billing/invoice_incoming_edit.html', {'invoice_form': form, 'invoice': invoice})
 
 
 @login_required

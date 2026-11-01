@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block title %}Upravit přijatou fakturu #{{ invoice.invoice_number }} - Panther Security{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto 30px;">
+    <div style="margin-bottom: 20px;">
+        <a href="{% url 'invoice_list' %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 10px;">← Zpět na přehled faktur</a>
+        <h1 style="font-size: 24px; color: #fff; margin: 6px 0 0;">✏️ Upravit přijatou fakturu #{{ invoice.invoice_number }}</h1>
+        <p style="color: var(--text-muted); font-size: 13px; margin: 4px 0 0;">
+            Opravte údaje přepsané z dokladu dodavatele. Originál dokladu můžete nahradit novým souborem.
+        </p>
+    </div>
+
+    <div class="card">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+
+            {% if invoice_form.errors %}
+            <div style="padding: 12px 16px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.35); border-radius: 8px; margin-bottom: 18px; font-size: 13px; color: #fca5a5;">
+                {% for field in invoice_form %}{% for error in field.errors %}
+                <div><strong>{{ field.label }}:</strong> {{ error }}</div>
+                {% endfor %}{% endfor %}
+                {% for error in invoice_form.non_field_errors %}<div>{{ error }}</div>{% endfor %}
+            </div>
+            {% endif %}
+
+            {% include 'billing/_incoming_invoice_fields.html' %}
+
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label>Originál dokladu</label>
+                {% if invoice.document_file %}
+                <div style="font-size: 12px; margin-bottom: 6px;">
+                    <a href="{% url 'invoice_document' invoice.id %}" target="_blank" style="color: #38bdf8;">📎 Zobrazit současný soubor</a>
+                    <span style="color: var(--text-muted);"> – nový soubor ho nahradí</span>
+                </div>
+                {% endif %}
+                {{ invoice_form.document_file }}
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="padding: 12px 24px; font-size: 14px; font-weight: 800; width: 100%;">
+                💾 Uložit změny faktury
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
