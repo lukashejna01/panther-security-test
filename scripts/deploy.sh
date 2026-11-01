@@ -18,6 +18,9 @@ git pull --ff-only
 echo "==> Instaluji knihovny"
 "$VENV/bin/pip" install --quiet -r requirements.txt
 
+echo "==> Automatické testy"
+"$PYTHON" manage.py test --settings=config.settings_test --verbosity 1
+
 echo "==> Kontrola nastavení"
 "$PYTHON" manage.py check --deploy --fail-level ERROR
 
