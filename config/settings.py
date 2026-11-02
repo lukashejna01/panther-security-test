@@ -227,6 +227,9 @@ COMPANY_BANK_ACCOUNT = os.getenv('COMPANY_BANK_ACCOUNT', '')
 COMPANY_BANK_CODE = os.getenv('COMPANY_BANK_CODE', '')
 COMPANY_CSSZ_VS = os.getenv('COMPANY_CSSZ_VS', '8862067306')
 COMPANY_CSSZ_DEP = os.getenv('COMPANY_CSSZ_DEP', '886')
+# Den, od kterého je firma u ČSSZ registrovaná jako zaměstnavatel (RRRR-MM-DD).
+# Nástup před tímto dnem ČSSZ odmítne (chyba 103901619), aplikace to proto hlídá předem.
+COMPANY_CSSZ_EMPLOYER_SINCE = os.getenv('COMPANY_CSSZ_EMPLOYER_SINCE', '')
 
 # Místo podpisu ve smlouvách ("V Praze dne ...") – v 6. pádě
 CONTRACT_SIGN_PLACE = os.getenv('CONTRACT_SIGN_PLACE', 'Praze')

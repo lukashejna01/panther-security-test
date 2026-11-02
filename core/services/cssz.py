@@ -88,6 +88,15 @@ def employer_values(test=False):
     }
 
 
+def employer_registered_since():
+    """Den registrace firmy jako zaměstnavatele na ČSSZ, nebo None, když není nastavený."""
+    value = str(getattr(_settings(), 'COMPANY_CSSZ_EMPLOYER_SINCE', '') or '').strip()
+    try:
+        return date.fromisoformat(value) if value else None
+    except ValueError:
+        return None
+
+
 def check_regzec_data(employee, test=False, today=None):
     """Vrátí seznam problémů, kvůli kterým by ČSSZ podání odmítla. Prázdný seznam = lze podat."""
     from django.utils import timezone
@@ -116,6 +125,13 @@ def check_regzec_data(employee, test=False, today=None):
         problems.append(
             f"Podání lze odeslat nejdřív {MAX_DAYS_BEFORE_START} dní před nástupem, "
             f"tedy od {date.fromordinal(earliest):%d.%m.%Y}."
+        )
+    since = None if test else employer_registered_since()
+    if start and since and start < since:
+        problems.append(
+            f"Firma je u ČSSZ registrovaná jako zaměstnavatel až od {since:%d.%m.%Y}, nástup {start:%d.%m.%Y} "
+            "je dřív – ČSSZ by podání zamítla. Opravte datum nástupu, nebo nechte na OSSZ opravit "
+            "datum registrace zaměstnavatele (COMPANY_CSSZ_EMPLOYER_SINCE)."
         )
 
     # Osoba

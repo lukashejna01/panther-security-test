@@ -12,6 +12,7 @@ from core.services import cssz_submit
 from core.services.cssz import (
     build_deregistration_xml,
     check_deregistration_data,
+    check_regzec_data,
     parse_protocol_identifiers,
     parse_protocol_result,
 )
@@ -54,6 +55,20 @@ class DeregistrationXmlTests(SimpleTestCase):
         self.assertIn("až po skončení", ' '.join(check_deregistration_data(self.employee, self.data, today=date(2026, 10, 30))))
         problems = check_deregistration_data(self.employee, {**self.data, 'ikmpsv': '1', 'severance_amount': None}, today=date(2026, 11, 2))
         self.assertEqual(len(problems), 2)
+
+
+class EmployerRegistrationCheckTests(TestCase):
+    def _problems(self, since):
+        employee = make_employee(f'novak{since}', start_employment_date=date(2026, 10, 1))
+        with override_settings(**COMPANY, COMPANY_CSSZ_EMPLOYER_SINCE=since):
+            return ' '.join(check_regzec_data(employee, today=date(2026, 9, 25)))
+
+    def test_start_before_employer_registration_is_blocked(self):
+        self.assertIn("až od 01.11.2026", self._problems('2026-11-01'))
+
+    def test_start_after_registration_or_unset_passes(self):
+        self.assertNotIn("registrovaná jako zaměstnavatel", self._problems('2026-10-01'))
+        self.assertNotIn("registrovaná jako zaměstnavatel", self._problems(''))
 
 
 class ProtocolParsingTests(SimpleTestCase):
