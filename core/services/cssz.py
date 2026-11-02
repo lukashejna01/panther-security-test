@@ -107,7 +107,7 @@ def check_regzec_data(employee, test=False, today=None):
 
     # Zaměstnavatel a firemní nastavení
     if len(company['vs']) != 10:
-        problems.append("Testovací variabilní symbol není nastavený (CSSZ_TEST_VS)." if test
+        problems.append("Odesíláte do testovací datovky – nastavte testovací VS od ČSSZ (CSSZ_TEST_VS), skutečný VS testovací ČSSZ nezná." if test
                         else "Variabilní symbol zaměstnavatele musí mít 10 číslic (COMPANY_CSSZ_VS).")
     if len(company['dep']) != 3:
         problems.append("Kód okresní správy sociálního zabezpečení musí mít 3 číslice (COMPANY_CSSZ_DEP).")
@@ -369,7 +369,7 @@ def check_deregistration_data(employee, data, test=False, today=None):
     problems = []
 
     if len(company['vs']) != 10:
-        problems.append("Testovací variabilní symbol není nastavený (CSSZ_TEST_VS)." if test
+        problems.append("Odesíláte do testovací datovky – nastavte testovací VS od ČSSZ (CSSZ_TEST_VS), skutečný VS testovací ČSSZ nezná." if test
                         else "Variabilní symbol zaměstnavatele musí mít 10 číslic (COMPANY_CSSZ_VS).")
     if len(company['dep']) != 3:
         problems.append("Kód okresní správy sociálního zabezpečení musí mít 3 číslice (COMPANY_CSSZ_DEP).")

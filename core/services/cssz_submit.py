@@ -41,9 +41,8 @@ def submit_regzec(employee, user=None):
     from core.models import CsszSubmission
 
     environment = isds_environment()
-    # V testu použijeme fiktivní VS od ČSSZ, pokud je nastavený; jinak skutečný
-    use_test_vs = environment == 'test' and bool(getattr(_settings(), 'CSSZ_TEST_VS', ''))
-    xml_bytes, year = build_regzec_xml(employee, test=use_test_vs)
+    # Testovací ČSSZ zná jen fiktivní VS (CSSZ_TEST_VS) – skutečný by zamítla (chyba 103901619)
+    xml_bytes, year = build_regzec_xml(employee, test=environment == 'test')
 
     recipient = cssz_databox(environment)
     filename = f"REGZEC{year % 100}_{employee.personal_number or employee.id}.xml"
@@ -86,8 +85,7 @@ def submit_deregistration(employee, data, user=None):
     from core.models import CsszSubmission
 
     environment = isds_environment()
-    use_test_vs = environment == 'test' and bool(getattr(_settings(), 'CSSZ_TEST_VS', ''))
-    xml_bytes, year = build_deregistration_xml(employee, data, test=use_test_vs)
+    xml_bytes, year = build_deregistration_xml(employee, data, test=environment == 'test')
 
     recipient = cssz_databox(environment)
     filename = f"REGZEC{year % 100}_odhlaska_{employee.personal_number or employee.id}.xml"
