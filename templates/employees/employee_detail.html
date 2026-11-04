@@ -42,9 +42,9 @@
             📄 {{ employee.get_termination_type_display }} (PDF)
         </a>
         {% endif %}
-        {% if employee.is_active %}
+        {% if employee.is_active and not employee.is_deregistered_cssz %}
         <a href="{% url 'archive_employee' employee.id %}" class="btn btn-danger" style="display: inline-flex; align-items: center; gap: 6px;">
-            ⚠️ Ukončit poměr
+            ⚠️ {% if employee.termination_date %}Upravit ukončení{% else %}Ukončit poměr{% endif %}
         </a>
         {% endif %}
     </div>
@@ -89,6 +89,17 @@
         </div>
 
         {% if employee.is_reported_cssz %}
+        <div style="margin-top: 8px; font-size: 12px; color: var(--text-muted);">
+            OIČ: <strong style="color: #fff;">{{ employee.cssz_ikmpsv|default:"—" }}</strong><br>
+            ID zaměstnání: <strong style="color: #fff;">{{ employee.cssz_job_id|default:"—" }}</strong>
+        </div>
+        {% if not employee.is_archived and not employee.cssz_job_id or not employee.is_archived and not employee.cssz_ikmpsv %}
+        <form method="post" action="{% url 'employee_cssz_import' %}" style="margin-top: 8px;">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.path }}">
+            <button type="submit" class="btn btn-secondary" style="padding: 3px 8px; font-size: 11px;">📥 Načíst z datovky</button>
+        </form>
+        {% endif %}
         <form method="post" action="{% url 'employee_cssz_mark' employee.id %}" style="margin-top: 10px;">
             {% csrf_token %}
             <input type="hidden" name="action" value="undo">
@@ -164,6 +175,14 @@
                     ✅ Označit jako odesláno
                 </button>
             </form>
+            <form method="post" action="{% url 'employee_cssz_mark' employee.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="before_app">
+                <button type="submit" class="btn btn-secondary" style="width: 100%; font-size: 12px;"
+                        onclick="return confirm('Potvrzujete, že je zaměstnanec už na ČSSZ přihlášený? Přihláška se pak z aplikace neodešle.');">
+                    🗂️ Přihlášen už před aplikací
+                </button>
+            </form>
         </div>
     </div>
 </div>
@@ -227,7 +246,7 @@
         <div>
             <h2 style="font-size: 16px; font-weight: 700; color: #fff; margin: 0 0 6px;">🏛️ Odhláška z ČSSZ (skončení zaměstnání)</h2>
             <div style="font-size: 13px; color: var(--text-muted);">
-                Zaměstnání skončilo {{ employee.termination_date|date:"d.m.Y" }}. Odhlásit je třeba do 8 dnů od skončení.
+                Konec zaměstnání: {{ employee.termination_date|date:"d.m.Y" }}. Odhlásit je třeba do 8 dnů od skončení.{% if not employee.is_archived %} Do archivu se zaměstnanec přesune, až ČSSZ odhlášku přijme.{% endif %}
             </div>
             <div style="margin-top: 8px;">
                 {% if dereg.state == 'done' %}<span class="badge-tag green">✅ {{ dereg.text }}</span>
@@ -245,6 +264,15 @@
         <a href="{% url 'employee_cssz_deregister' employee.id %}" class="btn btn-primary" style="font-size: 13px;">
             📤 Připravit odhlášku
         </a>
+        {% endif %}
+        {% if not employee.is_archived %}
+        <form method="post" action="{% url 'employee_archive_manual' employee.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary" style="font-size: 12px;"
+                    onclick="return confirm('Archivovat bez protokolu ČSSZ z aplikace? Použijte jen tehdy, když je odhláška vyřešená jinou cestou (např. přes ePortál).');">
+                🗄️ Archivovat bez protokolu
+            </button>
+        </form>
         {% endif %}
     </div>
 </div>

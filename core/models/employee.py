@@ -244,6 +244,10 @@ class Employee(models.Model):
         blank=True,
         verbose_name="Datum odeslání na ČSSZ"
     )
+    cssz_registered_before_app = models.BooleanField(
+        default=False,
+        verbose_name="Přihlášen na ČSSZ před zavedením aplikace"
+    )
     # Identifikátory, které ČSSZ přidělí při přihlášce (vrací je v protokolu) –
     # bez nich nejde podat odhlášku ani změnu
     cssz_ikmpsv = models.CharField(
@@ -353,7 +357,8 @@ class Employee(models.Model):
         """
         if self.is_reported_cssz:
             when = timezone.localtime(self.reported_cssz_date).strftime('%d.%m.%Y') if self.reported_cssz_date else ''
-            return {'state': 'done', 'text': f"Nahlášeno {when}".strip(), 'days': None}
+            text = "Přihlášen před aplikací" if self.cssz_registered_before_app else f"Nahlášeno {when}".strip()
+            return {'state': 'done', 'text': text, 'days': None}
 
         deadline = self.cssz_deadline
         if not deadline:
@@ -405,6 +410,15 @@ class Employee(models.Model):
         if days == 0:
             return {'state': 'today', 'text': "Odhlásit dnes – poslední den lhůty", 'days': 0}
         return {'state': 'late', 'text': f"Odhláška po lhůtě {-days} {_czech_days(-days)}", 'days': days}
+
+    def move_to_archive(self):
+        """Přesune zaměstnance do archivu a zablokuje mu přístup do aplikace."""
+        self.is_active = False
+        self.is_archived = True
+        self.save(update_fields=['is_active', 'is_archived'])
+        if self.user:
+            self.user.is_active = False
+            self.user.save(update_fields=['is_active'])
 
     def save(self, *args, **kwargs):
         if not self.personal_number:

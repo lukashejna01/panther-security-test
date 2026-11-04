@@ -13,6 +13,10 @@
         <a href="{% url 'advance_list' %}" class="btn btn-secondary" style="border-color: #0f766e; color: #2dd4bf;">
             💸 Přehled záloh
         </a>
+        <form method="post" action="{% url 'employee_cssz_import' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary" title="Doplní OIČ a ID zaměstnání z protokolů ČSSZ v datové schránce">📥 Načíst údaje ČSSZ z datovky</button>
+        </form>
         <a href="{% url 'employees_archive_list' %}" class="btn btn-secondary">
             🗄️ Archiv propuštěných zaměstnanců
         </a>
@@ -73,6 +77,9 @@
                             {% endif %}
                         </a>
                         {% endwith %}
+                        {% if emp.termination_date %}
+                        <div style="margin-top: 4px;"><span class="badge-tag red">Končí {{ emp.termination_date|date:"d.m.Y" }} – čeká na odhlášku</span></div>
+                        {% endif %}
                     </td>
                     <td>{{ emp.phone }}</td>
                     <td style="text-align: right;">

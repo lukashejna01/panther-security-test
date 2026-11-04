@@ -307,6 +307,7 @@ SEVERANCE_ATTRS = {
 }
 
 _PROTOCOL_ITEM = re.compile(r'<Item\b[^>]*\bsqnr="1"[^>]*>')
+_PROTOCOL_ANY_ITEM = re.compile(r'<Item\b[^>]*>')
 _PROTOCOL_IDENTIFIER = re.compile(r'\bidentifier="(\d*);(\d*);(\d*)"')
 
 
@@ -322,6 +323,24 @@ def parse_protocol_identifiers(protocol_xml):
     if not match:
         return empty
     return {'birth_number': match.group(1), 'ikmpsv': match.group(2), 'job_id': match.group(3)}
+
+
+def protocol_birth_number(protocol_xml):
+    """Rodné číslo z položky formuláře v protokolu ČSSZ (identifier začíná rodným číslem), nebo ''."""
+    item = _PROTOCOL_ITEM.search(protocol_xml or '')
+    identifier = _attrs(item.group(0)).get('identifier', '') if item else ''
+    return _digits(identifier.split(';')[0])
+
+
+def parse_protocol_items(protocol_xml):
+    """Všechny přijaté položky protokolu (podání cizím programem jich může mít víc): list {'birth_number', 'ikmpsv', 'job_id'}."""
+    items = []
+    for tag in _PROTOCOL_ANY_ITEM.findall(protocol_xml or ''):
+        attrs = _attrs(tag)
+        parts = (attrs.get('identifier', '').split(';') + ['', ''])[:3]
+        if attrs.get('sqnr') and attrs.get('result', '').upper() == 'OK' and _digits(parts[0]):
+            items.append({'birth_number': _digits(parts[0]), 'ikmpsv': _digits(parts[1]), 'job_id': _digits(parts[2])})
+    return items
 
 
 _PROCESSING_RESULT = re.compile(r'<ProcessingResult\b[^>]*>')

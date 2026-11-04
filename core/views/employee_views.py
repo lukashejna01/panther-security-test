@@ -13,6 +13,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.cache import add_never_cache_headers
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from core.decorators import role_required
@@ -36,6 +37,7 @@ from core.services.cssz_submit import (
     IsdsError,
     check_protocols,
     cssz_databox,
+    import_registration_identifiers,
     isds_configured,
     isds_environment,
     submit_deregistration,
@@ -266,15 +268,21 @@ def employee_cssz_mark_view(request, employee_id):
         employee.is_reported_cssz = True
         employee.reported_cssz_date = timezone.now()
         messages.success(request, f"Přihláška {employee.full_name} na ČSSZ je označená jako odeslaná.")
+    elif action == 'before_app':
+        employee.is_reported_cssz = True
+        employee.reported_cssz_date = None
+        employee.cssz_registered_before_app = True
+        messages.success(request, f"{employee.full_name} je veden(a) jako přihlášený na ČSSZ před zavedením aplikace.")
     elif action == 'undo':
         employee.is_reported_cssz = False
         employee.reported_cssz_date = None
+        employee.cssz_registered_before_app = False
         messages.info(request, f"Označení odeslání na ČSSZ u {employee.full_name} bylo zrušeno.")
     else:
         messages.error(request, "Neznámá akce.")
         return redirect('employee_detail', employee_id=employee.id)
 
-    employee.save(update_fields=['is_reported_cssz', 'reported_cssz_date'])
+    employee.save(update_fields=['is_reported_cssz', 'reported_cssz_date', 'cssz_registered_before_app'])
     return redirect('employee_detail', employee_id=employee.id)
 
 
@@ -318,17 +326,47 @@ def employee_cssz_send_view(request, employee_id):
 def employee_cssz_protocol_check_view(request, employee_id):
     """Stáhne z datové schránky odpovědi ČSSZ (protokoly) k podáním zaměstnance."""
     employee = get_object_or_404(Employee, id=employee_id)
+    was_archived = employee.is_archived
     try:
         found = check_protocols(employee)
     except IsdsError as e:
         messages.error(request, f"Kontrola odpovědi ČSSZ se nepovedla: {e}")
         return redirect('employee_detail', employee_id=employee.id)
 
-    if found:
+    employee.refresh_from_db()
+    if employee.is_archived and not was_archived:
+        messages.success(request, f"ČSSZ odhlášku přijala – {employee.full_name} je přesunut(a) do archivu.")
+    elif found:
         messages.success(request, f"Přijato protokolů od ČSSZ: {found}. Otevřete je v historii podání.")
     else:
         messages.info(request, "ČSSZ zatím neodpověděla. Protokol obvykle přijde do několika minut až hodin, zkuste to později.")
     return redirect('employee_detail', employee_id=employee.id)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
+def employee_cssz_import_view(request):
+    """Načte z ostré datové schránky OIČ a ID zaměstnání zaměstnancům přihlášeným mimo aplikaci."""
+    back = request.POST.get('next')
+    if not back or not url_has_allowed_host_and_scheme(back, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        back = reverse('employee_list')
+    try:
+        report = import_registration_identifiers()
+    except IsdsError as e:
+        messages.error(request, f"Načtení z datové schránky se nepovedlo: {e}")
+        return redirect(back)
+
+    names = lambda employees: ', '.join(e.full_name for e in employees)
+    if report['filled']:
+        messages.success(request, f"Údaje z ČSSZ jsou kompletní u: {names(report['filled'])}. Před odhláškou je zkontrolujte.")
+    if report['ambiguous']:
+        messages.warning(request, f"Více různých zaměstnání v protokolech, doplňte ID ručně: {names(report['ambiguous'])}.")
+    if report['missing']:
+        messages.warning(request, f"V datovce se protokol nenašel, OIČ a ID zaměstnání doplňte ručně ve formuláři odhlášky: {names(report['missing'])}.")
+    if not any(report.values()):
+        messages.info(request, "Žádnému přihlášenému zaměstnanci OIČ ani ID zaměstnání nechybí.")
+    return redirect(back)
 
 
 @login_required
@@ -375,7 +413,7 @@ def employee_cssz_deregister_view(request, employee_id):
     initial = {**suggestion, 'periods': format_periods(suggestion['periods'])}
     form = CsszDeregistrationForm(request.POST or None, initial=initial)
     environment = isds_environment()
-    test = environment == 'test' and bool(getattr(settings, 'CSSZ_TEST_VS', ''))
+    test = environment == 'test'
     problems = []
 
     if request.method == 'POST' and form.is_valid():
@@ -428,14 +466,19 @@ def employee_cssz_deregister_view(request, employee_id):
 @role_required([SystemRole.MANAGER, SystemRole.OWNER])
 def archive_employee_view(request, employee_id):
     """
-    Ukončení pracovního poměru: uloží způsob a datum ukončení, vygeneruje výpověď / dohodu
-    o ukončení v PDF a přesune zaměstnance do archivu.
+    Ukončení pracovního poměru: uloží způsob a datum ukončení a vygeneruje výpověď / dohodu
+    o ukončení v PDF. Zaměstnanec hlášený na ČSSZ zůstává aktivní, do archivu se přesune
+    až po přijetí odhlášky (protokol ČSSZ); ostatní se archivují hned.
 
     Stránka odesílá formulář přes fetch (hlavička X-Requested-With: fetch) a dostane JSON
     s adresou dokumentu, který otevře v novém okně. Bez JavaScriptu funguje běžné odeslání.
     """
     employee = get_object_or_404(Employee, id=employee_id, is_archived=False)
+    if employee.is_deregistered_cssz:
+        messages.warning(request, "Odhláška už je odeslaná na ČSSZ, ukončení poměru proto nejde měnit.")
+        return redirect('employee_detail', employee_id=employee.id)
     form = EmployeeArchiveForm(request.POST or None, employee=employee)
+    needs_deregistration = employee.contract_type in ACTIVITY_CODES
     wants_json = request.headers.get('X-Requested-With') == 'fetch'
 
     if request.method == 'POST':
@@ -443,16 +486,13 @@ def archive_employee_view(request, employee_id):
             if wants_json:
                 return JsonResponse({'ok': False}, status=400)
         else:
-            employee.is_active = False
-            employee.is_archived = True
             employee.termination_type = form.cleaned_data['termination_type']
             employee.termination_notice_date = form.cleaned_data['notice_date']
             employee.termination_date = form.cleaned_data['termination_date']
             employee.termination_reason = form.cleaned_data['termination_reason']
-            if employee.user:
-                employee.user.is_active = False
-                employee.user.save(update_fields=['is_active'])
             employee.save()
+            if not needs_deregistration:
+                employee.move_to_archive()
 
             document_url = None
             if has_termination_template(employee.contract_type, employee.termination_type):
@@ -462,18 +502,21 @@ def archive_employee_view(request, employee_id):
                 except Exception as e:
                     messages.warning(request, f"Poměr byl ukončen, ale dokument se nepodařilo vygenerovat: {e}")
 
-            messages.warning(
-                request,
-                f"Poměr zaměstnance {employee.full_name} končí dnem {employee.termination_date:%d.%m.%Y}. "
-                f"Přesunut do archivu."
-            )
-            if employee.contract_type in ACTIVITY_CODES:
+            if needs_deregistration:
                 messages.warning(
                     request,
-                    f"🏛️ Odhlaste zaměstnance z ČSSZ do {employee.cssz_deregistration_deadline:%d.%m.%Y} "
-                    f"(do 8 dnů od skončení) – na kartě zaměstnance v archivu."
+                    f"🏛️ Poměr {employee.full_name} končí dnem {employee.termination_date:%d.%m.%Y}. Odhlaste zaměstnance z ČSSZ "
+                    f"do {employee.cssz_deregistration_deadline:%d.%m.%Y} (do 8 dnů od skončení). "
+                    "Do archivu se přesune, až ČSSZ odhlášku přijme."
                 )
-            archive_url = reverse('employees_archive_list')
+                archive_url = reverse('employee_detail', args=[employee.id])
+            else:
+                messages.warning(
+                    request,
+                    f"Poměr zaměstnance {employee.full_name} končí dnem {employee.termination_date:%d.%m.%Y}. "
+                    f"Přesunut do archivu."
+                )
+                archive_url = reverse('employees_archive_list')
             if wants_json:
                 return JsonResponse({'ok': True, 'redirect': archive_url, 'document': document_url})
             return redirect(archive_url)
@@ -481,6 +524,7 @@ def archive_employee_view(request, employee_id):
     context = {
         'employee': employee,
         'form': form,
+        'needs_deregistration': needs_deregistration,
         'notice_days': NOTICE_PERIOD_DAYS.get(employee.contract_type),
         'has_templates': any(
             has_termination_template(employee.contract_type, key)
@@ -488,6 +532,20 @@ def archive_employee_view(request, employee_id):
         ),
     }
     return render(request, 'employees/employee_archive_confirm.html', context)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
+def employee_archive_manual_view(request, employee_id):
+    """Ruční archivace bez protokolu z aplikace – např. když odhlášku podal někdo jinou cestou."""
+    employee = get_object_or_404(Employee, id=employee_id, is_archived=False)
+    if not employee.termination_date:
+        messages.error(request, "Zaměstnanec nemá ukončený poměr – nejdřív ukončete pracovní poměr.")
+        return redirect('employee_detail', employee_id=employee.id)
+    employee.move_to_archive()
+    messages.warning(request, f"{employee.full_name} je přesunut(a) do archivu bez protokolu ČSSZ z aplikace.")
+    return redirect('employees_archive_list')
 
 
 @login_required

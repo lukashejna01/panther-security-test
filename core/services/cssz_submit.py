@@ -2,14 +2,27 @@
 Odeslání podání REGZEC (přihláška i odhláška) na ČSSZ datovou schránkou a dohledání protokolu, který ČSSZ vrátí.
 
 Protokol přichází jako nová datová zpráva od ČSSZ (ze stejné schránky, kam jsme podání poslali)
-s přílohami XML a HTML. Přiřadíme ho k podání podle ID naší zprávy, pokud ho protokol obsahuje,
-jinak k nejstaršímu podání téže schránky, které na odpověď ještě čeká.
+s přílohami XML a HTML. K podání ho přiřadíme podle rodného čísla v protokolu (a ID naší zprávy,
+pokud ho obsahuje), aby se výsledek nikdy nezapsal k jinému zaměstnanci. Přijatá ostrá odhláška
+přesune zaměstnance do archivu.
 """
 
 from datetime import datetime, timedelta
 
-from .cssz import build_deregistration_xml, build_regzec_xml, parse_protocol_identifiers, parse_protocol_result
+from .cssz import (
+    _digits,
+    build_deregistration_xml,
+    build_regzec_xml,
+    parse_protocol_identifiers,
+    parse_protocol_items,
+    parse_protocol_result,
+    protocol_birth_number,
+)
 from .isds import IsdsError, client_from_settings
+
+
+# Běžná doba uložení zprávy v datové schránce
+IMPORT_DAYS = 90
 
 
 def _settings():
@@ -131,6 +144,7 @@ def apply_protocol_result(submission):
 
     if outcome['result'] == 'OK':
         remember_identifiers(submission)
+        archive_after_deregistration(submission)
         return
     if outcome['result'] != 'ERROR' or submission.environment != 'prod':
         return
@@ -171,6 +185,80 @@ def remember_identifiers(submission):
         employee.save(update_fields=changed)
 
 
+def archive_after_deregistration(submission):
+    """
+    Přijatá ostrá odhláška přesune zaměstnance do archivu. Pojistka: rodné číslo (a ID zaměstnání,
+    pokud je v protokolu) musí sedět – jinak zaměstnanec zůstane aktivní a archivuje se ručně z karty.
+    """
+    employee = submission.employee
+    if submission.kind != submission.KIND_DEREGISTRATION or submission.environment != 'prod':
+        return False
+    if employee.is_archived or not employee.termination_date:
+        return False
+    ids = parse_protocol_identifiers(submission.protocol_xml)
+    if protocol_birth_number(submission.protocol_xml) != _digits(employee.birth_number):
+        return False
+    if ids['job_id'] and employee.cssz_job_id and ids['job_id'] != _digits(employee.cssz_job_id):
+        return False
+    employee.move_to_archive()
+    return True
+
+
+def import_registration_identifiers():
+    """
+    Pro zaměstnance přihlášené na ČSSZ, kterým chybí OIČ nebo ID zaměstnání, je dohledá v protokolech
+    v ostré datové schránce (podle rodného čísla). Když má člověk v protokolech víc různých ID zaměstnání,
+    ID se nedoplní – nepoznali bychom, které je aktuální.
+    Vrací {'filled': [...], 'ambiguous': [...], 'missing': [...]} – seznamy zaměstnanců.
+    """
+    from django.db.models import Q
+    from django.utils import timezone
+    from core.models import Employee
+
+    environment = isds_environment()
+    if environment != 'prod':
+        raise IsdsError("Údaje z datovky lze načíst jen z ostré schránky (ISDS_ENVIRONMENT=prod).")
+
+    employees = list(Employee.objects.filter(is_reported_cssz=True, is_archived=False)
+                     .filter(Q(cssz_ikmpsv='') | Q(cssz_job_id='')))
+    report = {'filled': [], 'ambiguous': [], 'missing': []}
+    if not employees:
+        return report
+
+    client = client_from_settings()
+    box = cssz_databox(environment)
+    since = timezone.localtime().replace(tzinfo=None) - timedelta(days=IMPORT_DAYS)
+    found = {}
+    for record in client.list_received(since):
+        if record['sender_id'] != box:
+            continue
+        for f in client.download_message(record['dm_id']):
+            if f['name'].lower().endswith('.xml') or 'xml' in f['mime'].lower():
+                for item in parse_protocol_items(f['content'].decode('utf-8', errors='replace')):
+                    found.setdefault(item['birth_number'], []).append(item)
+
+    for employee in employees:
+        items = found.get(_digits(employee.birth_number), [])
+        persons = {i['ikmpsv'] for i in items if i['ikmpsv']}
+        jobs = {i['job_id'] for i in items if i['job_id']}
+        changed = []
+        if len(persons) == 1 and not employee.cssz_ikmpsv:
+            employee.cssz_ikmpsv = persons.pop()
+            changed.append('cssz_ikmpsv')
+        if len(jobs) == 1 and not employee.cssz_job_id:
+            employee.cssz_job_id = jobs.pop()
+            changed.append('cssz_job_id')
+        if changed:
+            employee.save(update_fields=changed)
+        if len(jobs) > 1 and not employee.cssz_job_id:
+            report['ambiguous'].append(employee)
+        elif employee.cssz_ikmpsv and employee.cssz_job_id:
+            report['filled'].append(employee)
+        else:
+            report['missing'].append(employee)
+    return report
+
+
 def _parse_isds_time(value):
     if not value:
         return None
@@ -189,7 +277,7 @@ def check_protocols(employee=None):
     from core.models import CsszSubmission
 
     environment = isds_environment()
-    pending = CsszSubmission.objects.filter(status='SENT', environment=environment).order_by('sent_at')
+    pending = CsszSubmission.objects.filter(status='SENT', environment=environment).select_related('employee').order_by('sent_at')
     if employee is not None:
         pending = pending.filter(employee=employee)
     pending = list(pending)
@@ -221,11 +309,19 @@ def check_protocols(employee=None):
                 xml = text
         haystack = ' '.join(texts) + ' ' + record['annotation'] + ' ' + record['recipient_ref']
 
+        # Jiná zpráva od ČSSZ než protokol k podání
+        if not parse_protocol_result(xml)['result']:
+            continue
+
         delivered = _parse_isds_time(record['delivery_time'])
-        match = next((s for s in pending if s.recipient_box == record['sender_id'] and s.dm_id in haystack), None)
-        if match is None:
-            match = next((s for s in pending if s.recipient_box == record['sender_id']
-                          and (delivered is None or s.sent_at <= delivered)), None)
+        candidates = [s for s in pending if s.recipient_box == record['sender_id']
+                      and (delivered is None or s.sent_at <= delivered)]
+        birth_number = protocol_birth_number(xml)
+        if birth_number:
+            candidates = [s for s in candidates if _digits(s.employee.birth_number) == birth_number]
+        match = next((s for s in candidates if s.dm_id in haystack), None)
+        if match is None and (birth_number or len(candidates) == 1):
+            match = candidates[0] if candidates else None
         if match is None:
             continue
 
@@ -244,5 +340,6 @@ def check_protocols(employee=None):
 
 __all__ = [
     'IsdsError', 'check_protocols', 'cssz_databox', 'isds_configured', 'isds_environment',
-    'apply_protocol_result', 'remember_identifiers', 'submit_deregistration', 'submit_regzec',
+    'apply_protocol_result', 'archive_after_deregistration', 'import_registration_identifiers',
+    'remember_identifiers', 'submit_deregistration', 'submit_regzec',
 ]

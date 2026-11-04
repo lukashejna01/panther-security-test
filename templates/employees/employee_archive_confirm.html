@@ -8,7 +8,7 @@
         <div style="font-size: 40px; margin-bottom: 10px;">⚠️</div>
         <h2 style="color: #fff; margin-bottom: 6px;">Ukončit pracovní poměr?</h2>
         <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 20px;">
-            Zaměstnanec <strong>{{ employee.full_name }}</strong> ({{ employee.contract_type }}) bude deaktivován a přesunut do archivu zaměstnanců.
+            Zaměstnanec <strong>{{ employee.full_name }}</strong> ({{ employee.contract_type }}) {% if needs_deregistration %}zůstane aktivní, dokud ČSSZ nepřijme odhlášku. Potom se přesune do archivu a přístup do aplikace se mu zablokuje.{% else %}bude deaktivován a přesunut do archivu zaměstnanců.{% endif %}
             {% if has_templates %}Dokument o ukončení se vygeneruje a otevře v novém okně.{% endif %}
         </p>
 
@@ -48,7 +48,7 @@
 
             <div style="display: flex; gap: 10px; justify-content: flex-end;">
                 <a href="{% url 'employee_detail' employee.id %}" class="btn btn-secondary">Zrušit</a>
-                <button type="submit" id="termination-submit" class="btn btn-danger">Ukončit a archivovat</button>
+                <button type="submit" id="termination-submit" class="btn btn-danger">{% if needs_deregistration %}Ukončit poměr{% else %}Ukončit a archivovat{% endif %}</button>
             </div>
         </form>
     </div>
@@ -58,7 +58,7 @@
 (function () {
     const NOTICE_TYPES = ['EMPLOYER_NOTICE', 'EMPLOYEE_NOTICE'];
     const NOTICE_DAYS = parseInt('{{ notice_days|default:"" }}', 10) || null;
-    const ARCHIVE_URL = "{% url 'employees_archive_list' %}";
+    const ARCHIVE_URL = "{% url 'employee_detail' employee.id %}";
 
     const form = document.getElementById('termination-form');
     const typeSelect = document.getElementById('id_termination_type');
