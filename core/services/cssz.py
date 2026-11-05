@@ -78,7 +78,7 @@ def employer_values(test=False):
     vs = getattr(s, 'CSSZ_TEST_VS', '') if test else getattr(s, 'COMPANY_CSSZ_VS', '')
     return {
         'vs': _digits(vs),
-        'dep': _digits(getattr(s, 'COMPANY_CSSZ_DEP', '')),
+        'dep': _digits((test and getattr(s, 'CSSZ_TEST_DEP', '')) or getattr(s, 'COMPANY_CSSZ_DEP', '')),
         'name': _clean(getattr(s, 'COMPANY_NAME', '')),
         'profession': _digits(getattr(s, 'CSSZ_PROFESSION_CODE', '')),
         'workmode': _digits(getattr(s, 'CSSZ_WORK_MODE', '3')) or '3',

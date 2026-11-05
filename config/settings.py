@@ -244,8 +244,10 @@ CSSZ_CONTINUOUS_OPERATION = os.getenv('CSSZ_CONTINUOUS_OPERATION', 'A')
 # Výchozí obec výkonu práce (název a šestimístný kód obce ZÚJ)
 CSSZ_DEFAULT_MUNICIPALITY = os.getenv('CSSZ_DEFAULT_MUNICIPALITY', 'Praha')
 CSSZ_DEFAULT_MUNICIPALITY_CODE = os.getenv('CSSZ_DEFAULT_MUNICIPALITY_CODE', '554782')
-# Fiktivní VS od ČSSZ pro testovací prostředí (začíná 999) – prázdné = testovací XML vypnuté
+# VS od ČSSZ pro testovací prostředí – prázdné = testovací podání vypnuté
 CSSZ_TEST_VS = os.getenv('CSSZ_TEST_VS', '')
+# Kód OSSZ k testovacímu VS – prázdné = stejný jako COMPANY_CSSZ_DEP
+CSSZ_TEST_DEP = os.getenv('CSSZ_TEST_DEP', '')
 
 # Datová schránka (ISDS) pro odesílání podání na ČSSZ přímo z aplikace
 # ISDS_ENVIRONMENT: "test" = testovací datovky, "prod" = ostré

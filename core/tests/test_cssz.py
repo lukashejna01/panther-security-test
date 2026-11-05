@@ -13,6 +13,7 @@ from core.services.cssz import (
     build_deregistration_xml,
     check_deregistration_data,
     check_regzec_data,
+    employer_values,
     parse_protocol_identifiers,
     parse_protocol_result,
 )
@@ -55,6 +56,17 @@ class DeregistrationXmlTests(SimpleTestCase):
         self.assertIn("až po skončení", ' '.join(check_deregistration_data(self.employee, self.data, today=date(2026, 10, 30))))
         problems = check_deregistration_data(self.employee, {**self.data, 'ikmpsv': '1', 'severance_amount': None}, today=date(2026, 11, 2))
         self.assertEqual(len(problems), 2)
+
+
+class EmployerValuesTests(SimpleTestCase):
+    @override_settings(**COMPANY, CSSZ_TEST_VS='1152039226', CSSZ_TEST_DEP='115')
+    def test_test_environment_uses_test_employer(self):
+        self.assertEqual((employer_values(test=True)['vs'], employer_values(test=True)['dep']), ('1152039226', '115'))
+        self.assertEqual((employer_values()['vs'], employer_values()['dep']), ('8862067306', '886'))
+
+    @override_settings(**COMPANY, CSSZ_TEST_VS='1152039226', CSSZ_TEST_DEP='')
+    def test_test_dep_falls_back_to_company(self):
+        self.assertEqual(employer_values(test=True)['dep'], '886')
 
 
 class EmployerRegistrationCheckTests(TestCase):
