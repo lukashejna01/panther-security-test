@@ -296,6 +296,17 @@ class EmployeeListImportTests(TestCase):
                          ('Novák', 'Jan', date(2026, 5, 1), 'DPP'))
         self.assertEqual(rows[1]['contract_type'], 'HPP')
 
+    def test_real_eportal_export_format(self):
+        content = ("Rodné číslo;Příjmení;Jméno;Variabilní symbol;Datum nástupu do zaměstnání;Datum skončení zaměstnání;"
+                   "Druh činnosti - kód;Druh činnosti - název;Bližší určení zaměstnání - kód;Bližší určení zaměstnání - název;"
+                   "ZMR;Identifikátor zaměstnání;OIČ\n"
+                   "0104161475;Nováková;Eva;8862067306;01.05.2026;;T;první dohoda o provedení práce u téhož zaměstnavatele;"
+                   "1;Žádné;N;4003155302851;1244387210\n").encode('utf-8')
+        self.assertEqual(parse_employee_list(content), [{
+            'birth_number': '0104161475', 'ikmpsv': '1244387210', 'job_id': '4003155302851', 'last_name': 'Nováková',
+            'first_name': 'Eva', 'start': date(2026, 5, 1), 'contract_type': 'DPP',
+        }])
+
     def test_unknown_columns_write_nothing(self):
         with self.assertRaises(EmployeeListError) as e:
             parse_employee_list(b'Jmeno;Telefon\nJan;123\n')

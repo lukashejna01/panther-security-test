@@ -35,7 +35,7 @@ def _column_key(title):
         return 'birth_number'
     if words & {'oic', 'ikmpsv'} or {'ik', 'mpsv'} <= words:
         return 'ikmpsv'
-    if ('id' in words and words & {'zamestnani', 'ppv'}) or 'idppv' in words:
+    if (words & {'id', 'identifikator'} and words & {'zamestnani', 'ppv'}) or 'idppv' in words:
         return 'job_id'
     if 'prijmeni' in words and 'jmeno' in words:
         return 'full_name'
