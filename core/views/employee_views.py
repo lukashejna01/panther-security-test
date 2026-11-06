@@ -32,6 +32,7 @@ from core.services import (
 from core.services.contract_pdf import NOTICE_PERIOD_DAYS
 from core.services.cssz import ACTIVITY_CODES, build_deregistration_xml, check_deregistration_data
 from core.services.cssz_deregistration import deregistration_suggestions
+from core.services.cssz_employee_list import EmployeeListError, apply_employee_list, parse_employee_list
 from .auth_views import generate_password, pop_new_credentials, remember_new_credentials
 from core.services.cssz_submit import (
     IsdsError,
@@ -367,6 +368,37 @@ def employee_cssz_import_view(request):
     if not any(report.values()):
         messages.info(request, "Žádnému přihlášenému zaměstnanci OIČ ani ID zaměstnání nechybí.")
     return redirect(back)
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+@require_POST
+def employee_cssz_list_import_view(request):
+    """Nahrání exportu CSV ze Seznamu zaměstnanců na ePortálu ČSSZ. Soubor se neukládá."""
+    upload = request.FILES.get('employee_list')
+    if not upload or upload.size > 2 * 1024 * 1024:
+        messages.error(request, "Vyberte soubor Export CSV ze Seznamu zaměstnanců na ePortálu ČSSZ (nejvýš 2 MB).")
+        return redirect('employee_list')
+    try:
+        report = apply_employee_list(parse_employee_list(upload.read()), create_missing='create_missing' in request.POST)
+    except EmployeeListError as e:
+        messages.error(request, str(e))
+        return redirect('employee_list')
+
+    names = lambda items: ', '.join(items)
+    if report['updated']:
+        messages.success(request, f"Doplněno OIČ a ID zaměstnání ({len(report['updated'])}): {names(report['updated'])}.")
+    if report['created']:
+        messages.success(request, f"Založeno bez přístupu do aplikace ({len(report['created'])}): {names(report['created'])}.")
+    if report['missing']:
+        messages.warning(request, f"V aplikaci chybí, nic se nezapsalo ({len(report['missing'])}): {names(report['missing'])}.")
+    if report['ambiguous']:
+        messages.warning(request, f"Víc zaměstnání, záznamů nebo neúplné údaje, řešte ručně: {names(report['ambiguous'])}.")
+    if report['conflicts']:
+        messages.error(request, f"V aplikaci jsou jiné OIČ nebo ID než u ČSSZ, nic se nepřepsalo: {names(report['conflicts'])}.")
+    if report['mismatches']:
+        messages.warning(request, f"Zkontrolujte datum nástupu a typ smlouvy: {names(report['mismatches'])}.")
+    return redirect('employee_list')
 
 
 @login_required

@@ -4,11 +4,14 @@ from datetime import date, timedelta
 from types import SimpleNamespace
 from unittest import mock
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
 from core.models import CsszSubmission, Employee, SystemRole
 from core.services import cssz_submit
+from core.services.cssz_deregistration import deregistration_suggestions
+from core.services.cssz_employee_list import EmployeeListError, apply_employee_list, parse_employee_list
 from core.services.cssz import (
     build_deregistration_xml,
     check_deregistration_data,
@@ -277,3 +280,66 @@ class TerminationFlowTests(TestCase):
         self.assertContains(detail, 'Archivovat bez protokolu')
         self.assertContains(detail, 'Načíst z datovky')
         self.assertContains(self.client.get('/dispecink/zamestnanci/', **HTTPS), 'čeká na odhlášku')
+
+
+CSV_FILE = ("Rodné číslo;Příjmení a jméno;Variabilní symbol;Datum nástupu do zaměstnání;Datum skončení zaměstnání;Druh činnosti;ID zaměstnání;OIČ\n"
+            "6805217573;Novák Jan;8862067306;1. 5. 2026;;T - první dohoda;4003155470643;1705000132\n"
+            "0104161475;Hrubá Eva;8862067306;18. 8. 2025;;1 - první pracovní poměr;4003090941338;1461526858\n"
+            "6403162029;Starý Petr;8862067306;1. 1. 2024;1. 2. 2025;1 - první pracovní poměr;111;1111111118\n").encode('utf-8')
+
+
+class EmployeeListImportTests(TestCase):
+    def test_parse_finished_job_is_skipped_and_cp1250_works(self):
+        rows = parse_employee_list(CSV_FILE.decode('utf-8').encode('cp1250'))
+        self.assertEqual([r['birth_number'] for r in rows], ['6805217573', '0104161475'])
+        self.assertEqual((rows[0]['last_name'], rows[0]['first_name'], rows[0]['start'], rows[0]['contract_type']),
+                         ('Novák', 'Jan', date(2026, 5, 1), 'DPP'))
+        self.assertEqual(rows[1]['contract_type'], 'HPP')
+
+    def test_unknown_columns_write_nothing(self):
+        with self.assertRaises(EmployeeListError) as e:
+            parse_employee_list(b'Jmeno;Telefon\nJan;123\n')
+        self.assertIn('Telefon', str(e.exception))
+
+    def test_fills_existing_and_reports_missing(self):
+        employee = make_employee('jan', birth_number='680521/7573', contract_type='DPP', start_employment_date=date(2026, 5, 1))
+        report = apply_employee_list(parse_employee_list(CSV_FILE))
+        employee.refresh_from_db()
+        self.assertEqual((employee.cssz_ikmpsv, employee.cssz_job_id), ('1705000132', '4003155470643'))
+        self.assertTrue(employee.is_reported_cssz)
+        self.assertTrue(employee.cssz_registered_before_app)
+        self.assertEqual(report['missing'], ['Hrubá Eva'])
+        self.assertEqual(report['mismatches'], [])
+        self.assertEqual(Employee.objects.count(), 1)
+
+    def test_create_missing_without_account(self):
+        apply_employee_list(parse_employee_list(CSV_FILE), create_missing=True)
+        eva = Employee.objects.get(last_name='Hrubá')
+        self.assertIsNone(eva.user)
+        self.assertEqual((eva.contract_type, eva.start_employment_date, eva.cssz_job_id), ('HPP', date(2025, 8, 18), '4003090941338'))
+        self.assertEqual(eva.cssz_status['text'], "Přihlášen před aplikací")
+
+    def test_does_not_overwrite_and_flags_mismatch(self):
+        other = make_employee('jan', birth_number='6805217573', cssz_job_id='999')
+        wrong = make_employee('eva', birth_number='0104161475', contract_type='DPP', start_employment_date=date(2026, 10, 1))
+        report = apply_employee_list(parse_employee_list(CSV_FILE))
+        other.refresh_from_db()
+        self.assertEqual(other.cssz_job_id, '999')
+        self.assertEqual(report['conflicts'], [other.full_name])
+        wrong.refresh_from_db()
+        self.assertEqual(wrong.start_employment_date, date(2026, 10, 1))
+        self.assertEqual(len(report['mismatches']), 1)
+
+    def test_upload_view(self):
+        client = logged_in_client(make_employee('manazer', SystemRole.MANAGER))
+        employee = make_employee('jan', birth_number='6805217573')
+        upload = SimpleUploadedFile('seznam.csv', CSV_FILE, content_type='text/csv')
+        response = client.post('/dispecink/zamestnanci/cssz/seznam-z-eportalu/', {'employee_list': upload}, **HTTPS)
+        self.assertEqual(response.status_code, 302)
+        employee.refresh_from_db()
+        self.assertEqual(employee.cssz_ikmpsv, '1705000132')
+
+    def test_before_app_employee_is_not_suggested_as_uninsured(self):
+        employee = make_employee('jan', contract_type='HPP', start_employment_date=date(2025, 1, 1), termination_date=date(2026, 10, 31),
+                                 cssz_registered_before_app=True)
+        self.assertFalse(deregistration_suggestions(employee)['no_insurance'])

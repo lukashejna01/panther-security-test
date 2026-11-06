@@ -61,7 +61,7 @@
             {{ form.no_insurance }}
             <span>{{ form.no_insurance.label }}<br>
                 <span style="color: var(--text-muted); font-size: 12px;">Pak se podklady pro úřad práce nevyplňují (důvod neposkytnutí podkladů 2).
-                {% if suggestion.no_insurance %}Podle směn v aplikaci zaměstnanec v žádném měsíci nedosáhl limitu pro účast na pojištění.{% endif %}</span>
+                {% if suggestion.no_insurance %}Podle směn v aplikaci zaměstnanec v žádném měsíci nedosáhl limitu pro účast na pojištění.{% elif employee.cssz_registered_before_app %}<strong>Mzdy z doby před aplikací tu nejsou:</strong> zaškrtněte jen tehdy, když zaměstnání opravdu nezaložilo účast na pojištění. Jinak vyplňte průměrný výdělek a období podle mzdových podkladů.{% endif %}</span>
             </span>
         </label>
 

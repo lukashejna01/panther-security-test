@@ -134,8 +134,9 @@ def deregistration_suggestions(employee):
     gross = monthly_gross(employee)
     months = insured_months(employee, gross)
     if not months:
-        # Např. DPP pod limitem – zaměstnání nezaložilo účast na pojištění
-        suggestion['no_insurance'] = True
+        # Např. DPP pod limitem – zaměstnání nezaložilo účast na pojištění.
+        # U zaměstnanců z doby před aplikací ale mzdy v aplikaci prostě nejsou, to nic neříká.
+        suggestion['no_insurance'] = not employee.cssz_registered_before_app
         return suggestion
 
     suggestion['periods'] = pension_periods(employee, months)

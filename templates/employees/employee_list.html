@@ -23,6 +23,18 @@
     </div>
 </div>
 
+<div class="card" style="margin-bottom: 16px;">
+    <form method="post" action="{% url 'employee_cssz_list_import' %}" enctype="multipart/form-data" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin: 0;">
+        {% csrf_token %}
+        <strong style="color: #fff; font-size: 13px;">🏛️ Seznam zaměstnanců z ePortálu ČSSZ</strong>
+        <input type="file" name="employee_list" accept=".csv,text/csv" required style="font-size: 12px; max-width: 100%;">
+        <label style="font-size: 12px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; margin: 0;">
+            <input type="checkbox" name="create_missing"> Založit ty, kteří v aplikaci chybí
+        </label>
+        <button type="submit" class="btn btn-secondary" style="font-size: 12px;">📤 Nahrát CSV</button>
+    </form>
+</div>
+
 <div class="card">
     <div class="table-responsive">
         <table class="table">

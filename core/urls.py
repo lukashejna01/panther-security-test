@@ -43,6 +43,7 @@ urlpatterns = [
     path('dispecink/zamestnanec/<int:employee_id>/smlouva/vygenerovat/', employee_views.employee_contract_regenerate_view, name='employee_contract_regenerate'),
     path('dispecink/zamestnanec/<int:employee_id>/ukonceni/', employee_views.employee_termination_view, name='employee_termination'),
     path('dispecink/zamestnanec/<int:employee_id>/ukonceni/vygenerovat/', employee_views.employee_termination_regenerate_view, name='employee_termination_regenerate'),
+    path('dispecink/zamestnanci/cssz/seznam-z-eportalu/', employee_views.employee_cssz_list_import_view, name='employee_cssz_list_import'),
     path('dispecink/zamestnanci/cssz/nacist-z-datovky/', employee_views.employee_cssz_import_view, name='employee_cssz_import'),
     path('dispecink/zamestnanec/<int:employee_id>/archivovat-rucne/', employee_views.employee_archive_manual_view, name='employee_archive_manual'),
     path('dispecink/zamestnanec/<int:employee_id>/cssz/', employee_views.employee_cssz_mark_view, name='employee_cssz_mark'),
