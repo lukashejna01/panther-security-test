@@ -72,6 +72,70 @@ class EmployeeCsszDataForm(forms.ModelForm):
         return (self.cleaned_data.get('citizenship') or 'CZ').upper()
 
 
+class EmployeeEditForm(forms.ModelForm):
+    """Úprava údajů zaměstnance vedením. Roli v systému a stav poměru tady změnit nejde."""
+    SECTIONS = [
+        ("Osobní údaje", ['first_name', 'last_name', 'birth_surname', 'birth_date', 'birth_number', 'birth_place',
+                          'birth_country', 'citizenship', 'education', 'id_card_number']),
+        ("Kontakt a výplata", ['phone', 'email', 'bank_account', 'health_insurance_code']),
+        ("Trvalý pobyt", ['street', 'house_number', 'orientation_number', 'city', 'zip_code']),
+        ("Smlouva a práce", ['contract_type', 'start_employment_date', 'contract_end_date', 'hourly_rate', 'position',
+                             'department', 'work_location', 'work_municipality', 'work_municipality_code']),
+        ("Identifikátory ČSSZ", ['cssz_ikmpsv', 'cssz_job_id']),
+    ]
+
+    class Meta:
+        model = Employee
+        fields = [
+            'first_name', 'last_name', 'birth_surname', 'birth_date', 'birth_number', 'birth_place',
+            'birth_country', 'citizenship', 'education', 'id_card_number',
+            'phone', 'email', 'bank_account', 'health_insurance_code',
+            'street', 'house_number', 'orientation_number', 'city', 'zip_code',
+            'contract_type', 'start_employment_date', 'contract_end_date', 'hourly_rate', 'position',
+            'department', 'work_location', 'work_municipality', 'work_municipality_code',
+            'cssz_ikmpsv', 'cssz_job_id',
+        ]
+        widgets = {
+            'birth_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'start_employment_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+            'contract_end_date': forms.DateInput(format='%Y-%m-%d', attrs={'type': 'date'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            field.widget.attrs.setdefault('class', 'form-control')
+
+    @property
+    def sections(self):
+        return [(title, [self[name] for name in names]) for title, names in self.SECTIONS]
+
+    def clean_birth_country(self):
+        return (self.cleaned_data.get('birth_country') or 'CZ').upper()
+
+    def clean_citizenship(self):
+        return (self.cleaned_data.get('citizenship') or 'CZ').upper()
+
+    def clean_cssz_ikmpsv(self):
+        value = (self.cleaned_data.get('cssz_ikmpsv') or '').strip()
+        if value and not re.fullmatch(r'\d{10}', value):
+            raise forms.ValidationError("OIČ má 10 číslic.")
+        return value
+
+    def clean_cssz_job_id(self):
+        value = (self.cleaned_data.get('cssz_job_id') or '').strip()
+        if value and not value.isdigit():
+            raise forms.ValidationError("ID zaměstnání obsahuje jen číslice.")
+        return value
+
+    def clean(self):
+        cleaned = super().clean()
+        start, end = cleaned.get('start_employment_date'), cleaned.get('contract_end_date')
+        if start and end and end < start:
+            self.add_error('contract_end_date', "Konec smlouvy nemůže být dříve než datum nástupu.")
+        return cleaned
+
+
 def format_periods(periods):
     """Období pojištění [(od, do)] jako text do formuláře – jedno na řádek."""
     return '\n'.join(f"{start:%d.%m.%Y} – {stop:%d.%m.%Y}" for start, stop in periods)

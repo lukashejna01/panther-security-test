@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+
+{% block title %}Upravit: {{ employee.full_name }}{% endblock %}
+
+{% block content %}
+<div style="max-width: 820px; margin: 0 auto;">
+    <a href="{% url 'employee_detail' employee.id %}" class="btn btn-secondary" style="font-size: 12px; margin-bottom: 12px;">← Zpět na kartu</a>
+    <h1 style="font-size: 24px; color: #fff; margin: 0 0 4px;">✏️ Upravit údaje zaměstnance</h1>
+    <p style="color: var(--text-muted); font-size: 13px; margin: 0 0 20px;">
+        {{ employee.full_name }}. Už vygenerované smlouvy a odeslaná podání na ČSSZ se úpravou nezmění.
+    </p>
+
+    <form method="post" class="card">
+        {% csrf_token %}
+        {% if form.non_field_errors %}
+            <div style="color: #f87171; font-size: 13px; margin-bottom: 12px;">{{ form.non_field_errors|join:" " }}</div>
+        {% endif %}
+
+        {% for title, fields in form.sections %}
+        <h3 style="font-size: 14px; color: var(--panther-yellow); margin: 0 0 10px;">{{ title }}</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 18px;">
+            {% for field in fields %}
+            <div class="form-group">
+                <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                {{ field }}
+                {% for err in field.errors %}<div style="color: #f87171; font-size: 12px; margin-top: 4px;">{{ err }}</div>{% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+
+        <div style="display: flex; gap: 10px; justify-content: flex-end;">
+            <a href="{% url 'employee_detail' employee.id %}" class="btn btn-secondary">Zrušit</a>
+            <button type="submit" class="btn btn-primary">Uložit</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

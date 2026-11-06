@@ -8,6 +8,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import SimpleTestCase, TestCase, override_settings
 from django.utils import timezone
 
+from core.forms.employee_forms import EmployeeEditForm
 from core.models import CsszSubmission, Employee, SystemRole
 from core.services import cssz_submit
 from core.services.cssz_deregistration import deregistration_suggestions
@@ -354,3 +355,47 @@ class EmployeeListImportTests(TestCase):
         employee = make_employee('jan', contract_type='HPP', start_employment_date=date(2025, 1, 1), termination_date=date(2026, 10, 31),
                                  cssz_registered_before_app=True)
         self.assertFalse(deregistration_suggestions(employee)['no_insurance'])
+
+
+class EmployeeEditTests(TestCase):
+    def _data(self, employee, **changes):
+        form = EmployeeEditForm(instance=employee)
+        data = {name: form[name].value() for name in form.fields}
+        return {**{k: ('' if v is None else v) for k, v in data.items()}, **changes}
+
+    def test_manager_edits_imported_employee_without_account(self):
+        client = logged_in_client(make_employee('manazer', SystemRole.MANAGER))
+        apply_employee_list(parse_employee_list(CSV_FILE), create_missing=True)
+        employee = Employee.objects.get(last_name='Novák')
+        url = f'/dispecink/zamestnanec/{employee.id}/upravit/'
+        self.assertContains(client.get(url, **HTTPS), 'Upravit údaje zaměstnance')
+        response = client.post(url, self._data(employee, phone='+420777123456', hourly_rate='200', last_name='Nováček'), **HTTPS)
+        self.assertEqual(response.status_code, 302)
+        employee.refresh_from_db()
+        self.assertEqual((employee.phone, employee.hourly_rate, employee.last_name), ('+420777123456', 200, 'Nováček'))
+        self.assertEqual(employee.cssz_job_id, '4003155470643')
+
+    def test_name_is_synced_to_account_and_role_cannot_change(self):
+        client = logged_in_client(make_employee('manazer', SystemRole.MANAGER))
+        employee = make_employee('jan', start_employment_date=date(2026, 1, 5))
+        client.post(f'/dispecink/zamestnanec/{employee.id}/upravit/',
+                    self._data(employee, first_name='Honza', system_role=SystemRole.OWNER), **HTTPS)
+        employee.refresh_from_db()
+        employee.user.refresh_from_db()
+        self.assertEqual(employee.user.first_name, 'Honza')
+        self.assertEqual(employee.system_role, SystemRole.STAFF)
+
+    def test_invalid_identifier_is_rejected(self):
+        client = logged_in_client(make_employee('manazer', SystemRole.MANAGER))
+        employee = make_employee('jan', start_employment_date=date(2026, 1, 5))
+        response = client.post(f'/dispecink/zamestnanec/{employee.id}/upravit/', self._data(employee, cssz_ikmpsv='123'), **HTTPS)
+        self.assertContains(response, 'OIČ má 10 číslic')
+        employee.refresh_from_db()
+        self.assertEqual(employee.cssz_ikmpsv, '')
+
+    def test_staff_cannot_edit(self):
+        employee = make_employee('jan', start_employment_date=date(2026, 1, 5))
+        client = logged_in_client(make_employee('eva'))
+        client.post(f'/dispecink/zamestnanec/{employee.id}/upravit/', self._data(employee, first_name='Hack'), **HTTPS)
+        employee.refresh_from_db()
+        self.assertEqual(employee.first_name, 'Jan')

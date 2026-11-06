@@ -19,7 +19,7 @@ from django.views.decorators.http import require_POST
 from core.decorators import role_required
 from core.models import Employee, SystemRole
 from core.forms import EmployeeArchiveForm
-from core.forms.employee_forms import CsszDeregistrationForm, EmployeeCsszDataForm, format_periods
+from core.forms.employee_forms import CsszDeregistrationForm, EmployeeCsszDataForm, EmployeeEditForm, format_periods
 from core.services import (
     RegzecDataError,
     build_regzec_xml,
@@ -252,6 +252,22 @@ def employee_cssz_data_view(request, employee_id):
         return redirect('employee_detail', employee_id=employee.id)
 
     return render(request, 'employees/employee_cssz_data.html', {'employee': employee, 'form': form})
+
+
+@login_required
+@role_required([SystemRole.MANAGER, SystemRole.OWNER])
+def employee_edit_view(request, employee_id):
+    """Úprava údajů zaměstnance vedením. Už vygenerované dokumenty se tím nemění."""
+    employee = get_object_or_404(Employee, id=employee_id)
+    form = EmployeeEditForm(request.POST or None, instance=employee)
+    if request.method == 'POST' and form.is_valid():
+        form.save()
+        if employee.user and {'first_name', 'last_name'} & set(form.changed_data):
+            employee.user.first_name, employee.user.last_name = employee.first_name, employee.last_name
+            employee.user.save(update_fields=['first_name', 'last_name'])
+        messages.success(request, f"Údaje zaměstnance {employee.full_name} jsou uložené.")
+        return redirect('employee_detail', employee_id=employee.id)
+    return render(request, 'employees/employee_edit.html', {'employee': employee, 'form': form})
 
 
 @login_required

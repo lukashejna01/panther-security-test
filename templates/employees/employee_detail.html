@@ -42,6 +42,9 @@
             📄 {{ employee.get_termination_type_display }} (PDF)
         </a>
         {% endif %}
+        <a href="{% url 'employee_edit' employee.id %}" class="btn btn-secondary" style="display: inline-flex; align-items: center; gap: 6px;">
+            ✏️ Upravit údaje
+        </a>
         {% if employee.is_active and not employee.is_deregistered_cssz %}
         <a href="{% url 'archive_employee' employee.id %}" class="btn btn-danger" style="display: inline-flex; align-items: center; gap: 6px;">
             ⚠️ {% if employee.termination_date %}Upravit ukončení{% else %}Ukončit poměr{% endif %}

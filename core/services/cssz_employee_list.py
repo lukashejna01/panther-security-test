@@ -142,6 +142,9 @@ def apply_employee_list(rows, create_missing=False):
             continue
 
         if not employees:
+            if not row['start']:
+                report['ambiguous'].append(label)
+                continue
             Employee.objects.create(
                 first_name=row['first_name'][:50], last_name=row['last_name'][:50], birth_number=number,
                 start_employment_date=row['start'], contract_type=row['contract_type'] or Employee._meta.get_field('contract_type').default,
